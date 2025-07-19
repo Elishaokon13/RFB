@@ -10,7 +10,8 @@ The BASE SCREENER is a React-based cryptocurrency token screener application des
 - ✅ Responsive design with mobile support
 - ✅ TanStack Query integration for data management
 - ✅ Zora Coins SDK integration ready
-- ❌ Currently using mock data instead of real API calls
+- ✅ DexScreener API selected for data integration
+- ❌ Currently using mock data instead of real DexScreener API calls
 - ❌ No real-time data updates
 - ❌ Limited blockchain support (only Base chain mentioned)
 - ❌ No user authentication or personalization
@@ -24,11 +25,11 @@ The BASE SCREENER is a React-based cryptocurrency token screener application des
 ## Key Challenges and Analysis
 
 ### Technical Challenges
-1. **Data Integration**: Need to replace mock data with real-time cryptocurrency data
+1. **Data Integration**: Need to replace mock data with real-time DexScreener API data
 2. **Performance**: Handle large datasets efficiently with proper pagination and virtualization
 3. **Real-time Updates**: Implement WebSocket connections for live price updates
-4. **API Rate Limiting**: Manage multiple API calls and implement proper caching strategies
-5. **Cross-chain Support**: Extend beyond Base chain to support multiple blockchains
+4. **API Rate Limiting**: Manage DexScreener API calls (300 req/min limit) and implement proper caching strategies
+5. **Cross-chain Support**: Extend beyond Base chain to support multiple blockchains via DexScreener
 
 ### User Experience Challenges
 1. **Data Overload**: Present complex financial data in an intuitive way
@@ -37,8 +38,8 @@ The BASE SCREENER is a React-based cryptocurrency token screener application des
 4. **Error Handling**: Graceful error handling for API failures and network issues
 
 ### Business Challenges
-1. **Data Sources**: Identify reliable and cost-effective data providers
-2. **Scalability**: Plan for handling increased user load and data volume
+1. **Data Sources**: DexScreener API selected - free tier with 300 req/min limit, consider premium for higher limits
+2. **Scalability**: Plan for handling increased user load and data volume within DexScreener rate limits
 3. **Monetization**: Consider premium features or advertising opportunities
 4. **Compliance**: Ensure compliance with financial data regulations
 
@@ -46,16 +47,17 @@ The BASE SCREENER is a React-based cryptocurrency token screener application des
 
 ### Phase 1: Data Integration & API Setup
 - [ ] **Task 1.1**: Research and select cryptocurrency data APIs (CoinGecko, CoinMarketCap, DexScreener API)
-- [ ] **Task 1.2**: Implement API service layer with proper error handling and rate limiting
-- [ ] **Task 1.3**: Replace mock data in TokenTable with real API calls
+- [ ] **Task 1.2**: Implement DexScreener API service layer with proper error handling and rate limiting
+- [ ] **Task 1.3**: Replace mock data in TokenTable with real DexScreener API calls
 - [ ] **Task 1.4**: Add loading states and error boundaries
 - [ ] **Task 1.5**: Implement data caching with TanStack Query
 
 **Success Criteria:**
-- TokenTable displays real cryptocurrency data
+- TokenTable displays real DexScreener cryptocurrency data
 - Loading states show during data fetching
 - Error states handle API failures gracefully
 - Data refreshes automatically every 30 seconds
+- DexScreener API integration is properly typed and documented
 
 ### Phase 2: Enhanced Features & Functionality
 - [ ] **Task 2.1**: Implement advanced filtering (by chain, market cap, volume, etc.)
@@ -113,8 +115,8 @@ The BASE SCREENER is a React-based cryptocurrency token screener application des
 
 ### Current Sprint: Phase 1 - Data Integration & API Setup
 - [ ] **Task 1.1**: Research cryptocurrency data APIs
-- [ ] **Task 1.2**: Implement API service layer
-- [ ] **Task 1.3**: Replace mock data with real API calls
+- [ ] **Task 1.2**: Implement DexScreener API service layer
+- [ ] **Task 1.3**: Replace mock data with real DexScreener API calls
 - [ ] **Task 1.4**: Add loading and error states
 - [ ] **Task 1.5**: Implement data caching
 
@@ -131,15 +133,60 @@ The BASE SCREENER is a React-based cryptocurrency token screener application des
 
 ## Executor's Feedback or Assistance Requests
 
+### DexScreener API Integration Plan
+
+**API Research Findings:**
+- DexScreener provides comprehensive DEX data across multiple chains
+- Base chain support available via `/v2/pairs/base` endpoint
+- Rate limiting: 300 requests per minute for free tier
+- Real-time data available for price updates
+- Supports filtering by chain, DEX, and token pairs
+
+**Implementation Strategy:**
+1. **Create DexScreener API Service** (`src/hooks/useDexScreener.ts`)
+   - Implement base API client with error handling
+   - Add rate limiting and retry logic
+   - Support for multiple endpoints (pairs, tokens, search)
+
+2. **Data Types & Interfaces** (`src/types/dexscreener.ts`)
+   - Define TypeScript interfaces for DexScreener API responses
+   - Map API data to our application's data structure
+   - Handle different response formats for different endpoints
+
+3. **Custom Hooks Implementation**
+   - `useDexScreenerPairs()` - Fetch token pairs data
+   - `useDexScreenerSearch()` - Search functionality
+   - `useDexScreenerToken()` - Individual token details
+   - `useDexScreenerTrending()` - Trending tokens
+
+4. **Integration Points**
+   - Replace mock data in `TokenTable.tsx`
+   - Add loading states and error handling
+   - Implement data transformation from API to UI format
+
+**Technical Considerations:**
+- DexScreener API base URL: `https://api.dexscreener.com/latest`
+- CORS handling may be required for client-side requests
+- Consider implementing proxy for production deployment
+- Cache strategy: 30-second stale time for price data, 5 minutes for static data
+
+**Success Criteria for Task 1.2:**
+- DexScreener API service successfully fetches Base chain data
+- Error handling works for network failures and API errors
+- Rate limiting prevents API abuse
+- Data transformation converts API format to application format
+- TypeScript types are properly defined and used
+
 *This section will be updated by the Executor during implementation*
 
 ## Lessons
 
 ### Technical Lessons
 - **React Query Best Practices**: Use proper staleTime and gcTime for optimal caching
-- **API Rate Limiting**: Implement exponential backoff for failed requests
+- **API Rate Limiting**: Implement exponential backoff for failed requests, respect DexScreener's 300 req/min limit
 - **Performance Optimization**: Use React.memo and useMemo for expensive calculations
 - **Error Handling**: Always provide fallback UI for API failures
+- **DexScreener Integration**: Use proper error handling for CORS and rate limit issues
 
 ### User Experience Lessons
 - **Loading States**: Always show loading indicators during data fetching
