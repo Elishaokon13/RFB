@@ -3,26 +3,26 @@ import { Search, Star, AlertCircle, BarChart3, TrendingUp, Wallet, Settings, Zap
 import { cn } from "@/lib/utils";
 
 const chains = [
-  { name: "Solana", icon: "◎", color: "text-purple-400" },
-  { name: "Ethereum", icon: "⟡", color: "text-blue-400" },
-  { name: "Base", icon: "🔵", color: "text-blue-500" },
-  { name: "BSC", icon: "🟡", color: "text-yellow-500" },
-  { name: "PulseChain", icon: "💗", color: "text-pink-400" },
-  { name: "Abstract", icon: "⬟", color: "text-orange-400" },
-  { name: "Avalanche", icon: "🔺", color: "text-red-400" },
-  { name: "Polygon", icon: "🟣", color: "text-purple-500" },
-  { name: "Arbitrum", icon: "🔷", color: "text-blue-600" },
-  { name: "HyperEVM", icon: "⚡", color: "text-cyan-400" },
+  // { name: "Solana", icon: "◎", color: "text-purple-400" },
+  // { name: "Ethereum", icon: "⟡", color: "text-blue-400" },
+  // { name: "Base", icon: "🔵", color: "text-blue-500" },
+  // { name: "BSC", icon: "🟡", color: "text-yellow-500" },
+  // { name: "PulseChain", icon: "💗", color: "text-pink-400" },
+  // { name: "Abstract", icon: "⬟", color: "text-orange-400" },
+  // { name: "Avalanche", icon: "🔺", color: "text-red-400" },
+  // { name: "Polygon", icon: "🟣", color: "text-purple-500" },
+  // { name: "Arbitrum", icon: "🔷", color: "text-blue-600" },
+  // { name: "HyperEVM", icon: "⚡", color: "text-cyan-400" },
 ];
 
 const menuItems = [
-  { icon: Star, label: "Watchlist", active: false },
-  { icon: AlertCircle, label: "Alerts", active: false },
-  { icon: BarChart3, label: "Multicharts", active: false },
-  { icon: TrendingUp, label: "New Pairs", active: false },
-  { icon: Zap, label: "Gainers & Losers", active: false },
-  { icon: Wallet, label: "Portfolio", active: false },
-  { icon: Settings, label: "Advertise", active: false },
+  // { icon: Star, label: "Collections", active: false },
+  { icon: AlertCircle, label: "New Mints", active: false },
+  { icon: BarChart3, label: "Top Creators", active: false },
+  { icon: TrendingUp, label: "Live Activity", active: false },
+  { icon: Zap, label: "Trending", active: false },
+  // { icon: Wallet, label: "Portfolio", active: false },
+  // { icon: Settings, label: "Advertise", active: false },
 ];
 
 export function Sidebar() {
@@ -36,7 +36,7 @@ export function Sidebar() {
           <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center">
             <Search className="w-4 h-4 text-white" />
           </div>
-          <span className="text-xl font-bold text-foreground">DEXSCREENER</span>
+          <span className="text-xl font-bold text-foreground">BASE SCREENER</span>
         </div>
       </div>
 
@@ -58,7 +58,7 @@ export function Sidebar() {
 
       {/* Chains */}
       <div className="flex-1 p-4">
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">Chains</h3>
+        {/* <h3 className="text-sm font-medium text-muted-foreground mb-3">Chains</h3> */}
         <div className="space-y-1">
           {chains.map((chain) => (
             <button
@@ -78,14 +78,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Get the App */}
-      <div className="p-4 border-t border-border">
-        <button className="w-full flex items-center gap-2 px-3 py-2 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <span>📱</span>
-          Get the App!
-          <span className="ml-auto">🍎 🤖</span>
-        </button>
-      </div>
+      
     </div>
   );
 }

@@ -25,11 +25,7 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Ad indicator */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="w-2 h-2 bg-primary rounded-full"></span>
-          Ad
-        </div>
+        
 
         {/* Notifications */}
         <button className="relative">
@@ -38,9 +34,9 @@ export function Header() {
         </button>
 
         {/* Profile */}
-        <button className="w-8 h-8 bg-muted rounded-full flex items-center justify-center hover:bg-muted/80 transition-colors">
+        {/* <button className="w-8 h-8 bg-muted rounded-full flex items-center justify-center hover:bg-muted/80 transition-colors">
           <User className="w-4 h-4 text-muted-foreground" />
-        </button>
+        </button> */}
       </div>
     </header>
   );
