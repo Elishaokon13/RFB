@@ -1609,7 +1609,7 @@
 
 "@zoralabs/coins-sdk@^0.2.8":
   version "0.2.8"
-  resolved "https://registry.npmjs.org/@zoralabs/coins-sdk/-/coins-sdk-0.2.8.tgz"
+  resolved "https://registry.yarnpkg.com/@zoralabs/coins-sdk/-/coins-sdk-0.2.8.tgz#5ec1524b70a6067888429e40ab269db4bfc1ce1d"
   integrity sha512-vni9qcdS6/9HUOue7SDir2wHn+SSSDmxfZhBcCzQWdK9NaW/+E5jCWXuQGFgBzKpLc4FN5ktJz36v92BADQE3g==
   dependencies:
     "@hey-api/client-fetch" "^0.8.3"
