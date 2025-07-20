@@ -407,6 +407,9 @@ export default function TokenDetails() {
 
   // Find the specific token
   const token = coins.find(coin => coin.address === address);
+  
+  // Debug: log the full token object
+  console.log('[TokenDetails] Full token object:', token);
 
   // Fetch DexScreener data for this token
   const { tokens: dexTokens, loading: dexLoading, error: dexError } = useDexScreenerTokens('8453', address ? [address] : []);
@@ -627,8 +630,8 @@ export default function TokenDetails() {
               symbol: token.symbol,
               address: token.address,
             }}
-            currentPrice={formattedDexScreener?.priceUsd || formattedToken.formattedPrice}
-            priceChange24h={dexScreenerData?.priceChange?.h24}
+            currentPrice={dexData?.priceUsd || formattedToken.formattedPrice}
+            priceChange24h={dexData?.priceChange?.h24}
             onTrade={(type, usdAmount, tokenAmount) => {
               console.log(`${type.toUpperCase()} ${tokenAmount} ${token.symbol} for $${usdAmount}`);
               // Here you would integrate with actual trading functionality
