@@ -51,41 +51,6 @@ const areCoinsEqual = (prevCoin: Coin, nextCoin: Coin, prevDexData: DexScreenerP
   return true;
 };
 
-// Create a stable data store to prevent unnecessary re-renders
-const useStableData = (coins: Coin[], dexScreenerData: Record<string, DexScreenerPair>) => {
-  const prevDataRef = useRef<{
-    coins: Coin[];
-    dexScreenerData: Record<string, DexScreenerPair>;
-    stableCoins: Coin[];
-  }>({ coins: [], dexScreenerData: {}, stableCoins: [] });
-
-  return useMemo(() => {
-    const currentData = { coins, dexScreenerData };
-    const prevData = prevDataRef.current;
-
-    // Check if data actually changed
-    const coinsChanged = coins.length !== prevData.coins.length ||
-      coins.some((coin, index) => {
-        const prevCoin = prevData.coins[index];
-        if (!prevCoin) return true;
-        
-        const prevDexData = prevData.dexScreenerData[prevCoin.address];
-        const nextDexData = dexScreenerData[coin.address];
-        
-        return !areCoinsEqual(prevCoin, coin, prevDexData, nextDexData);
-      });
-
-    // If data changed, update the stable reference
-    if (coinsChanged) {
-      prevDataRef.current = currentData;
-      return coins;
-    }
-
-    // Return stable reference if no changes
-    return prevData.stableCoins.length > 0 ? prevData.stableCoins : coins;
-  }, [coins, dexScreenerData]);
-};
-
 // Memoized price cell component with aggressive memoization
 const PriceCell = memo(({ coin, dexScreenerData }: { coin: Coin; dexScreenerData: Record<string, DexScreenerPair> }) => {
   const priceData = dexScreenerData[coin.address];
@@ -191,7 +156,7 @@ const PercentageCell = memo(({ value, cap }: { value: number; cap: string | unde
 
 PercentageCell.displayName = 'PercentageCell';
 
-// Memoized table row component with aggressive memoization
+// Memoized table row component with stable keys and aggressive memoization
 const TableRow = memo(({ 
   coin, 
   index, 
@@ -303,11 +268,8 @@ export function TokenDataTable({
   showPagination = true,
   itemsPerPage = 20
 }: TokenDataTableProps) {
-  // Use stable data to prevent unnecessary re-renders
-  const stableCoins = useStableData(coins, dexScreenerData);
-
   // Always show data if we have coins, regardless of loading state
-  if (stableCoins.length === 0) {
+  if (coins.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="flex items-center gap-2">
@@ -323,18 +285,18 @@ export function TokenDataTable({
     onCoinClick(address);
   }, [onCoinClick]);
 
-  // Memoize the table body to prevent unnecessary re-renders
+  // Memoize the table body with stable keys to prevent unnecessary re-renders
   const tableBody = useMemo(() => {
-    return stableCoins.map((coin, index) => (
+    return coins.map((coin, index) => (
       <TableRow
-        key={`${coin.id}-${coin.address}`}
+        key={`${coin.id}-${coin.address}`} // ✅ Use stable unique keys
         coin={coin}
         index={index}
         dexScreenerData={dexScreenerData}
         onCoinClick={handleCoinClick}
       />
     ));
-  }, [stableCoins, dexScreenerData, handleCoinClick]);
+  }, [coins, dexScreenerData, handleCoinClick]);
 
   return (
     <div className="overflow-auto">
@@ -426,7 +388,7 @@ export function TokenDataTable({
       {showPagination && (
         <div className="flex items-center justify-between p-4 border-t border-border">
           <div className="text-sm text-muted-foreground">
-            Page {currentPage} - Showing {stableCoins.length} coins
+            Page {currentPage} - Showing {coins.length} coins
           </div>
           <div className="flex items-center gap-2">
             {/* Previous Page */}
