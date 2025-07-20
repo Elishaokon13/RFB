@@ -1,14 +1,394 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, RefreshCw, TrendingUp, TrendingDown, DollarSign, BarChart3, Activity, Globe, Calendar, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTrendingCoins, formatCoinData, Coin } from "@/hooks/useTopVolume24h";
 import { useDexScreenerPrice, formatDexScreenerPrice, DexScreenerPair } from "@/hooks/useDexScreener";
 
+// Chart period types
+type ChartPeriod = "1H" | "6H" | "24H" | "7D" | "1M";
+
+// Mock historical data generator (in real app, you'd fetch this from API)
+const generateHistoricalData = (period: ChartPeriod, currentPrice: number, priceChange: number) => {
+  const now = Date.now();
+  let dataPoints = 50;
+  let interval = 60000; // 1 minute default
+
+  switch (period) {
+    case "1H":
+      interval = 60000; // 1 minute
+      dataPoints = 60;
+      break;
+    case "6H":
+      interval = 300000; // 5 minutes
+      dataPoints = 72;
+      break;
+    case "24H":
+      interval = 900000; // 15 minutes
+      dataPoints = 96;
+      break;
+    case "7D":
+      interval = 3600000; // 1 hour
+      dataPoints = 168;
+      break;
+    case "1M":
+      interval = 86400000; // 1 day
+      dataPoints = 30;
+      break;
+  }
+
+  const data = [];
+  const volatility = Math.abs(priceChange) / 100;
+  
+  for (let i = dataPoints; i >= 0; i--) {
+    const timestamp = now - (i * interval);
+    const progress = i / dataPoints;
+    
+    // Create realistic price movement
+    const basePrice = currentPrice * (1 - (priceChange / 100) * progress);
+    const randomFactor = 1 + (Math.random() - 0.5) * volatility * 0.1;
+    const price = basePrice * randomFactor;
+    
+    data.push({
+      timestamp,
+      price,
+      volume: Math.random() * 1000000 + 100000 // Random volume
+    });
+  }
+
+  return data;
+};
+
+// Interactive Price Chart Component
+const PriceChart = ({ 
+  dexScreenerData, 
+  period, 
+  onPeriodChange 
+}: { 
+  dexScreenerData: DexScreenerPair | null;
+  period: ChartPeriod;
+  onPeriodChange: (period: ChartPeriod) => void;
+}) => {
+  const [hoveredPoint, setHoveredPoint] = useState<{ price: number; timestamp: number } | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [chartContainer, setChartContainer] = useState<HTMLDivElement | null>(null);
+
+  const currentPrice = parseFloat(dexScreenerData?.priceUsd || "0");
+  const priceChange = dexScreenerData?.priceChange?.h24 || 0;
+
+  const chartData = useMemo(() => {
+    if (!currentPrice) return [];
+    return generateHistoricalData(period, currentPrice, priceChange);
+  }, [currentPrice, priceChange, period]);
+
+  const periods: ChartPeriod[] = ["1H", "6H", "24H", "7D", "1M"];
+
+  // Dynamic chart dimensions based on container
+  const chartWidth = chartContainer ? chartContainer.clientWidth - 80 : 800; // Account for padding
+  const chartHeight = 400; // Fixed height for better aspect ratio
+  const padding = 60; // Increased padding for better labels
+
+  // Calculate chart scales
+  const prices = chartData.map(d => d.price);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const priceRange = maxPrice - minPrice;
+  const pricePadding = priceRange * 0.15; // Increased padding for better visualization
+
+  const xScale = (timestamp: number) => {
+    if (chartData.length === 0) return padding;
+    const timeRange = chartData[chartData.length - 1].timestamp - chartData[0].timestamp;
+    return padding + ((timestamp - chartData[0].timestamp) / timeRange) * (chartWidth - 2 * padding);
+  };
+
+  const yScale = (price: number) => {
+    return chartHeight - padding - ((price - (minPrice - pricePadding)) / (priceRange + 2 * pricePadding)) * (chartHeight - 2 * padding);
+  };
+
+  // Generate SVG path for the line
+  const linePath = chartData.map((point, index) => {
+    const x = xScale(point.timestamp);
+    const y = yScale(point.price);
+    return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }).join(' ');
+
+  // Generate area path for fill
+  const areaPath = chartData.map((point, index) => {
+    const x = xScale(point.timestamp);
+    const y = yScale(point.price);
+    return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }).join(' ') + ` L ${xScale(chartData[chartData.length - 1]?.timestamp || 0)} ${chartHeight - padding} L ${xScale(chartData[0]?.timestamp || 0)} ${chartHeight - padding} Z`;
+
+  const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    
+    // Find closest data point
+    const closestPoint = chartData.reduce((closest, point) => {
+      const pointX = xScale(point.timestamp);
+      const distance = Math.abs(x - pointX);
+      return distance < Math.abs(x - xScale(closest.timestamp)) ? point : closest;
+    });
+
+    setHoveredPoint(closestPoint);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredPoint(null);
+  };
+
+  const formatPrice = (price: number) => {
+    if (price < 0.000001) return `$${price.toExponential(2)}`;
+    if (price < 0.01) return `$${price.toFixed(6)}`;
+    if (price < 1) return `$${price.toFixed(4)}`;
+    return `$${price.toFixed(2)}`;
+  };
+
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    switch (period) {
+      case "1H":
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      case "6H":
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      case "24H":
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      case "7D":
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      case "1M":
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Period Selector */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-foreground">Price Chart</h2>
+        <div className="flex bg-muted rounded-lg p-1">
+          {periods.map((p) => (
+            <button
+              key={p}
+              onClick={() => {
+                setIsAnimating(true);
+                onPeriodChange(p);
+                setTimeout(() => setIsAnimating(false), 300);
+              }}
+              className={cn(
+                "px-3 py-1 rounded-md text-sm font-medium transition-all duration-200",
+                p === period
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Chart Container */}
+      <div 
+        ref={setChartContainer}
+        className="relative bg-muted/10 rounded-lg border border-border p-6 w-full"
+        style={{ minHeight: `${chartHeight + 40}px` }}
+      >
+        {chartData.length > 0 ? (
+          <svg
+            width="100%"
+            height={chartHeight}
+            viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+            preserveAspectRatio="xMidYMid meet"
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            className="w-full h-auto"
+          >
+            {/* Grid Lines */}
+            <defs>
+              <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+                <path d="M 60 0 L 0 0 0 60" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-border opacity-20" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+
+            {/* Price Labels */}
+            <g className="text-xs text-gray-500">
+              {[0, 0.2, 0.4, 0.6, 0.8, 1].map((ratio) => {
+                const price = minPrice - pricePadding + (priceRange + 2 * pricePadding) * ratio;
+                const y = chartHeight - padding - (chartHeight - 2 * padding) * ratio;
+                return (
+                  <g key={ratio}>
+                    <line
+                      x1={padding}
+                      y1={y}
+                      x2={chartWidth - padding}
+                      y2={y}
+                      stroke="currentColor"
+                      strokeWidth="0.5"
+                      className="text-gray-300 opacity-40"
+                    />
+                    <text x={padding - 8} y={y + 3} textAnchor="end" className="text-xs font-medium text-gray-500">
+                      {formatPrice(price)}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+
+            {/* Time Labels */}
+            <g className="text-xs text-gray-500">
+              {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+                const index = Math.floor(ratio * (chartData.length - 1));
+                const point = chartData[index];
+                if (!point) return null;
+                const x = xScale(point.timestamp);
+                return (
+                  <g key={ratio}>
+                    <line
+                      x1={x}
+                      y1={chartHeight - padding}
+                      x2={x}
+                      y2={chartHeight - padding + 5}
+                      stroke="currentColor"
+                      strokeWidth="0.5"
+                      className="text-gray-300 opacity-40"
+                    />
+                    <text x={x} y={chartHeight - padding + 18} textAnchor="middle" className="text-xs text-gray-500">
+                      {formatTime(point.timestamp)}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+
+            {/* Area Fill */}
+            <path
+              d={areaPath}
+              fill="url(#gradient)"
+              opacity="0.4"
+              className={cn(
+                "transition-all duration-300",
+                isAnimating && "animate-pulse"
+              )}
+            />
+
+            {/* Line */}
+            <path
+              d={linePath}
+              stroke="url(#lineGradient)"
+              strokeWidth="3"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={cn(
+                "transition-all duration-300",
+                isAnimating && "animate-pulse"
+              )}
+            />
+
+            {/* Hover Point */}
+            {hoveredPoint && (
+              <g>
+                <circle
+                  cx={xScale(hoveredPoint.timestamp)}
+                  cy={yScale(hoveredPoint.price)}
+                  r="6"
+                  fill="currentColor"
+                  className="text-primary"
+                />
+                <circle
+                  cx={xScale(hoveredPoint.timestamp)}
+                  cy={yScale(hoveredPoint.price)}
+                  r="12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="text-primary opacity-30"
+                />
+              </g>
+            )}
+
+            {/* Gradients */}
+            <defs>
+              <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="currentColor" className="text-primary" stopOpacity="0.6" />
+                <stop offset="100%" stopColor="currentColor" className="text-primary" stopOpacity="0" />
+              </linearGradient>
+              <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="currentColor" className="text-primary" />
+                <stop offset="50%" stopColor="currentColor" className="text-blue-500" />
+                <stop offset="100%" stopColor="currentColor" className="text-purple-500" />
+              </linearGradient>
+            </defs>
+          </svg>
+        ) : (
+          <div className="flex items-center justify-center h-80">
+            <div className="text-center">
+              <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+              <p className="text-muted-foreground">No price data available</p>
+              <p className="text-sm text-muted-foreground">Check back later for updates</p>
+            </div>
+          </div>
+        )}
+
+        {/* Tooltip */}
+        {hoveredPoint && (
+          <div
+            className="absolute bg-background border border-border rounded-lg p-3 shadow-lg pointer-events-none z-10"
+            style={{
+              left: `${xScale(hoveredPoint.timestamp)}px`,
+              top: `${yScale(hoveredPoint.price) - 80}px`,
+              transform: 'translateX(-50%)'
+            }}
+          >
+            <div className="text-sm font-medium text-foreground">
+              {formatPrice(hoveredPoint.price)}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {formatTime(hoveredPoint.timestamp)}
+            </div>
+          </div>
+        )}
+
+        {/* Chart Stats */}
+        <div className="flex items-center justify-between mt-6 text-sm">
+          <div className="flex items-center gap-6">
+            <div>
+              <span className="text-muted-foreground">Current: </span>
+              <span className="font-semibold text-foreground">
+                {formatPrice(currentPrice)}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Change: </span>
+              <span className={cn(
+                "font-semibold",
+                priceChange >= 0 ? "text-green-600" : "text-red-600"
+              )}>
+                {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Range: </span>
+              <span className="font-medium text-foreground">
+                {formatPrice(minPrice)} - {formatPrice(maxPrice)}
+              </span>
+            </div>
+          </div>
+          <div className="text-muted-foreground font-medium">
+            {period} view • {chartData.length} data points
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function TokenDetails() {
   const { address } = useParams<{ address: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
+  const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("24H");
 
   // Fetch token data from Zora SDK
   const {
@@ -162,30 +542,13 @@ export default function TokenDetails() {
             </div>
           </div>
 
-          {/* Chart Area */}
+          {/* Interactive Price Chart */}
           <div className="bg-card border border-border rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">Price Chart</h2>
-              <div className="flex bg-muted rounded-lg p-1">
-                {["1H", "6H", "24H", "7D", "1M"].map((period) => (
-                  <button
-                    key={period}
-                    className="px-3 py-1 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    {period}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            {/* Chart Placeholder */}
-            <div className="h-80 bg-muted/20 rounded-lg border-2 border-dashed border-muted flex items-center justify-center">
-              <div className="text-center">
-                <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground">Chart integration coming soon</p>
-                <p className="text-sm text-muted-foreground">Real-time price visualization</p>
-              </div>
-            </div>
+            <PriceChart 
+              dexScreenerData={dexScreenerData}
+              period={chartPeriod}
+              onPeriodChange={setChartPeriod}
+            />
           </div>
 
           {/* Token Information */}
@@ -277,15 +640,15 @@ export default function TokenDetails() {
                 </span>
               </div>
               
-                              <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Transactions 24H</span>
-                  </div>
-                  <span className="text-sm font-medium text-foreground">
-                    {dexScreenerData?.txns?.h24 ? `${dexScreenerData.txns.h24.buys + dexScreenerData.txns.h24.sells}` : "N/A"}
-                  </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Transactions 24H</span>
                 </div>
+                <span className="text-sm font-medium text-foreground">
+                  {dexScreenerData?.txns?.h24 ? `${dexScreenerData.txns.h24.buys + dexScreenerData.txns.h24.sells}` : "N/A"}
+                </span>
+              </div>
             </div>
           </div>
 
