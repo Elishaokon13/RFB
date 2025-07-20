@@ -7,13 +7,27 @@ import {
   calculateFallbackPrice,
 } from "@/hooks/useDexScreener";
 import { memo, useMemo, useCallback, useRef, useEffect } from "react";
-import { useBasename } from '@/hooks/useBasename';
+import { Identity } from '@coinbase/onchainkit/identity';
 import { Address } from 'viem';
 import { Star } from 'lucide-react';
 import { useWatchlist } from '@/hooks/useWatchlist';
+import { useBasename } from '@/hooks/useBasename';
+import React, { useState } from 'react';
 
 // Extend Coin type to include image property for table display
-type CoinWithImage = Coin & { image?: string };
+type CoinWithImage = Coin & {
+  image?: string;
+  mediaContent?: {
+    mimeType?: string;
+    originalUri?: string;
+    previewImage?: {
+      small?: string;
+      medium?: string;
+      blurhash?: string;
+    };
+  };
+  fineAge?: string; // Add this for New Picks fine-grained age
+};
 
 // Helper function to calculate age from timestamp
 const getAgeFromTimestamp = (timestamp: string) => {
@@ -89,12 +103,13 @@ const VolumeCell = memo(({ coin, dexScreenerData }: { coin: CoinWithImage; dexSc
 VolumeCell.displayName = "VolumeCell";
 
 const Change24hCell = memo(({ coin }: { coin: CoinWithImage }) => {
-  // Use Zora/getCoins 24h market change only
-  if (coin.marketCapDelta24h && !isNaN(Number(coin.marketCapDelta24h))) {
-    const value = Number(coin.marketCapDelta24h);
-    const isPositive = value >= 0;
+  const delta = Number(coin.marketCapDelta24h);
+  const cap = Number(coin.marketCap);
+  if (!isNaN(delta) && !isNaN(cap) && cap - delta !== 0) {
+    const percent = (delta / (cap - delta)) * 100;
+    const isPositive = percent >= 0;
     return (
-      <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>{isPositive ? '+' : ''}{value.toFixed(2)}%</span>
+      <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>{isPositive ? '+' : ''}{percent.toFixed(2)}%</span>
     );
   }
   return <span className="text-muted-foreground">N/A</span>;
@@ -177,8 +192,14 @@ const TableRow = memo(
             >
               <Star fill={isWatched ? 'currentColor' : 'none'} strokeWidth={2} className="w-5 h-5" />
             </button>
-            {coin.image ? (
-              <img
+            {coin.mediaContent?.previewImage?.small ? (
+              <CachedImage
+                src={coin.mediaContent.previewImage.small}
+                alt={coin.symbol || 'token'}
+                className="w-7 h-7 rounded-full border bg-white object-cover"
+              />
+            ) : coin.image ? (
+              <CachedImage
                 src={coin.image}
                 alt={coin.symbol || 'token'}
                 className="w-7 h-7 rounded-full border bg-white object-cover"
@@ -201,7 +222,7 @@ const TableRow = memo(
           <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
         </td>
         <td className="px-4 py-3 text-sm text-muted-foreground">
-          {coin.createdAt ? getAgeFromTimestamp(coin.createdAt) : "N/A"}
+          {coin.fineAge ? coin.fineAge : (coin.createdAt ? getAgeFromTimestamp(coin.createdAt) : "N/A")}
         </td>
         <td className="px-4 py-3">
           <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
@@ -227,12 +248,19 @@ const TableRow = memo(
 TableRow.displayName = "TableRow";
 
 // Memoized creator cell component for Basename resolution
+const truncateMiddle = (address: string) => {
+  if (!address) return '';
+  return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
+};
 const CreatorCell = memo(({ creatorAddress }: { creatorAddress?: string }) => {
-  // Only call the hook if the address is valid and starts with 0x
-  const address = (creatorAddress && creatorAddress.startsWith('0x')) ? (creatorAddress as Address) : undefined;
-  const { basename } = useBasename(address);
+  const { basename, loading, error } = useBasename(creatorAddress as `0x${string}`);
+  // Log the full Basename object for debugging
+  console.log('[TokenDataTable] Basename:', { address: creatorAddress, basename, loading, error });
   if (!creatorAddress) return <span>N/A</span>;
-  return <span>{basename ? basename : truncateAddress(creatorAddress)}</span>;
+  if (loading) return <span>Resolving...</span>;
+  if (basename) return <span>{basename}</span>;
+  if (error) return <span title={error}>{truncateMiddle(creatorAddress)}</span>;
+  return <span>{truncateMiddle(creatorAddress)}</span>;
 });
 CreatorCell.displayName = 'CreatorCell';
 
@@ -408,3 +436,37 @@ export function TokenDataTable({
 }
 
 export { CreatorsTable } from './TokenTable';
+
+// Simple in-memory cache for loaded images
+const imageCache = new Map<string, string>();
+
+function CachedImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [imgSrc, setImgSrc] = useState(() => {
+    if (src && imageCache.has(src)) return imageCache.get(src)!;
+    return src;
+  });
+  const [error, setError] = useState(false);
+
+  if (!src || error) {
+    return (
+      <span className="w-7 h-7 rounded-full bg-gray-200 border flex items-center justify-center text-xs text-gray-400">
+        ◎
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={imgSrc}
+      alt={alt}
+      className={className}
+      onLoad={() => {
+        if (src && !imageCache.has(src)) imageCache.set(src, src);
+      }}
+      onError={() => setError(true)}
+      loading="lazy"
+      crossOrigin="anonymous"
+      style={{ background: '#fff' }}
+    />
+  );
+}
