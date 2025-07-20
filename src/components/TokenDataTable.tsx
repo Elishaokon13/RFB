@@ -1,5 +1,5 @@
 import { RefreshCw } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, truncateAddress } from "@/lib/utils";
 import { formatCoinData, Coin } from "@/hooks/useTopVolume24h";
 import { formatDexScreenerPrice, DexScreenerPair } from "@/hooks/useDexScreener";
 
@@ -153,6 +153,9 @@ export function TokenDataTable({
             <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               MCAP
             </th>
+            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Creator
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -191,18 +194,22 @@ export function TokenDataTable({
                   <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
-                  {coin.createdAt
-                    ? getAgeFromTimestamp(coin.createdAt)
-                    : "N/A"}
+                  {coin.createdAt ? getAgeFromTimestamp(coin.createdAt) : "N/A"}
                 </td>
                 <td className="px-4 py-3">
                   <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
                 </td>
                 <td className="px-4 py-3">
-                  <Change24hCell coin={coin} dexScreenerData={dexScreenerData} />
+                  <Change24hCell
+                    coin={coin}
+                    dexScreenerData={dexScreenerData}
+                  />
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
                   {formattedCoin.formattedMarketCap}
+                </td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">
+                  {truncateAddress(coin?.creatorAddress)}
                 </td>
               </tr>
             );

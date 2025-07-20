@@ -13,7 +13,6 @@ const topFilters = [
   "Top Gainers",
   "Top Volume 24h",
   "New Pairs",
-  "Creator",
 ];
 
 // Helper function to convert MostValuableCoin to Coin format for compatibility
