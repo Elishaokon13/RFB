@@ -1,67 +1,21 @@
 import { useState } from "react";
-import { ChevronDown, TrendingUp, Filter } from "lucide-react";
+import { ChevronDown, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTrendingCoins, formatCoinData } from "@/hooks/useTopVolume24h";
 
-// Mock data for demonstration
-const mockTokens = [
-  {
-    rank: 1,
-    chain: "Solana",
-    dex: "Raydium",
-    token: "ALT",
-    name: "Altcoin",
-    price: "$0.005765",
-    age: "12d",
-    txns: "51,612",
-    volume: "$12.1M",
-    makers: "12,125",
-    change5m: -3.82,
-    change1h: -33.19,
-    change6h: 37.04,
-    change24h: 409,
-    liquidity: "$418K",
-    mcap: "$5.7M",
-    boost: 500,
-  },
-  {
-    rank: 2,
-    chain: "Solana", 
-    dex: "PumpSwap",
-    token: "AltSeason",
-    name: "AltSeason Coin",
-    price: "$0.0006741",
-    age: "7h",
-    txns: "38,373",
-    volume: "$4.3M",
-    makers: "10,241",
-    change5m: 7.18,
-    change1h: -9.22,
-    change6h: -0.73,
-    change24h: 728,
-    liquidity: "$100K",
-    mcap: "$674K",
-    boost: 700,
-  },
-  {
-    rank: 3,
-    chain: "Solana",
-    dex: "Raydium", 
-    token: "Valentine",
-    name: "Valentine's Day",
-    price: "$0.0005990",
-    age: "16h",
-    txns: "114,179",
-    volume: "$4.6M",
-    makers: "13,343",
-    change5m: -1.00,
-    change1h: 18.21,
-    change6h: -62.81,
-    change24h: 1297,
-    liquidity: "$71K",
-    mcap: "$599K",
-    boost: 500,
-  },
-];
+// Helper function to calculate age from timestamp
+const getAgeFromTimestamp = (timestamp: string) => {
+  const now = new Date();
+  const created = new Date(timestamp);
+  const diffInHours = Math.floor(
+    (now.getTime() - created.getTime()) / (1000 * 60 * 60)
+  );
+
+  if (diffInHours < 1) return "<1h";
+  if (diffInHours < 24) return `${diffInHours}h`;
+  const days = Math.floor(diffInHours / 24);
+  return `${days}d`;
+};
 
 const timeFilters = ["5M", "1H", "6H", "24H"];
 const topFilters = ["Top", "Gainers", "New Pairs"];
@@ -69,11 +23,9 @@ const topFilters = ["Top", "Gainers", "New Pairs"];
 function PercentageCell({ value }: { value: number }) {
   const isPositive = value > 0;
   return (
-    <span className={cn(
-      "font-medium",
-      isPositive ? "text-gain" : "text-loss"
-    )}>
-      {isPositive ? "+" : ""}{value.toFixed(2)}%
+    <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>
+      {isPositive ? "+" : ""}
+      {value.toFixed(2)}%
     </span>
   );
 }
@@ -81,6 +33,24 @@ function PercentageCell({ value }: { value: number }) {
 export function TokenTable() {
   const [activeTimeFilter, setActiveTimeFilter] = useState("6H");
   const [activeTopFilter, setActiveTopFilter] = useState("Top");
+
+  // Fetch real coin data from Zora SDK
+  const {
+    coins,
+    loading,
+    error,
+    refetch,
+    totalCount,
+    currentPage,
+    pageInfo,
+    loadNextPage,
+    goToPage,
+  } = useTrendingCoins(20);
+
+  // Calculate total volume for header stats
+  const totalVolume = coins.reduce((sum, coin) => {
+    return sum + (parseFloat(coin.volume24h || "0") || 0);
+  }, 0);
 
   return (
     <div className="flex-1 bg-background">
@@ -90,14 +60,16 @@ export function TokenTable() {
           <div className="flex items-center gap-8">
             <div>
               <span className="text-sm text-muted-foreground">24H Volume:</span>
-              <div className="text-2xl font-bold text-foreground">$25.34B</div>
             </div>
             <div>
-              <span className="text-sm text-muted-foreground">24H Txns:</span>
-              <div className="text-2xl font-bold text-foreground">52,656,944</div>
+              <span className="text-sm text-muted-foreground">
+                Total Coins:
+              </span>
             </div>
           </div>
-          <div className="text-sm text-muted-foreground">24H Last 24 hours</div>
+          <div className="text-sm text-muted-foreground">
+            Live data from Zora
+          </div>
         </div>
 
         {/* Filters */}
@@ -150,9 +122,13 @@ export function TokenTable() {
               Trending 6H
               <ChevronDown className="w-4 h-4" />
             </button>
-            <button className="flex items-center gap-1 px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground">
-              <Filter className="w-4 h-4" />
-              Filters
+            <button
+              onClick={refetch}
+              disabled={loading}
+              className="flex items-center gap-1 px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground"
+            >
+              <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+              Refresh
             </button>
             <button className="px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground">
               Customize
@@ -161,71 +137,185 @@ export function TokenTable() {
         </div>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center p-8">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            <span>Loading trending coins...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="flex items-center justify-center p-8">
+          <div className="text-center">
+            <p className="text-red-500 mb-2">Error loading data: {error}</p>
+            <button
+              onClick={refetch}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
-      <div className="overflow-auto">
-        <table className="w-full">
-          <thead className="bg-muted border-b border-border">
-            <tr className="text-left">
-              <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">#</th>
-              <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">TOKEN</th>
-              <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">PRICE</th>
-              <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">AGE</th>
-              <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">TXNS</th>
-              <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">VOLUME</th>
-              <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">MAKERS</th>
-              <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">5M</th>
-              <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">1H</th>
-              <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">6H</th>
-              <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">24H</th>
-              <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">LIQUIDITY</th>
-              <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">MCAP</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mockTokens.map((token, index) => (
-              <tr 
-                key={token.rank} 
-                className={cn(
-                  "border-b border-border hover:bg-muted/50 transition-colors cursor-pointer",
-                  index % 2 === 0 ? "bg-card" : "bg-background"
-                )}
-              >
-                <td className="px-4 py-3 text-sm text-muted-foreground">#{token.rank}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      <span className="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center text-xs">◎</span>
-                      <span className="w-4 h-4 bg-orange-500 rounded-full"></span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground">{token.token}</span>
-                        <span className="text-xs text-muted-foreground">/{token.name}</span>
-                        {token.boost && (
-                          <span className="bg-yellow-500 text-black text-xs px-1 rounded font-bold">
-                            ⚡{token.boost}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-sm font-medium text-foreground">{token.price}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{token.age}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{token.txns}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{token.volume}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{token.makers}</td>
-                <td className="px-4 py-3 text-sm"><PercentageCell value={token.change5m} /></td>
-                <td className="px-4 py-3 text-sm"><PercentageCell value={token.change1h} /></td>
-                <td className="px-4 py-3 text-sm"><PercentageCell value={token.change6h} /></td>
-                <td className="px-4 py-3 text-sm"><PercentageCell value={token.change24h} /></td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{token.liquidity}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{token.mcap}</td>
+      {!loading && !error && (
+        <div className="overflow-auto">
+          <table className="w-full">
+            <thead className="bg-muted border-b border-border">
+              <tr className="text-left">
+                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  #
+                </th>
+                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  TOKEN
+                </th>
+                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  PRICE
+                </th>
+                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  AGE
+                </th>
+                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  VOLUME
+                </th>
+                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  24H
+                </th>
+                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  MCAP
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {coins.map((coin, index) => {
+                const formattedCoin = formatCoinData(coin);
+                return (
+                  <tr
+                    key={coin.id}
+                    className={cn(
+                      "border-b border-border hover:bg-muted/50 transition-colors cursor-pointer",
+                      index % 2 === 0 ? "bg-card" : "bg-background"
+                    )}
+                  >
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      #{(currentPage - 1) * 20 + index + 1}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
+                          <span className="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center text-xs">
+                            ◎
+                          </span>
+                          <span className="w-4 h-4 bg-orange-500 rounded-full"></span>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-foreground">
+                              {coin.symbol}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              /{coin.name}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-medium text-foreground">
+                      {formattedCoin.formattedPrice}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {coin.createdAt
+                        ? getAgeFromTimestamp(coin.createdAt)
+                        : "N/A"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {formattedCoin.formattedVolume24h}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <PercentageCell
+                        value={parseFloat(coin.priceChange24h || "0")}
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {formattedCoin.formattedMarketCap}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between p-4 border-t border-border">
+            <div className="text-sm text-muted-foreground">
+              Page {currentPage} - Showing {coins.length} coins
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Previous Page */}
+              {currentPage > 1 && (
+                <button
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={loading}
+                  className="px-3 py-1 bg-muted text-muted-foreground rounded-md text-sm font-medium hover:bg-muted/80 disabled:opacity-50"
+                >
+                  Previous
+                </button>
+              )}
+
+              {/* Page Numbers */}
+              <div className="flex items-center gap-1">
+                {Array.from(
+                  { length: Math.min(currentPage + 2, 5) },
+                  (_, i) => {
+                    const pageNum = i + 1;
+                    if (pageNum <= currentPage) {
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => goToPage(pageNum)}
+                          disabled={loading}
+                          className={cn(
+                            "px-3 py-1 rounded-md text-sm font-medium transition-colors",
+                            pageNum === currentPage
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-muted/80"
+                          )}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    }
+                    return null;
+                  }
+                )}
+              </div>
+
+              {/* Next Page */}
+              {pageInfo?.hasNextPage && (
+                <button
+                  onClick={loadNextPage}
+                  disabled={loading}
+                  className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <div className="flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      Loading
+                    </div>
+                  ) : (
+                    "Next"
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
