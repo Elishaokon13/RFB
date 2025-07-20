@@ -1,6 +1,16 @@
 import { useState } from "react";
-import { Search, Star, AlertCircle, BarChart3, TrendingUp, Wallet, Settings, Zap } from "lucide-react";
+import {
+  Search,
+  Star,
+  AlertCircle,
+  BarChart3,
+  TrendingUp,
+  Wallet,
+  Settings,
+  Zap,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocation } from "react-router-dom";
 
 const chains = [
   // { name: "Solana", icon: "◎", color: "text-purple-400" },
@@ -15,18 +25,18 @@ const chains = [
   // { name: "HyperEVM", icon: "⚡", color: "text-cyan-400" },
 ];
 
-const menuItems = [
-  // { icon: Star, label: "Collections", active: false },
-  // { icon: AlertCircle, label: "New Mints", active: false },
-  { icon: TrendingUp, label: "Live Activity", active: false },
-  { icon: Zap, label: "Trending", active: false },
-  // { icon: BarChart3, label: "Top Creators", active: false },
-  // { icon: Wallet, label: "Portfolio", active: false },
-  // { icon: Settings, label: "Advertise", active: false },
-];
-
 export function Sidebar() {
+  const location = useLocation();
 
+  const menuItems = [
+    // { icon: Star, label: "Collections", active: false },
+    // { icon: AlertCircle, label: "New Mints", active: false },
+    { icon: TrendingUp, label: "Live Activity", path: "/" },
+    { icon: Zap, label: "Trending", path: "/trending" },
+    // { icon: BarChart3, label: "Top Creators", active: false },
+    // { icon: Wallet, label: "Portfolio", active: false },
+    // { icon: Settings, label: "Advertise", active: false },
+  ];
 
   return (
     <div className="w-64 h-screen bg-background border-r border-border flex flex-col sticky top-0">
@@ -36,27 +46,32 @@ export function Sidebar() {
           <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center">
             <Search className="w-4 h-4 text-white" />
           </div>
-          <span className="text-xl font-bold text-foreground">BASE SCREENER</span>
+          <span className="text-xl font-bold text-foreground">
+            BASE SCREENER
+          </span>
         </div>
       </div>
 
       {/* Menu Items */}
       <div className="p-4 space-y-2">
-        {menuItems.map((item) => (
-          <button
-            key={item.label}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors",
-              "hover:bg-muted text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <item.icon className="w-4 h-4" />
-            {item.label}
-          </button>
-        ))}
+        {menuItems.map((item) => {
+          const isActive = location.pathname === item.path;
+          return (
+            <button
+              key={item.label}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <item.icon className="w-4 h-4" />
+              {item.label}
+            </button>
+          );
+        })}
       </div>
-
-      
     </div>
   );
 }

@@ -18,7 +18,13 @@ const getAgeFromTimestamp = (timestamp: string) => {
 };
 
 const timeFilters = ["5M", "1H", "6H", "24H"];
-const topFilters = ["Trending", "Top Gainers", "Top Volume 24h", "New Pairs"];
+const topFilters = [
+  "Trending",
+  "Top Gainers",
+  "Top Volume 24h",
+  "New Pairs",
+  "Creator",
+];
 
 function PercentageCell({ value, cap }: { value: number; cap: any }) {
   const isPositive = value > 0;
