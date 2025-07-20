@@ -78,14 +78,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Get the App */}
-      <div className="p-4 border-t border-border">
-        <button className="w-full flex items-center gap-2 px-3 py-2 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <span>📱</span>
-          Get the App!
-          <span className="ml-auto">🍎 🤖</span>
-        </button>
-      </div>
+      
     </div>
   );
 }
