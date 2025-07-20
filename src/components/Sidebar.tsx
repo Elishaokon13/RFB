@@ -8,6 +8,7 @@ import {
   Wallet,
   Settings,
   Zap,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation } from "react-router-dom";
@@ -33,6 +34,7 @@ export function Sidebar() {
     // { icon: AlertCircle, label: "New Mints", active: false },
     { icon: TrendingUp, label: "Live Activity", path: "/" },
     { icon: Zap, label: "Trending", path: "/trending" },
+    { icon: Users, label: "Creators", path: "/creators" },
     // { icon: BarChart3, label: "Top Creators", active: false },
     // { icon: Wallet, label: "Portfolio", active: false },
     // { icon: Settings, label: "Advertise", active: false },

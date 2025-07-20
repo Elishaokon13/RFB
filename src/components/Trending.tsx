@@ -16,9 +16,9 @@ export default function Trending() {
     return <div className="py-4 text-center">No trending coins found</div>;
 
   return (
-    <div className="w-full overflow-hidden py-2 bg-muted rounded">
+    <div className="w-full overflow-x-hidden py-2 bg-muted rounded">
       <div
-        className="marquee whitespace-nowrap flex items-center gap-8 px-4"
+        className="marquee whitespace-nowrap flex items-center gap-8 px-4 min-w-0"
         style={{
           animation: "marquee 30s linear infinite",
         }}
@@ -29,8 +29,8 @@ export default function Trending() {
           (e.currentTarget as HTMLElement).style.animationPlayState = "running";
         }}
       >
-        {coins.map((coin) => (
-          <div key={coin.address} className="flex items-center gap-2 min-w-max">
+        {coins.slice(0, 10).map((coin) => (
+          <div key={coin.address} className="flex items-center gap-2 min-w-0 flex-shrink-0">
             {coin.image && (
               <img
                 src={coin.image}
@@ -43,10 +43,10 @@ export default function Trending() {
           </div>
         ))}
         {/* Duplicate for seamless loop */}
-        {coins.map((coin) => (
+        {coins.slice(0, 10).map((coin) => (
           <div
             key={coin.address + "-dup"}
-            className="flex items-center gap-2 min-w-max"
+            className="flex items-center gap-2 min-w-0 flex-shrink-0"
           >
             {coin.image && (
               <img

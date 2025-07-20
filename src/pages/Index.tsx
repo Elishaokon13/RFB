@@ -4,7 +4,6 @@ import Trending from "@/components/Trending";
 const Index = () => {
   return (
     <>
-      <Trending />
       <TokenTable />
     </>
   );
