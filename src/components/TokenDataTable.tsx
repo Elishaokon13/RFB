@@ -1,5 +1,5 @@
 import { RefreshCw } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, truncateAddress } from "@/lib/utils";
 import { formatCoinData, Coin } from "@/hooks/useTopVolume24h";
 import { formatDexScreenerPrice, DexScreenerPair } from "@/hooks/useDexScreener";
 import { memo, useMemo, useCallback, useRef, useEffect } from "react";
@@ -362,10 +362,63 @@ export function TokenDataTable({
             <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               MCAP
             </th>
+            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Creator
+            </th>
           </tr>
         </thead>
         <tbody>
-          {tableBody}
+          {coins.map((coin, index) => {
+            const formattedCoin = formatCoinData(coin);
+            return (
+              <tr
+                key={coin.id}
+                onClick={() => onCoinClick(coin.address)}
+                className={cn(
+                  "border-b border-border hover:bg-muted/50 transition-colors cursor-pointer",
+                  index % 2 === 0 ? "bg-card" : "bg-background"
+                )}
+              >
+                <td className="px-4 py-3 text-sm text-muted-foreground">
+                  #{(currentPage - 1) * itemsPerPage + index + 1}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <span className="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center text-xs">
+                        ◎
+                      </span>
+                      <span className="w-4 h-4 bg-orange-500 rounded-full"></span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-foreground">
+                          {coin.symbol}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
+                </td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">
+                  {coin.createdAt
+                    ? getAgeFromTimestamp(coin.createdAt)
+                    : "N/A"}
+                </td>
+                <td className="px-4 py-3">
+                  <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
+                </td>
+                <td className="px-4 py-3">
+                  <Change24hCell coin={coin} dexScreenerData={dexScreenerData} />
+                </td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">
+                  {formattedCoin.formattedMarketCap}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
