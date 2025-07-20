@@ -4,7 +4,7 @@ import { TokenTable } from "@/components/TokenTable";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex relative">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />

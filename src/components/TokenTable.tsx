@@ -18,14 +18,22 @@ const getAgeFromTimestamp = (timestamp: string) => {
 };
 
 const timeFilters = ["5M", "1H", "6H", "24H"];
-const topFilters = ["Top", "Gainers", "New Pairs"];
+const topFilters = [
+  "Trending",
+  "Top Gainers",
+  "Top Volume 24h",
+  "New Pairs",
+  "Creator",
+];
 
-function PercentageCell({ value }: { value: number }) {
+function PercentageCell({ value, cap }: { value: number; cap: any }) {
   const isPositive = value > 0;
+  const calcValue = (cap / value) * 100;
+
   return (
     <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>
       {isPositive ? "+" : ""}
-      {value.toFixed(2)}%
+      {calcValue.toFixed(2)}%
     </span>
   );
 }
@@ -56,48 +64,9 @@ export function TokenTable() {
     <div className="flex-1 bg-background">
       {/* Header Stats */}
       <div className="bg-card border-b border-border p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-8">
-            <div>
-              <span className="text-sm text-muted-foreground">24H Volume:</span>
-            </div>
-            <div>
-              <span className="text-sm text-muted-foreground">
-                Total Coins:
-              </span>
-            </div>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            Live data from Zora
-          </div>
-        </div>
-
         {/* Filters */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex bg-muted rounded-lg p-1">
-              <button className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm font-medium">
-                Trending
-              </button>
-            </div>
-
-            <div className="flex bg-muted rounded-lg p-1">
-              {timeFilters.map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setActiveTimeFilter(filter)}
-                  className={cn(
-                    "px-3 py-1 rounded-md text-sm font-medium transition-colors",
-                    activeTimeFilter === filter
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
-
             <div className="flex bg-muted rounded-lg p-1">
               {topFilters.map((filter) => (
                 <button
@@ -117,11 +86,11 @@ export function TokenTable() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Rank by:</span>
+            {/* <span className="text-sm text-muted-foreground">Rank by:</span>
             <button className="flex items-center gap-1 text-sm text-foreground hover:text-primary">
               Trending 6H
               <ChevronDown className="w-4 h-4" />
-            </button>
+            </button> */}
             <button
               onClick={refetch}
               disabled={loading}
@@ -130,9 +99,9 @@ export function TokenTable() {
               <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
               Refresh
             </button>
-            <button className="px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground">
+            {/* <button className="px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground">
               Customize
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
@@ -238,7 +207,8 @@ export function TokenTable() {
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <PercentageCell
-                        value={parseFloat(coin.priceChange24h || "0")}
+                        value={parseFloat(coin.marketCapDelta24h || "0")}
+                        cap={coin.marketCap}
                       />
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
