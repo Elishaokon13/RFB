@@ -62,7 +62,7 @@ export const usePreloadAllData = (params: QueryOptions = {}) => {
     refetchOnWindowFocus: false, // Prevent refetch on focus to avoid blank states
     refetchOnReconnect: true,
     refetchOnMount: false, // Prevent refetch on mount if we have cached data
-    refetchInterval: 1000, // Refetch every 1 second
+    refetchInterval: () => document.visibilityState === 'visible' ? 10000 : false, // Refetch every 10 seconds if tab is visible, pause if hidden
     refetchIntervalInBackground: true, // Continue refetching even when tab is not active
     notifyOnChangeProps: ['data'], // Only notify when data changes
     placeholderData: (previousData) => previousData, // Keep previous data while fetching
@@ -92,7 +92,7 @@ export const usePreloadAllData = (params: QueryOptions = {}) => {
     refetchOnWindowFocus: false, // Prevent refetch on focus to avoid blank states
     refetchOnReconnect: true,
     refetchOnMount: false, // Prevent refetch on mount if we have cached data
-    refetchInterval: 1000, // Refetch every 1 second
+    refetchInterval: () => document.visibilityState === 'visible' ? 10000 : false, // Refetch every 10 seconds if tab is visible, pause if hidden
     refetchIntervalInBackground: true, // Continue refetching even when tab is not active
     notifyOnChangeProps: ['data'], // Only notify when data changes
     placeholderData: (previousData) => previousData, // Keep previous data while fetching
@@ -122,7 +122,7 @@ export const usePreloadAllData = (params: QueryOptions = {}) => {
     refetchOnWindowFocus: false, // Prevent refetch on focus to avoid blank states
     refetchOnReconnect: true,
     refetchOnMount: false, // Prevent refetch on mount if we have cached data
-    refetchInterval: 1000, // Refetch every 1 second
+    refetchInterval: () => document.visibilityState === 'visible' ? 10000 : false, // Refetch every 10 seconds if tab is visible, pause if hidden
     refetchIntervalInBackground: true, // Continue refetching even when tab is not active
     notifyOnChangeProps: ['data'], // Only notify when data changes
     placeholderData: (previousData) => previousData, // Keep previous data while fetching
