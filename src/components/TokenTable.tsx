@@ -3,7 +3,7 @@ import { useTokenFeed } from "@/hooks/useTokenFeed";
 import { useNavigate } from "react-router-dom";
 import { TokenDataTable } from "./TokenDataTable";
 import { RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 // Filter options
 const topFilters = ["Most Valuable", "Top Gainers", "Top Volume 24h"];
@@ -52,13 +52,6 @@ export function TokenTable() {
     setCurrentPage(page);
   }, []);
 
-  // Calculate total volume for display
-  const totalVolume = useMemo(() => {
-    return coins.reduce((sum, coin) => {
-      return sum + (parseFloat(coin.volume24h || "0") || 0);
-    }, 0);
-  }, [coins]);
-
   const handleRefresh = useCallback(() => {
     // Refresh all data sources for better UX
     refetchAll();
@@ -77,9 +70,6 @@ export function TokenTable() {
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="text-sm text-muted-foreground">
-            Total Volume: ${totalVolume.toLocaleString()}
-          </div>
           <button
             onClick={handleRefresh}
             disabled={isLoading}
