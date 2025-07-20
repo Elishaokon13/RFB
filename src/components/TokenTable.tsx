@@ -28,10 +28,9 @@ const topFilters = [
   "Creator",
 ];
 
-function PercentageCell({ value, cap }: { value: number; cap: string | undefined }) {
+function PercentageCell({ value, cap }: { value: number; cap: any }) {
   const isPositive = value > 0;
-  const capValue = parseFloat(cap || "0");
-  const calcValue = capValue > 0 ? (capValue / value) * 100 : 0;
+  const calcValue = (cap / value) * 100;
 
   return (
     <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>
