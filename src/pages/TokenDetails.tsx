@@ -6,6 +6,20 @@ import { useTrendingCoins, formatCoinData, Coin } from "@/hooks/useTopVolume24h"
 import { useDexScreenerTokens, DexScreenerPair, calculateFallbackPrice } from "@/hooks/useDexScreener";
 import { TokenDataTable } from "@/components/TokenDataTable";
 import { TradeToken } from "@/components/TradeToken";
+import { tradeCoin, TradeParameters } from "@zoralabs/coins-sdk";
+import { createWalletClient, createPublicClient, http, parseEther } from "viem";
+import { base } from "viem/chains";
+import type { WalletClient, PublicClient } from 'viem';
+import { useGetCoins } from '@/hooks/getCoins';
+import { useGetCoinsLastTraded } from '@/hooks/getCoinsLastTraded';
+import { useGetCoinsMostValuable } from '@/hooks/getCoinsMostValuable';
+import { useGetCoinsTopGainers } from '@/hooks/getCoinsTopGainers';
+import { useGetCoinsLastTradedUnique } from '@/hooks/getCoinsLastTradedUnique';
+import { useGetCoinsTopVolume24h } from '@/hooks/getCoinsTopVolume24h';
+import type { Account } from 'viem/accounts';
+import { Identity } from '@coinbase/onchainkit/identity';
+import { SignInWithBaseButton, BasePayButton } from '@base-org/account-ui/react';
+import { createBaseAccountSDK, pay, getPaymentStatus } from '@base-org/account';
 
 // Chart period types
 type ChartPeriod = "1H" | "6H" | "24H" | "7D" | "1M";
@@ -387,6 +401,32 @@ const PriceChart = ({
   );
 };
 
+// --- Trade Hook ---
+function useTradeCoin({ account, walletClient, publicClient }: { account: Account | null, walletClient: WalletClient | null, publicClient: PublicClient | null }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<unknown>(null);
+
+  const trade = async (tradeParameters: TradeParameters) => {
+    setLoading(true);
+    setError(null);
+    setReceipt(null);
+    try {
+      if (!account || !walletClient || !publicClient) throw new Error("Wallet not connected");
+      const result: unknown = await tradeCoin({ tradeParameters, walletClient, account, publicClient });
+      setReceipt(result);
+      return result;
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Trade failed");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { trade, loading, error, receipt };
+}
+
 export default function TokenDetails() {
   const { address } = useParams<{ address: string }>();
   const navigate = useNavigate();
@@ -430,6 +470,52 @@ export default function TokenDetails() {
     navigate(`/token/${coinAddress}`);
   };
 
+  // Base Account SDK state
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState('');
+  const [paymentId, setPaymentId] = useState('');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
+
+  // Trading UI state
+  const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
+  const [tradeAmount, setTradeAmount] = useState('');
+  const [slippage, setSlippage] = useState(0.5); // Default slippage
+
+  // Fetch Zora Protocol 24h change from all relevant hooks
+  const { data: newCoinsData } = useGetCoins({ count: 100 });
+  const { data: lastTradedCoinsData } = useGetCoinsLastTraded({ count: 100 });
+  const { data: mostValuableCoinsData } = useGetCoinsMostValuable({ count: 100 });
+  const { data: topGainersCoinsData } = useGetCoinsTopGainers({ count: 100 });
+  const { data: lastTradedUniqueCoinsData } = useGetCoinsLastTradedUnique({ count: 100 });
+  const { data: topVolumeCoinsData } = useGetCoinsTopVolume24h({ count: 100 });
+
+  const newCoins = newCoinsData?.coins || [];
+  const lastTradedCoins = lastTradedCoinsData?.coins || [];
+  const mostValuableCoins = mostValuableCoinsData?.coins || [];
+  const topGainersCoins = topGainersCoinsData?.coins || [];
+  const lastTradedUniqueCoins = lastTradedUniqueCoinsData?.coins || [];
+  const topVolumeCoins = topVolumeCoinsData?.coins || [];
+
+  // Helper to get 24h change from all sources
+  function get24hChange(address: string | undefined): string | null {
+    if (!address) return null;
+    const sources = [
+      ...newCoins,
+      ...lastTradedCoins,
+      ...mostValuableCoins,
+      ...topGainersCoins,
+      ...lastTradedUniqueCoins,
+      ...topVolumeCoins,
+    ];
+    const found = sources.find(c => c.address?.toLowerCase() === address.toLowerCase());
+    if (found && found.marketCapDelta24h !== undefined) {
+      const val = parseFloat(found.marketCapDelta24h || '');
+      if (!isNaN(val)) return val.toFixed(2) + '%';
+    }
+    return null;
+  }
+
   if (loading) {
     return (
       <div className="flex-1 bg-background">
@@ -465,10 +551,10 @@ export default function TokenDetails() {
 
   const formattedToken = formatCoinData(token);
 
-  // Price, volume, and 24h change from DexScreener
+  // Price from DexScreener
   const price = dexData && dexData.priceUsd ? parseFloat(dexData.priceUsd) : null;
-  const volume24h = dexData && dexData.volume?.h24 !== undefined ? dexData.volume.h24 : null;
-  const variation24h = dexData && dexData.priceChange?.h24 !== undefined ? dexData.priceChange.h24 : null;
+  // 24h change from Zora hooks
+  const variation24h = get24hChange(token.address);
 
   return (
     <div className="flex-1 bg-background">
@@ -518,20 +604,20 @@ export default function TokenDetails() {
                 <p className="text-2xl font-bold text-foreground">
                   {price !== null ? `$${price.toFixed(6)}` : (formattedToken.formattedPrice || calculateFallbackPrice(token.marketCap, token.totalSupply))}
                   {variation24h !== null && (
-                    <span className={cn("ml-2 text-base", variation24h >= 0 ? "text-gain" : "text-loss")}>{variation24h >= 0 ? '+' : ''}{variation24h.toFixed(2)}%</span>
+                    <span className={cn("ml-2 text-base", parseFloat(variation24h) >= 0 ? "text-gain" : "text-loss")}>{variation24h}</span>
                   )}
                 </p>
                 {variation24h !== null && (
                   <div className="flex items-center gap-2">
-                    {variation24h >= 0 ? (
+                    {parseFloat(variation24h) >= 0 ? (
                       <TrendingUp className="w-4 h-4 text-gain" />
                     ) : (
                       <TrendingDown className="w-4 h-4 text-loss" />
                     )}
                     <span className={cn("text-sm font-medium", 
-                      variation24h >= 0 ? "text-gain" : "text-loss"
+                      parseFloat(variation24h) >= 0 ? "text-gain" : "text-loss"
                     )}>
-                      {variation24h.toFixed(2)}%
+                      {variation24h}
                     </span>
                   </div>
                 )}
@@ -553,7 +639,7 @@ export default function TokenDetails() {
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">24h Volume</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {volume24h !== null ? volume24h.toLocaleString() : 'N/A'}
+                  {dexData && dexData.volume?.h24 !== undefined ? dexData.volume.h24.toLocaleString() : 'N/A'}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {/* No longer using DexScreener data for transactions */}
@@ -608,7 +694,11 @@ export default function TokenDetails() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Creator</span>
-                  <span className="text-sm text-foreground">{token.creatorAddress || "N/A"}</span>
+                  <span className="text-sm text-foreground">
+                    {typeof token.creatorAddress === 'string' ? (
+                      <Identity address={token.creatorAddress as `0x${string}`}>{null}</Identity>
+                    ) : 'N/A'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Age</span>
@@ -623,78 +713,81 @@ export default function TokenDetails() {
 
         {/* Sidebar */}
         <div className="lg:w-80 space-y-6">
-          {/* Trade Token Component */}
-          <TradeToken
-            token={{
-              name: token.name,
-              symbol: token.symbol,
-              address: token.address,
-            }}
-            currentPrice={dexData?.priceUsd || formattedToken.formattedPrice}
-            priceChange24h={dexData?.priceChange?.h24}
-            onTrade={(type, usdAmount, tokenAmount) => {
-              console.log(`${type.toUpperCase()} ${tokenAmount} ${token.symbol} for $${usdAmount}`);
-              // Here you would integrate with actual trading functionality
-              alert(`${type.toUpperCase()} ${tokenAmount} ${token.symbol} for $${usdAmount}\n\nThis is a demo - no actual trade will be executed.`);
-            }}
-          />
-
-          {/* Quick Stats */}
-          <div className="bg-card border border-border rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Quick Stats</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Price Change 1H</span>
-                </div>
-                <span className={cn("text-sm font-medium", 
-                  /* No longer using DexScreener data for 1H price change */
-                  "N/A"
-                )}>
-                  N/A
-                </span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Price Change 6H</span>
-                </div>
-                <span className={cn("text-sm font-medium", 
-                  /* No longer using DexScreener data for 6H price change */
-                  "N/A"
-                )}>
-                  N/A
-                </span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">FDV</span>
-                </div>
-                <span className="text-sm font-medium text-foreground">
-                  {/* No longer using DexScreener data for FDV */}
-                  N/A
-                </span>
-              </div>
-              
-                              <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Transactions 24H</span>
-                  </div>
-                  <span className="text-sm font-medium text-foreground">
-                    {/* No longer using DexScreener data for transactions */}
-                    N/A
-                  </span>
-                </div>
+          {/* Base Account UI SDK Demo */}
+          <div className="bg-card border border-border rounded-lg p-6 flex flex-col items-center">
+            <button onClick={toggleTheme} className="mb-4 self-end text-lg">
+              {theme === 'light' ? '🌙' : '☀️'}
+            </button>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Base Account</h3>
+            <p className="text-sm text-muted-foreground mb-4">Experience seamless crypto payments</p>
+            <div className="flex flex-col gap-4 w-full items-center">
+              <SignInWithBaseButton 
+                align="center"
+                variant="solid"
+                colorScheme={theme}
+                onClick={() => setIsSignedIn(true)} // Simulate sign-in
+              />
+              {isSignedIn && (
+                <div className="text-green-600 text-sm">✅ Connected to Base Account</div>
+              )}
+              <BasePayButton 
+                colorScheme={theme}
+                onClick={() => {
+                  setPaymentId('mock-payment-id');
+                  setPaymentStatus('Payment initiated! Click "Check Status" to see the result.');
+                }} // Simulate payment
+              />
+              {paymentId && (
+                <button 
+                  onClick={() => setPaymentStatus(`Payment status: Mock Payment ${paymentId}`)}
+                  className="px-4 py-2 rounded bg-muted text-foreground border mt-2"
+                >
+                  Check Payment Status
+                </button>
+              )}
             </div>
+            {paymentStatus && (
+              <div className="mt-4 p-2 rounded bg-muted text-foreground text-xs w-full text-center">
+                {paymentStatus}
+              </div>
+            )}
           </div>
 
-          {/* Trading Pairs */}
-          {/* No longer using DexScreener data for trading pairs */}
+          {/* Trading Coins - only show if Base Account is connected */}
+          {isSignedIn && (
+            <div className="bg-card border border-border rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Trading Coins</h3>
+              <div>
+                <div className="mb-2 text-sm text-muted-foreground">Connected: <span className="font-mono">Base Account</span></div>
+                <div className="flex gap-2 mb-2">
+                  <button
+                    className={`px-3 py-1 rounded ${tradeType === "buy" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+                    onClick={() => setTradeType("buy")}
+                  >Buy</button>
+                  <button
+                    className={`px-3 py-1 rounded ${tradeType === "sell" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+                    onClick={() => setTradeType("sell")}
+                  >Sell</button>
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder={tradeType === "buy" ? "ETH amount" : `${token.symbol} amount`}
+                  value={tradeAmount}
+                  onChange={e => setTradeAmount(e.target.value)}
+                  className="w-full mb-2 px-3 py-2 border rounded"
+                />
+                <button
+                  className="bg-primary text-primary-foreground px-4 py-2 rounded-lg w-full"
+                  disabled={!tradeAmount || Number(tradeAmount) <= 0}
+                  onClick={() => alert('Trading logic not implemented.')}
+                >
+                  {tradeType === "buy" ? `Buy ${token.symbol}` : `Sell ${token.symbol}`}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

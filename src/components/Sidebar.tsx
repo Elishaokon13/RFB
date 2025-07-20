@@ -11,7 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const chains = [
   // { name: "Solana", icon: "◎", color: "text-purple-400" },
@@ -28,6 +28,7 @@ const chains = [
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const menuItems = [
     // { icon: Star, label: "Collections", active: false },
@@ -61,6 +62,7 @@ export function Sidebar() {
           return (
             <button
               key={item.label}
+              onClick={() => navigate(item.path)}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors",
                 isActive
