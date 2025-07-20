@@ -40,6 +40,7 @@ export const useGetCoinsTopVolume24h = (params: ExploreQueryOptions = {}) => {
     queryKey: ["coins", "top-volume", "zora", { count, after }],
     queryFn: async () => {
       const response = await getCoinsTopVolume24h({ count, after });
+      console.log('[getCoinsTopVolume24h] Full response:', response);
       
       // Extract coins from exploreList edges
       const tokens = response.data?.exploreList?.edges?.map(

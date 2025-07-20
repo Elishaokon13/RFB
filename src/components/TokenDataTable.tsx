@@ -4,8 +4,16 @@ import { formatCoinData, Coin } from "@/hooks/useTopVolume24h";
 import {
   formatDexScreenerPrice,
   DexScreenerPair,
+  calculateFallbackPrice,
 } from "@/hooks/useDexScreener";
 import { memo, useMemo, useCallback, useRef, useEffect } from "react";
+import { useBasename } from '@/hooks/useBasename';
+import { Address } from 'viem';
+import { Star } from 'lucide-react';
+import { useWatchlist } from '@/hooks/useWatchlist';
+
+// Extend Coin type to include image property for table display
+type CoinWithImage = Coin & { image?: string };
 
 // Helper function to calculate age from timestamp
 const getAgeFromTimestamp = (timestamp: string) => {
@@ -23,40 +31,21 @@ const getAgeFromTimestamp = (timestamp: string) => {
 
 // Deep comparison function for coin data
 const areCoinsEqual = (
-  prevCoin: Coin,
-  nextCoin: Coin,
-  prevDexData: DexScreenerPair | null,
-  nextDexData: DexScreenerPair | null
+  prevCoin: CoinWithImage,
+  nextCoin: CoinWithImage
 ) => {
   // Compare core coin properties
-  if (
-    prevCoin.id !== nextCoin.id ||
-    prevCoin.symbol !== nextCoin.symbol ||
-    prevCoin.name !== nextCoin.name ||
-    prevCoin.address !== nextCoin.address ||
-    prevCoin.marketCap !== nextCoin.marketCap ||
-    prevCoin.volume24h !== nextCoin.volume24h ||
-    prevCoin.marketCapDelta24h !== nextCoin.marketCapDelta24h ||
-    prevCoin.createdAt !== nextCoin.createdAt ||
-    prevCoin.uniqueHolders !== nextCoin.uniqueHolders
-  ) {
-    return false;
-  }
-
-  // Compare DexScreener data if available
-  if (prevDexData && nextDexData) {
-    if (
-      prevDexData.priceUsd !== nextDexData.priceUsd ||
-      prevDexData.volume?.h24 !== nextDexData.volume?.h24 ||
-      prevDexData.priceChange?.h24 !== nextDexData.priceChange?.h24
-    ) {
-      return false;
-    }
-  } else if (prevDexData !== nextDexData) {
-    return false;
-  }
-
-  return true;
+  return (
+    prevCoin.id === nextCoin.id &&
+    prevCoin.symbol === nextCoin.symbol &&
+    prevCoin.name === nextCoin.name &&
+    prevCoin.address === nextCoin.address &&
+    prevCoin.marketCap === nextCoin.marketCap &&
+    prevCoin.volume24h === nextCoin.volume24h &&
+    prevCoin.marketCapDelta24h === nextCoin.marketCapDelta24h &&
+    prevCoin.createdAt === nextCoin.createdAt &&
+    prevCoin.uniqueHolders === nextCoin.uniqueHolders
+  );
 };
 
 // Memoized price cell component with aggressive memoization
@@ -65,129 +54,51 @@ const PriceCell = memo(
     coin,
     dexScreenerData,
   }: {
-    coin: Coin;
+    coin: CoinWithImage;
     dexScreenerData: Record<string, DexScreenerPair>;
   }) => {
-    const priceData = dexScreenerData[coin.address];
-
-    if (priceData) {
-      const formatted = formatDexScreenerPrice(priceData);
+    const priceData = dexScreenerData[coin.address.toLowerCase()];
+    if (priceData && priceData.priceUsd) {
       return (
         <div className="text-sm font-medium text-foreground">
-          {formatted.priceUsd}
+          ${parseFloat(priceData.priceUsd).toFixed(6)}
         </div>
       );
     }
-
-    // Always show fallback data immediately, no loading states
-    const formattedCoin = formatCoinData(coin);
+    // Fallback: calculate price as market cap / total supply
+    const fallbackPrice = calculateFallbackPrice(coin.marketCap, coin.totalSupply);
     return (
       <div className="text-sm font-medium text-foreground">
-        {formattedCoin.formattedPrice}
+        {fallbackPrice}
       </div>
     );
   },
-  (prevProps, nextProps) => {
-    const prevPriceData = prevProps.dexScreenerData[prevProps.coin.address];
-    const nextPriceData = nextProps.dexScreenerData[nextProps.coin.address];
-    return areCoinsEqual(
-      prevProps.coin,
-      nextProps.coin,
-      prevPriceData,
-      nextPriceData
-    );
-  }
+  (prevProps, nextProps) => prevProps.coin.address === nextProps.coin.address && prevProps.coin.marketCap === nextProps.coin.marketCap && prevProps.coin.totalSupply === nextProps.coin.totalSupply
 );
-
 PriceCell.displayName = "PriceCell";
 
-// Memoized volume cell component
-const VolumeCell = memo(
-  ({
-    coin,
-    dexScreenerData,
-  }: {
-    coin: Coin;
-    dexScreenerData: Record<string, DexScreenerPair>;
-  }) => {
-    const priceData = dexScreenerData[coin.address];
-
-    if (priceData) {
-      const formatted = formatDexScreenerPrice(priceData);
-      return (
-        <div className="text-sm text-muted-foreground">
-          {formatted.volume24h}
-        </div>
-      );
-    }
-
-    // Always show fallback data immediately, no loading states
-    const formattedCoin = formatCoinData(coin);
-    return (
-      <div className="text-sm text-muted-foreground">
-        {formattedCoin.formattedVolume24h}
-      </div>
-    );
-  },
-  (prevProps, nextProps) => {
-    const prevPriceData = prevProps.dexScreenerData[prevProps.coin.address];
-    const nextPriceData = nextProps.dexScreenerData[nextProps.coin.address];
-    return areCoinsEqual(
-      prevProps.coin,
-      nextProps.coin,
-      prevPriceData,
-      nextPriceData
-    );
+// Volume and 24h change cells now just show N/A (or fallback if you have another source)
+const VolumeCell = memo(({ coin, dexScreenerData }: { coin: CoinWithImage; dexScreenerData: Record<string, DexScreenerPair> }) => {
+  const priceData = dexScreenerData[coin.address.toLowerCase()];
+  if (priceData && priceData.volume?.h24 !== undefined) {
+    return <div className="text-sm text-muted-foreground">{priceData.volume.h24.toLocaleString()}</div>;
   }
-);
-
+  const formattedCoin = formatCoinData(coin);
+  return <div className="text-sm text-muted-foreground">{formattedCoin.formattedVolume24h || 'N/A'}</div>;
+});
 VolumeCell.displayName = "VolumeCell";
 
-// Memoized 24h change cell component
-const Change24hCell = memo(
-  ({
-    coin,
-    dexScreenerData,
-  }: {
-    coin: Coin;
-    dexScreenerData: Record<string, DexScreenerPair>;
-  }) => {
-    const priceData = dexScreenerData[coin.address];
-
-    if (priceData) {
-      const formatted = formatDexScreenerPrice(priceData);
-      const changeValue = priceData.priceChange?.h24;
-      const isPositive = changeValue && changeValue >= 0;
-
-      return (
-        <span
-          className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}
-        >
-          {formatted.priceChange24h}
-        </span>
-      );
-    }
-
-    // Always show fallback data immediately, no loading states
+const Change24hCell = memo(({ coin }: { coin: CoinWithImage }) => {
+  // Use Zora/getCoins 24h market change only
+  if (coin.marketCapDelta24h && !isNaN(Number(coin.marketCapDelta24h))) {
+    const value = Number(coin.marketCapDelta24h);
+    const isPositive = value >= 0;
     return (
-      <PercentageCell
-        value={parseFloat(coin.marketCapDelta24h || "0")}
-        cap={coin.marketCap}
-      />
-    );
-  },
-  (prevProps, nextProps) => {
-    const prevPriceData = prevProps.dexScreenerData[prevProps.coin.address];
-    const nextPriceData = nextProps.dexScreenerData[nextProps.coin.address];
-    return areCoinsEqual(
-      prevProps.coin,
-      nextProps.coin,
-      prevPriceData,
-      nextPriceData
+      <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>{isPositive ? '+' : ''}{value.toFixed(2)}%</span>
     );
   }
-);
-
+  return <span className="text-muted-foreground">N/A</span>;
+});
 Change24hCell.displayName = "Change24hCell";
 
 // Memoized percentage cell component
@@ -220,24 +131,25 @@ const TableRow = memo(
   ({
     coin,
     index,
-    dexScreenerData,
     onCoinClick,
+    dexScreenerData,
+    isWatched,
+    onToggleWatch,
   }: {
-    coin: Coin;
+    coin: CoinWithImage;
     index: number;
-    dexScreenerData: Record<string, DexScreenerPair>;
     onCoinClick: (address: string) => void;
+    dexScreenerData: Record<string, DexScreenerPair>;
+    isWatched: boolean;
+    onToggleWatch: () => void;
   }) => {
+    // Log the full coin object for debugging
+    console.log('[Token Row]', coin);
     const formattedCoin = formatCoinData(coin);
-    const priceData = dexScreenerData[coin.address];
-
     // Create a stable key for the row based on coin data
     const rowKey = useMemo(() => {
-      const priceKey = priceData
-        ? `${priceData.priceUsd}-${priceData.volume?.h24}-${priceData.priceChange?.h24}`
-        : "no-price";
-      return `${coin.id}-${coin.marketCap}-${coin.volume24h}-${priceKey}`;
-    }, [coin.id, coin.marketCap, coin.volume24h, priceData]);
+      return `${coin.id}-${coin.marketCap}-${coin.volume24h}`;
+    }, [coin.id, coin.marketCap, coin.volume24h]);
 
     return (
       <tr
@@ -255,12 +167,27 @@ const TableRow = memo(
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              <span className="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center text-xs">
+            <button
+              onClick={e => { e.stopPropagation(); onToggleWatch(); }}
+              className={cn(
+                'mr-2 p-1 rounded-full hover:bg-muted transition-colors',
+                isWatched ? 'text-yellow-500' : 'text-muted-foreground'
+              )}
+              title={isWatched ? 'Remove from Watchlist' : 'Add to Watchlist'}
+            >
+              <Star fill={isWatched ? 'currentColor' : 'none'} strokeWidth={2} className="w-5 h-5" />
+            </button>
+            {coin.image ? (
+              <img
+                src={coin.image}
+                alt={coin.symbol || 'token'}
+                className="w-7 h-7 rounded-full border bg-white object-cover"
+              />
+            ) : (
+              <span className="w-7 h-7 rounded-full bg-gray-200 border flex items-center justify-center text-xs text-gray-400">
                 ◎
               </span>
-              <span className="w-4 h-4 bg-orange-500 rounded-full"></span>
-            </div>
+            )}
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-medium text-foreground">
@@ -280,35 +207,37 @@ const TableRow = memo(
           <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
         </td>
         <td className="px-4 py-3">
-          <Change24hCell coin={coin} dexScreenerData={dexScreenerData} />
+          <Change24hCell coin={coin} />
         </td>
         <td className="px-4 py-3 text-sm text-muted-foreground">
           {formattedCoin.formattedMarketCap}
+        </td>
+        <td className="px-4 py-3 text-sm text-muted-foreground">
+          <CreatorCell creatorAddress={coin.creatorAddress} />
         </td>
       </tr>
     );
   },
   (prevProps, nextProps) => {
     // Deep comparison for the entire row
-    const prevPriceData = prevProps.dexScreenerData[prevProps.coin.address];
-    const nextPriceData = nextProps.dexScreenerData[nextProps.coin.address];
-
-    return (
-      prevProps.index === nextProps.index &&
-      areCoinsEqual(
-        prevProps.coin,
-        nextProps.coin,
-        prevPriceData,
-        nextPriceData
-      )
-    );
+    return prevProps.index === nextProps.index && prevProps.coin.address === nextProps.coin.address;
   }
 );
 
 TableRow.displayName = "TableRow";
 
+// Memoized creator cell component for Basename resolution
+const CreatorCell = memo(({ creatorAddress }: { creatorAddress?: string }) => {
+  // Only call the hook if the address is valid and starts with 0x
+  const address = (creatorAddress && creatorAddress.startsWith('0x')) ? (creatorAddress as Address) : undefined;
+  const { basename } = useBasename(address);
+  if (!creatorAddress) return <span>N/A</span>;
+  return <span>{basename ? basename : truncateAddress(creatorAddress)}</span>;
+});
+CreatorCell.displayName = 'CreatorCell';
+
 interface TokenDataTableProps {
-  coins: Coin[];
+  coins: CoinWithImage[];
   dexScreenerData: Record<string, DexScreenerPair>;
   currentPage: number;
   loading: boolean;
@@ -321,6 +250,7 @@ interface TokenDataTableProps {
   onGoToPage: (page: number) => void;
   showPagination?: boolean;
   itemsPerPage?: number;
+  walletAddress?: string;
 }
 
 export function TokenDataTable({
@@ -334,19 +264,9 @@ export function TokenDataTable({
   onGoToPage,
   showPagination = true,
   itemsPerPage = 20,
+  walletAddress,
 }: TokenDataTableProps) {
-  // Always show data if we have coins, regardless of loading state
-  if (coins.length === 0) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 animate-spin" />
-          <span>Loading coins...</span>
-        </div>
-      </div>
-    );
-  }
-
+  const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist(walletAddress);
   // Memoize the click handler to prevent unnecessary re-renders
   const handleCoinClick = useCallback(
     (address: string) => {
@@ -359,18 +279,34 @@ export function TokenDataTable({
   const tableBody = useMemo(() => {
     return coins.map((coin, index) => (
       <TableRow
-        key={`${coin.id}-${coin.address}`} // ✅ Use stable unique keys
+        key={`${coin.id}-${coin.address}`}
         coin={coin}
         index={index}
         dexScreenerData={dexScreenerData}
         onCoinClick={handleCoinClick}
+        isWatched={isInWatchlist(coin.address)}
+        onToggleWatch={() => {
+          if (isInWatchlist(coin.address)) removeFromWatchlist(coin.address);
+          else addToWatchlist(coin.address);
+        }}
       />
     ));
-  }, [coins, dexScreenerData, handleCoinClick]);
+  }, [coins, dexScreenerData, handleCoinClick, isInWatchlist, addToWatchlist, removeFromWatchlist]);
+
+  if (coins.length === 0) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="flex items-center gap-2">
+          <RefreshCw className="w-4 h-4 animate-spin" />
+          <span>Loading coins...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="overflow-auto">
-      <table className="w-full">
+    <div className="w-full max-w-full overflow-x-auto sm:overflow-x-visible">
+      <table className="min-w-full w-full max-w-full">
         <thead className="bg-muted border-b border-border">
           <tr className="text-left">
             <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -400,61 +336,7 @@ export function TokenDataTable({
           </tr>
         </thead>
         <tbody>
-          {coins.map((coin, index) => {
-            const formattedCoin = formatCoinData(coin);
-            return (
-              <tr
-                key={coin.id}
-                onClick={() => onCoinClick(coin.address)}
-                className={cn(
-                  "border-b border-border hover:bg-muted/50 transition-colors cursor-pointer",
-                  index % 2 === 0 ? "bg-card" : "bg-background"
-                )}
-              >
-                <td className="px-4 py-3 text-sm text-muted-foreground">
-                  #{(currentPage - 1) * itemsPerPage + index + 1}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      <span className="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center text-xs">
-                        ◎
-                      </span>
-                      <span className="w-4 h-4 bg-orange-500 rounded-full"></span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground">
-                          {coin.symbol}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
-                </td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">
-                  {coin.createdAt ? getAgeFromTimestamp(coin.createdAt) : "N/A"}
-                </td>
-                <td className="px-4 py-3">
-                  <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
-                </td>
-                <td className="px-4 py-3">
-                  <Change24hCell
-                    coin={coin}
-                    dexScreenerData={dexScreenerData}
-                  />
-                </td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">
-                  {formattedCoin.formattedMarketCap}
-                </td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">
-                  {truncateAddress(coin.creatorAddress)}
-                </td>
-              </tr>
-            );
-          })}
+          {tableBody}
         </tbody>
       </table>
 
@@ -524,3 +406,5 @@ export function TokenDataTable({
     </div>
   );
 }
+
+export { CreatorsTable } from './TokenTable';

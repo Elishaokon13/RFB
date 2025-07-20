@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, RefreshCw, TrendingUp, TrendingDown, DollarSign, BarChart3, Activity, Globe, Calendar, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTrendingCoins, formatCoinData, Coin } from "@/hooks/useTopVolume24h";
-import { useDexScreenerPrice, useMultipleDexScreenerPrices, formatDexScreenerPrice, DexScreenerPair } from "@/hooks/useDexScreener";
+import { useDexScreenerTokens, DexScreenerPair, calculateFallbackPrice } from "@/hooks/useDexScreener";
 import { TokenDataTable } from "@/components/TokenDataTable";
 import { TradeToken } from "@/components/TradeToken";
 
@@ -67,7 +67,7 @@ const PriceChart = ({
   period, 
   onPeriodChange 
 }: { 
-  dexScreenerData: DexScreenerPair | null;
+  dexScreenerData: DexScreenerPair | undefined;
   period: ChartPeriod;
   onPeriodChange: (period: ChartPeriod) => void;
 }) => {
@@ -75,7 +75,8 @@ const PriceChart = ({
   const [isAnimating, setIsAnimating] = useState(false);
   const [chartContainer, setChartContainer] = useState<HTMLDivElement | null>(null);
 
-  const currentPrice = parseFloat(dexScreenerData?.priceUsd || "0");
+  // DexScreener data is no longer used; use mock or prop values if needed
+  const currentPrice = dexScreenerData?.priceUsd ? parseFloat(dexScreenerData.priceUsd) : 0;
   const priceChange = dexScreenerData?.priceChange?.h24 || 0;
 
   const chartData = useMemo(() => {
@@ -407,32 +408,15 @@ export default function TokenDetails() {
   // Find the specific token
   const token = coins.find(coin => coin.address === address);
 
+  // Fetch DexScreener data for this token
+  const { tokens: dexTokens, loading: dexLoading, error: dexError } = useDexScreenerTokens('8453', address ? [address] : []);
+  const dexData: DexScreenerPair | undefined = dexTokens && dexTokens.length > 0 ? dexTokens[0] : undefined;
+
   // Get related tokens (exclude current token)
   const relatedTokens = coins.filter(coin => coin.address !== address).slice(0, 10);
 
-  // Fetch DexScreener data for this specific token
-  const {
-    priceData: dexScreenerData,
-    loading: dexScreenerLoading,
-    error: dexScreenerError,
-    refetch: refetchDexScreener,
-  } = useDexScreenerPrice(address || "");
-
-  // Extract token addresses for DexScreener API for related tokens
-  const relatedTokenAddresses = relatedTokens.map(coin => coin.address).filter(Boolean);
-
-  // Fetch DexScreener price data for related tokens
-  const {
-    pricesData: relatedDexScreenerData,
-    loading: relatedDexScreenerLoading,
-    error: relatedDexScreenerError,
-    refetch: refetchRelatedDexScreener,
-  } = useMultipleDexScreenerPrices(relatedTokenAddresses);
-
   const handleRefresh = () => {
     refetch();
-    refetchDexScreener();
-    refetchRelatedDexScreener();
   };
 
   const handleBack = () => {
@@ -477,7 +461,11 @@ export default function TokenDetails() {
   }
 
   const formattedToken = formatCoinData(token);
-  const formattedDexScreener = dexScreenerData ? formatDexScreenerPrice(dexScreenerData) : null;
+
+  // Price, volume, and 24h change from DexScreener
+  const price = dexData && dexData.priceUsd ? parseFloat(dexData.priceUsd) : null;
+  const volume24h = dexData && dexData.volume?.h24 !== undefined ? dexData.volume.h24 : null;
+  const variation24h = dexData && dexData.priceChange?.h24 !== undefined ? dexData.priceChange.h24 : null;
 
   return (
     <div className="flex-1 bg-background">
@@ -506,10 +494,10 @@ export default function TokenDetails() {
 
           <button
             onClick={handleRefresh}
-            disabled={loading || dexScreenerLoading}
+            disabled={loading || dexLoading}
             className="flex items-center gap-1 px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground"
           >
-            <RefreshCw className={cn("w-4 h-4", (loading || dexScreenerLoading) && "animate-spin")} />
+            <RefreshCw className={cn("w-4 h-4", (loading || dexLoading) && "animate-spin")} />
             Refresh
           </button>
         </div>
@@ -525,19 +513,22 @@ export default function TokenDetails() {
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Current Price</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {formattedDexScreener?.priceUsd || formattedToken.formattedPrice}
+                  {price !== null ? `$${price.toFixed(6)}` : (formattedToken.formattedPrice || calculateFallbackPrice(token.marketCap, token.totalSupply))}
+                  {variation24h !== null && (
+                    <span className={cn("ml-2 text-base", variation24h >= 0 ? "text-gain" : "text-loss")}>{variation24h >= 0 ? '+' : ''}{variation24h.toFixed(2)}%</span>
+                  )}
                 </p>
-                {dexScreenerData?.priceChange?.h24 !== undefined && (
+                {variation24h !== null && (
                   <div className="flex items-center gap-2">
-                    {dexScreenerData.priceChange.h24 >= 0 ? (
+                    {variation24h >= 0 ? (
                       <TrendingUp className="w-4 h-4 text-gain" />
                     ) : (
                       <TrendingDown className="w-4 h-4 text-loss" />
                     )}
                     <span className={cn("text-sm font-medium", 
-                      dexScreenerData.priceChange.h24 >= 0 ? "text-gain" : "text-loss"
+                      variation24h >= 0 ? "text-gain" : "text-loss"
                     )}>
-                      {formattedDexScreener?.priceChange24h || "N/A"}
+                      {variation24h.toFixed(2)}%
                     </span>
                   </div>
                 )}
@@ -550,7 +541,8 @@ export default function TokenDetails() {
                   {formattedToken.formattedMarketCap}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {dexScreenerData?.liquidity?.usd ? `Liquidity: $${dexScreenerData.liquidity.usd.toLocaleString()}` : "N/A"}
+                  {/* No longer using DexScreener data for liquidity */}
+                  N/A
                 </p>
               </div>
 
@@ -558,10 +550,11 @@ export default function TokenDetails() {
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">24h Volume</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {formattedDexScreener?.volume24h || formattedToken.formattedVolume24h}
+                  {volume24h !== null ? volume24h.toLocaleString() : 'N/A'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {dexScreenerData?.txns?.h24 ? `${dexScreenerData.txns.h24} transactions` : "N/A"}
+                  {/* No longer using DexScreener data for transactions */}
+                  N/A
                 </p>
               </div>
             </div>
@@ -570,7 +563,7 @@ export default function TokenDetails() {
           {/* Interactive Price Chart */}
           <div className="bg-card border border-border rounded-lg p-6">
             <PriceChart 
-              dexScreenerData={dexScreenerData}
+              dexScreenerData={dexData}
               period={chartPeriod}
               onPeriodChange={setChartPeriod}
             />
@@ -653,9 +646,10 @@ export default function TokenDetails() {
                   <span className="text-sm text-muted-foreground">Price Change 1H</span>
                 </div>
                 <span className={cn("text-sm font-medium", 
-                  dexScreenerData?.priceChange?.h1 && dexScreenerData.priceChange.h1 >= 0 ? "text-gain" : "text-loss"
+                  /* No longer using DexScreener data for 1H price change */
+                  "N/A"
                 )}>
-                  {dexScreenerData?.priceChange?.h1 ? `${dexScreenerData.priceChange.h1 >= 0 ? '+' : ''}${dexScreenerData.priceChange.h1.toFixed(2)}%` : "N/A"}
+                  N/A
                 </span>
               </div>
               
@@ -665,9 +659,10 @@ export default function TokenDetails() {
                   <span className="text-sm text-muted-foreground">Price Change 6H</span>
                 </div>
                 <span className={cn("text-sm font-medium", 
-                  dexScreenerData?.priceChange?.h6 && dexScreenerData.priceChange.h6 >= 0 ? "text-gain" : "text-loss"
+                  /* No longer using DexScreener data for 6H price change */
+                  "N/A"
                 )}>
-                  {dexScreenerData?.priceChange?.h6 ? `${dexScreenerData.priceChange.h6 >= 0 ? '+' : ''}${dexScreenerData.priceChange.h6.toFixed(2)}%` : "N/A"}
+                  N/A
                 </span>
               </div>
               
@@ -677,55 +672,37 @@ export default function TokenDetails() {
                   <span className="text-sm text-muted-foreground">FDV</span>
                 </div>
                 <span className="text-sm font-medium text-foreground">
-                  {dexScreenerData?.fdv ? `$${dexScreenerData.fdv.toLocaleString()}` : "N/A"}
+                  {/* No longer using DexScreener data for FDV */}
+                  N/A
                 </span>
               </div>
               
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Transactions 24H</span>
+                              <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Transactions 24H</span>
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    {/* No longer using DexScreener data for transactions */}
+                    N/A
+                  </span>
                 </div>
-                <span className="text-sm font-medium text-foreground">
-                  {dexScreenerData?.txns?.h24 ? `${dexScreenerData.txns.h24.buys + dexScreenerData.txns.h24.sells}` : "N/A"}
-                </span>
-              </div>
             </div>
           </div>
 
           {/* Trading Pairs */}
-          {dexScreenerData && (
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Trading Pairs</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{dexScreenerData.baseToken.symbol}/USDC</p>
-                    <p className="text-xs text-muted-foreground">{dexScreenerData.dexId}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-foreground">
-                      ${parseFloat(dexScreenerData.priceUsd || "0").toFixed(6)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Vol: ${(dexScreenerData.volume?.h24 || 0).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-                     )}
-         </div>
-       </div>
+          {/* No longer using DexScreener data for trading pairs */}
+        </div>
+      </div>
 
        {/* Related Tokens Section */}
        {/* <div className="bg-card border border-border rounded-lg p-6">
          <h2 className="text-lg font-semibold text-foreground mb-4">Related Tokens</h2>
          <TokenDataTable
            coins={relatedTokens}
-           dexScreenerData={relatedDexScreenerData}
+           dexScreenerData={null} // No longer passing DexScreener data
            currentPage={1}
-           loading={relatedDexScreenerLoading}
+           loading={false} // No longer loading related DexScreener data
            pageInfo={null}
            onCoinClick={handleCoinClick}
            onLoadNextPage={() => {}}
@@ -734,9 +711,9 @@ export default function TokenDetails() {
            itemsPerPage={10}
          />
        </div> */}
-     </div>
-   );
- }
+    </div>
+  );
+}
 
 // Helper function to calculate age from timestamp
 const getAgeFromTimestamp = (timestamp: string) => {
