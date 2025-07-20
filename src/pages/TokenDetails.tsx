@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useTrendingCoins, formatCoinData, Coin } from "@/hooks/useTopVolume24h";
 import { useDexScreenerTokens, DexScreenerPair, calculateFallbackPrice } from "@/hooks/useDexScreener";
 import { TokenDataTable } from "@/components/TokenDataTable";
+import { TradeToken } from "@/components/TradeToken";
 
 // Chart period types
 type ChartPeriod = "1H" | "6H" | "24H" | "7D" | "1M";
@@ -619,6 +620,22 @@ export default function TokenDetails() {
 
         {/* Sidebar */}
         <div className="lg:w-80 space-y-6">
+          {/* Trade Token Component */}
+          <TradeToken
+            token={{
+              name: token.name,
+              symbol: token.symbol,
+              address: token.address,
+            }}
+            currentPrice={formattedDexScreener?.priceUsd || formattedToken.formattedPrice}
+            priceChange24h={dexScreenerData?.priceChange?.h24}
+            onTrade={(type, usdAmount, tokenAmount) => {
+              console.log(`${type.toUpperCase()} ${tokenAmount} ${token.symbol} for $${usdAmount}`);
+              // Here you would integrate with actual trading functionality
+              alert(`${type.toUpperCase()} ${tokenAmount} ${token.symbol} for $${usdAmount}\n\nThis is a demo - no actual trade will be executed.`);
+            }}
+          />
+
           {/* Quick Stats */}
           <div className="bg-card border border-border rounded-lg p-6">
             <h3 className="text-lg font-semibold text-foreground mb-4">Quick Stats</h3>
