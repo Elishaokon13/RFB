@@ -17,19 +17,19 @@ const chains = [
 
 const menuItems = [
   // { icon: Star, label: "Collections", active: false },
-  { icon: AlertCircle, label: "New Mints", active: false },
-  { icon: BarChart3, label: "Top Creators", active: false },
+  // { icon: AlertCircle, label: "New Mints", active: false },
   { icon: TrendingUp, label: "Live Activity", active: false },
   { icon: Zap, label: "Trending", active: false },
+  // { icon: BarChart3, label: "Top Creators", active: false },
   // { icon: Wallet, label: "Portfolio", active: false },
   // { icon: Settings, label: "Advertise", active: false },
 ];
 
 export function Sidebar() {
-  const [selectedChain, setSelectedChain] = useState("Solana");
+
 
   return (
-    <div className="w-64 h-screen bg-background border-r border-border flex flex-col">
+    <div className="w-64 h-screen bg-background border-r border-border flex flex-col sticky top-0">
       {/* Logo */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
@@ -54,28 +54,6 @@ export function Sidebar() {
             {item.label}
           </button>
         ))}
-      </div>
-
-      {/* Chains */}
-      <div className="flex-1 p-4">
-        {/* <h3 className="text-sm font-medium text-muted-foreground mb-3">Chains</h3> */}
-        <div className="space-y-1">
-          {chains.map((chain) => (
-            <button
-              key={chain.name}
-              onClick={() => setSelectedChain(chain.name)}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-sm transition-colors",
-                selectedChain === chain.name
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-muted text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <span className={cn("text-base", chain.color)}>{chain.icon}</span>
-              {chain.name}
-            </button>
-          ))}
-        </div>
       </div>
 
       
