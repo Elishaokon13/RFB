@@ -53,12 +53,13 @@ export const useGetCoinsMostValuable = (params: ExploreQueryOptions = {}) => {
         },
       };
     },
-    staleTime: 3 * 60 * 1000, // 3 minutes - moderate refresh for market cap data
-    gcTime: 8 * 60 * 1000, // 8 minutes
+    staleTime: 30 * 1000, // 30 seconds - faster refresh for better UX
+    gcTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 12000),
-    refetchOnWindowFocus: false,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 8000),
+    refetchOnWindowFocus: true, // Enable background refetching
     refetchOnReconnect: true,
+    refetchOnMount: true, // Always refetch on mount for fresh data
   });
 };
 

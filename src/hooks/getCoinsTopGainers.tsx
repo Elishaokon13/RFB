@@ -53,12 +53,13 @@ export const useGetCoinsTopGainers = (params: ExploreQueryOptions = {}) => {
         },
       };
     },
-    staleTime: 1 * 60 * 1000, // 1 minute - very fast refresh for gainers data
+    staleTime: 15 * 1000, // 15 seconds - very fast refresh for gainers data
     gcTime: 3 * 60 * 1000, // 3 minutes
     retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 8000),
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 6000),
     refetchOnWindowFocus: true, // Important for gainers data
     refetchOnReconnect: true,
+    refetchOnMount: true, // Always refetch on mount for fresh data
   });
 };
 

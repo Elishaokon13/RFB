@@ -1,195 +1,286 @@
-import { useState, useMemo, useCallback } from "react";
-import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTrendingCoins } from "@/hooks/useTopVolume24h";
-import { useGetCoinsMostValuable, MostValuableCoin } from "@/hooks/getCoinsMostValuable";
-import { useGetCoinsTopGainers, TopGainerCoin } from "@/hooks/getCoinsTopGainers";
+import { usePreloadAllData } from "@/hooks/usePreloadAllData";
 import { useMultipleDexScreenerPrices } from "@/hooks/useDexScreener";
 import { useNavigate } from "react-router-dom";
 import { TokenDataTable } from "./TokenDataTable";
+import { RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { Coin as PreloadCoin } from "@/hooks/usePreloadAllData";
+import { Coin as TokenDataCoin } from "@/hooks/useTopVolume24h";
 
-const topFilters = [
-  "Most Valuable",
-  "Top Gainers",
-  "Top Volume 24h",
-  "New Pairs",
-];
+// Filter options
+const topFilters = ["Most Valuable", "Top Gainers", "Top Volume 24h"];
 
-// Helper function to convert MostValuableCoin to Coin format for compatibility
-const convertMostValuableToCoin = (mostValuableCoin: MostValuableCoin) => ({
-  id: mostValuableCoin.id || "",
-  name: mostValuableCoin.name || "",
-  symbol: mostValuableCoin.symbol || "",
-  description: mostValuableCoin.description || "",
-  address: mostValuableCoin.address || "",
-  totalSupply: mostValuableCoin.totalSupply || "",
-  totalVolume: mostValuableCoin.totalVolume || "",
-  volume24h: mostValuableCoin.volume24h || "",
-  createdAt: mostValuableCoin.createdAt || "",
-  creatorAddress: mostValuableCoin.creatorAddress || "",
+// Helper function to convert PreloadCoin to TokenDataCoin
+const convertToTokenDataCoin = (coin: PreloadCoin): TokenDataCoin => ({
+  id: coin.id || "",
+  name: coin.name || "",
+  symbol: coin.symbol || "",
+  description: coin.description || "",
+  address: coin.address || "",
+  totalSupply: coin.totalSupply || "",
+  totalVolume: coin.totalVolume || "",
+  volume24h: coin.volume24h || "",
+  createdAt: coin.createdAt || "",
+  creatorAddress: coin.creatorAddress || "",
   creatorEarnings: [],
-  marketCap: mostValuableCoin.marketCap || "",
-  marketCapDelta24h: mostValuableCoin.marketCapDelta24h || "",
-  chainId: mostValuableCoin.chainId || 0,
+  marketCap: coin.marketCap || "",
+  marketCapDelta24h: coin.marketCapDelta24h || "",
+  chainId: coin.chainId || 0,
   price: "",
   priceChange24h: "",
-  imageUrl: mostValuableCoin.image || "",
+  imageUrl: coin.image || "",
   website: "",
   twitter: "",
   telegram: "",
   discord: "",
   metadata: {},
   uniswapV3PoolAddress: "",
-  uniqueHolders: mostValuableCoin.uniqueHolders || 0,
+  uniqueHolders: coin.uniqueHolders || 0,
   uniswapV4PoolKey: null,
   zoraComments: null,
 });
 
-// Helper function to convert TopGainerCoin to Coin format for compatibility
-const convertTopGainerToCoin = (topGainerCoin: TopGainerCoin) => ({
-  id: topGainerCoin.id || "",
-  name: topGainerCoin.name || "",
-  symbol: topGainerCoin.symbol || "",
-  description: topGainerCoin.description || "",
-  address: topGainerCoin.address || "",
-  totalSupply: topGainerCoin.totalSupply || "",
-  totalVolume: topGainerCoin.totalVolume || "",
-  volume24h: topGainerCoin.volume24h || "",
-  createdAt: topGainerCoin.createdAt || "",
-  creatorAddress: topGainerCoin.creatorAddress || "",
-  creatorEarnings: [],
-  marketCap: topGainerCoin.marketCap || "",
-  marketCapDelta24h: topGainerCoin.marketCapDelta24h || "",
-  chainId: topGainerCoin.chainId || 0,
-  price: "",
-  priceChange24h: "",
-  imageUrl: topGainerCoin.image || "",
-  website: "",
-  twitter: "",
-  telegram: "",
-  discord: "",
-  metadata: {},
-  uniswapV3PoolAddress: "",
-  uniqueHolders: topGainerCoin.uniqueHolders || 0,
-  uniswapV4PoolKey: null,
-  zoraComments: null,
-});
+// Custom event system to bypass React rendering
+class DataEventEmitter {
+  private listeners: Map<string, Set<Function>> = new Map();
+  private dataStore: Map<string, any> = new Map();
 
-export function TokenTable() {
-  const [activeTimeFilter, setActiveTimeFilter] = useState("6H");
-  const [activeTopFilter, setActiveTopFilter] = useState("Trending");
-  const navigate = useNavigate();
-
-  // Fetch trending coin data from Zora SDK
-  const {
-    coins: trendingCoins,
-    loading: trendingLoading,
-    error: trendingError,
-    refetch: refetchTrending,
-    totalCount: trendingTotalCount,
-    currentPage: trendingCurrentPage,
-    pageInfo: trendingPageInfo,
-    loadNextPage: loadNextTrendingPage,
-    goToPage: goToTrendingPage,
-  } = useTrendingCoins(20);
-
-  // Fetch most valuable coin data from Zora SDK
-  const {
-    data: mostValuableData,
-    isLoading: mostValuableLoading,
-    error: mostValuableError,
-    refetch: refetchMostValuable,
-  } = useGetCoinsMostValuable({ count: 20 });
-
-  // Fetch top gainers coin data from Zora SDK
-  const {
-    data: topGainersData,
-    isLoading: topGainersLoading,
-    error: topGainersError,
-    refetch: refetchTopGainers,
-  } = useGetCoinsTopGainers({ count: 20 });
-
-  // Convert most valuable coins to compatible format
-  const mostValuableCoins = useMemo(() => {
-    if (!mostValuableData?.coins) return [];
-    return mostValuableData.coins.map(convertMostValuableToCoin);
-  }, [mostValuableData]);
-
-  // Convert top gainers coins to compatible format
-  const topGainersCoins = useMemo(() => {
-    if (!topGainersData?.coins) return [];
-    return topGainersData.coins.map(convertTopGainerToCoin);
-  }, [topGainersData]);
-
-  // Determine which data to use based on active filter
-  const isTrendingActive = activeTopFilter === "Trending";
-  const isTopGainersActive = activeTopFilter === "Top Gainers";
-  
-  let coins = trendingCoins;
-  let loading = trendingLoading;
-  let error: string | null = trendingError;
-  let currentPage = trendingCurrentPage;
-  let pageInfo = trendingPageInfo;
-
-  if (isTopGainersActive) {
-    coins = topGainersCoins;
-    loading = topGainersLoading;
-    error = topGainersError?.toString() || null;
-    currentPage = 1;
-    pageInfo = null;
-  } else if (!isTrendingActive) {
-    coins = mostValuableCoins;
-    loading = mostValuableLoading;
-    error = mostValuableError?.toString() || null;
-    currentPage = 1;
-    pageInfo = null;
+  emit(event: string, data: any) {
+    this.dataStore.set(event, data);
+    const listeners = this.listeners.get(event);
+    if (listeners) {
+      listeners.forEach(listener => listener(data));
+    }
   }
 
-  // Extract token addresses for DexScreener API - memoized to prevent unnecessary re-renders
-  const tokenAddresses = useMemo(() => 
-    coins.map(coin => coin.address).filter(Boolean), 
-    [coins]
-  );
+  on(event: string, callback: Function) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)!.add(callback);
+    
+    // Return current data if available
+    return this.dataStore.get(event);
+  }
 
-  // Fetch DexScreener price data for all tokens
-  const {
-    pricesData: dexScreenerData,
-    loading: dexScreenerLoading,
-    error: dexScreenerError,
-    refetch: refetchDexScreener,
-  } = useMultipleDexScreenerPrices(tokenAddresses);
+  off(event: string, callback: Function) {
+    const listeners = this.listeners.get(event);
+    if (listeners) {
+      listeners.delete(callback);
+    }
+  }
 
-  // Calculate total volume for header stats
-  const totalVolume = coins.reduce((sum, coin) => {
-    return sum + (parseFloat(coin.volume24h || "0") || 0);
-  }, 0);
+  getData(event: string) {
+    return this.dataStore.get(event);
+  }
+}
 
-  const handleCoinClick = useCallback((coinAddress: string) => {
-    navigate(`/token/${coinAddress}`);
+// Global event emitter instance
+const dataEmitter = new DataEventEmitter();
+
+export function TokenTable() {
+  const navigate = useNavigate();
+  const [activeTopFilter, setActiveTopFilter] = useState<string>(() => {
+    return localStorage.getItem("activeTopFilter") || "Most Valuable";
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  // Force re-render counter (only used when we actually want to update)
+  const [forceUpdate, setForceUpdate] = useState(0);
+
+  // Preload all data sources (but don't use their data directly)
+  const { mostValuable, topGainers, topVolume, isLoading: preloadLoading } = usePreloadAllData();
+
+  // Save active filter to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("activeTopFilter", activeTopFilter);
+  }, [activeTopFilter]);
+
+  // Extract token addresses for DexScreener API
+  const tokenAddresses = useMemo(() => {
+    const currentData = dataEmitter.getData(`coins-${activeTopFilter}`) || [];
+    return currentData.map((coin: any) => coin.address).filter(Boolean);
+  }, [activeTopFilter, forceUpdate]);
+
+  // Get DexScreener data for real-time price updates
+  const { pricesData: dexScreenerData, loading: dexScreenerLoading, refetch: refetchDexScreener } = useMultipleDexScreenerPrices(tokenAddresses);
+
+  // Listen for data changes and update only when necessary
+  useEffect(() => {
+    const handleDataChange = (data: any) => {
+      // Only force re-render if data actually changed
+      setForceUpdate(prev => prev + 1);
+    };
+
+    // Listen to data changes for the active filter
+    dataEmitter.on(`coins-${activeTopFilter}`, handleDataChange);
+    dataEmitter.on('dexScreenerData', handleDataChange);
+
+    return () => {
+      dataEmitter.off(`coins-${activeTopFilter}`, handleDataChange);
+      dataEmitter.off('dexScreenerData', handleDataChange);
+    };
+  }, [activeTopFilter]);
+
+  // Process data changes and emit events only when data actually changes
+  useEffect(() => {
+    const processDataChange = () => {
+      let data;
+      switch (activeTopFilter) {
+        case "Most Valuable":
+          data = mostValuable.data;
+          break;
+        case "Top Gainers":
+          data = topGainers.data;
+          break;
+        case "Top Volume 24h":
+          data = topVolume.data;
+          break;
+        default:
+          data = mostValuable.data;
+      }
+
+      if (data?.coins) {
+        const currentData = dataEmitter.getData(`coins-${activeTopFilter}`);
+        
+        // Deep comparison to check if data actually changed
+        const hasChanged = !currentData || 
+          data.coins.length !== currentData.length ||
+          data.coins.some((coin: any, index: number) => {
+            const prevCoin = currentData[index];
+            if (!prevCoin) return true;
+            
+            return (
+              coin.id !== prevCoin.id ||
+              coin.marketCap !== prevCoin.marketCap ||
+              coin.volume24h !== prevCoin.volume24h ||
+              coin.marketCapDelta24h !== prevCoin.marketCapDelta24h
+            );
+          });
+
+        // Only emit event if data actually changed
+        if (hasChanged) {
+          dataEmitter.emit(`coins-${activeTopFilter}`, data.coins);
+        }
+      }
+    };
+
+    // Process data changes
+    processDataChange();
+  }, [activeTopFilter, mostValuable.data, topGainers.data, topVolume.data]);
+
+  // Process DexScreener data changes
+  useEffect(() => {
+    const currentDexData = dataEmitter.getData('dexScreenerData');
+    
+    // Deep comparison for DexScreener data
+    const hasChanged = !currentDexData || 
+      Object.keys(dexScreenerData).some(key => {
+        const prevData = currentDexData[key];
+        const currentData = dexScreenerData[key];
+        
+        if (!prevData || !currentData) return true;
+        
+        return (
+          prevData.priceUsd !== currentData.priceUsd ||
+          prevData.volume?.h24 !== currentData.volume?.h24 ||
+          prevData.priceChange?.h24 !== currentData.priceChange?.h24
+        );
+      });
+
+    // Only emit event if data actually changed
+    if (hasChanged) {
+      dataEmitter.emit('dexScreenerData', dexScreenerData);
+    }
+  }, [dexScreenerData]);
+
+  // Get stable data from event emitter
+  const stableCoins = useMemo(() => {
+    const rawCoins = dataEmitter.getData(`coins-${activeTopFilter}`) || [];
+    return rawCoins.map(convertToTokenDataCoin);
+  }, [activeTopFilter, forceUpdate]);
+
+  const stableDexScreenerData = useMemo(() => {
+    return dataEmitter.getData('dexScreenerData') || {};
+  }, [forceUpdate]);
+
+  // Always use cached data if available, never show blank states
+  const pageInfo = useMemo(() => {
+    let data;
+    switch (activeTopFilter) {
+      case "Most Valuable":
+        data = mostValuable.data;
+        break;
+      case "Top Gainers":
+        data = topGainers.data;
+        break;
+      case "Top Volume 24h":
+        data = topVolume.data;
+        break;
+      default:
+        data = mostValuable.data;
+    }
+
+    if (!data?.pagination) return null;
+    return {
+      endCursor: data.pagination.cursor,
+      hasNextPage: !!data.pagination.cursor,
+    };
+  }, [activeTopFilter, mostValuable.data, topGainers.data, topVolume.data]);
+  
+  // Only show error if we have absolutely no data
+  const error = mostValuable.error || topGainers.error || topVolume.error;
+  const errorMessage = error ? error.toString() : null;
+  const hasAnyData = stableCoins.length > 0;
+
+  // Handle coin click
+  const handleCoinClick = useCallback((address: string) => {
+    navigate(`/token/${address}`);
   }, [navigate]);
 
-  const handleRefresh = useCallback(() => {
-    if (isTrendingActive) {
-      refetchTrending();
-    } else if (isTopGainersActive) {
-      refetchTopGainers();
-    } else {
-      refetchMostValuable();
-    }
-    refetchDexScreener();
-  }, [isTrendingActive, isTopGainersActive, refetchTrending, refetchTopGainers, refetchMostValuable, refetchDexScreener]);
-
+  // Handle pagination
   const handleLoadNextPage = useCallback(() => {
-    if (isTrendingActive && loadNextTrendingPage) {
-      loadNextTrendingPage();
+    if (pageInfo?.endCursor) {
+      // Update the query with new cursor
+      const newParams = { count: 20, after: pageInfo.endCursor };
+      
+      // Refetch with new parameters
+      switch (activeTopFilter) {
+        case "Most Valuable":
+          mostValuable.refetch();
+          break;
+        case "Top Gainers":
+          topGainers.refetch();
+          break;
+        case "Top Volume 24h":
+          topVolume.refetch();
+          break;
+      }
     }
-  }, [isTrendingActive, loadNextTrendingPage]);
+  }, [pageInfo, activeTopFilter, mostValuable, topGainers, topVolume]);
 
   const handleGoToPage = useCallback((page: number) => {
-    if (isTrendingActive && goToTrendingPage) {
-      goToTrendingPage(page);
-    }
-  }, [isTrendingActive, goToTrendingPage]);
+    setCurrentPage(page);
+  }, []);
+
+  // Calculate total volume for display
+  const totalVolume = useMemo(() => {
+    return stableCoins.reduce((sum, coin) => {
+      return sum + (parseFloat(coin.volume24h || "0") || 0);
+    }, 0);
+  }, [stableCoins]);
+
+  const handleRefresh = useCallback(() => {
+    // Refresh all data sources for better UX
+    mostValuable.refetch();
+    topGainers.refetch();
+    topVolume.refetch();
+    refetchDexScreener();
+  }, [mostValuable, topGainers, topVolume, refetchDexScreener]);
+
+  // Show loading state only if the active tab is still loading
+  const showLoading = preloadLoading || dexScreenerLoading;
 
   return (
     <div className="flex-1 bg-background">
@@ -202,7 +293,9 @@ export function TokenTable() {
               {topFilters.map((filter) => (
                 <button
                   key={filter}
-                  onClick={() => setActiveTopFilter(filter)}
+                  onClick={() => {
+                    setActiveTopFilter(filter);
+                  }}
                   className={cn(
                     "px-3 py-1 rounded-md text-sm font-medium transition-colors",
                     activeTopFilter === filter
@@ -217,59 +310,46 @@ export function TokenTable() {
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-xs text-green-600">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span>Live</span>
+            </div>
             <button
               onClick={handleRefresh}
-              disabled={loading}
+              disabled={showLoading}
               className="flex items-center gap-1 px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground"
             >
-              <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+              <RefreshCw className={cn("w-4 h-4", showLoading && "animate-spin")} />
               Refresh
             </button>
           </div>
         </div>
       </div>
 
-      {/* Loading State */}
-      {loading && (
-        <div className="flex items-center justify-center p-8">
-          <div className="flex items-center gap-2">
-            <RefreshCw className="w-4 h-4 animate-spin" />
-            <span>Loading trending coins...</span>
-          </div>
-        </div>
-      )}
-
-      {/* Error State */}
-      {(error || dexScreenerError) && (
-        <div className="flex items-center justify-center p-8">
-          <div className="text-center">
-            <p className="text-red-500 mb-2">
-              {error?.toString() || dexScreenerError?.toString() || "An error occurred"}
-            </p>
-            <button
-              onClick={handleRefresh}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Table */}
-      {!loading && !error && (
+      {/* Progressive Loading - Show data as soon as it's available */}
+      {hasAnyData && (
         <TokenDataTable
-          coins={coins}
-          dexScreenerData={dexScreenerData}
+          coins={stableCoins}
+          dexScreenerData={stableDexScreenerData}
           currentPage={currentPage}
-          loading={loading}
+          loading={false} // Never show loading state for seamless updates
           pageInfo={pageInfo}
           onCoinClick={handleCoinClick}
           onLoadNextPage={handleLoadNextPage}
           onGoToPage={handleGoToPage}
-          showPagination={isTrendingActive}
+          showPagination={false} // No pagination for top volume
           itemsPerPage={20}
         />
+      )}
+
+      {/* Only show error if we have no data at all */}
+      {error && !hasAnyData && (
+        <div className="flex items-center justify-center p-8">
+          <div className="text-center text-red-500">
+            <p>Error loading {activeTopFilter.toLowerCase()} coins:</p>
+            <p className="text-sm">{errorMessage}</p>
+          </div>
+        </div>
       )}
     </div>
   );
