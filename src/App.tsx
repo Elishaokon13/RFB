@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import TokenDetails from "./pages/TokenDetails";
+import Creators from "./pages/Creators";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import { WagmiProvider } from 'wagmi';
