@@ -18,7 +18,7 @@ const getAgeFromTimestamp = (timestamp: string) => {
 };
 
 const timeFilters = ["5M", "1H", "6H", "24H"];
-const topFilters = ["Top", "Gainers", "New Pairs"];
+const topFilters = ["Top Gainers", "Top Volume 24h", "New Pairs"];
 
 function PercentageCell({ value, cap }: { value: number; cap: any }) {
   const isPositive = value > 0;
@@ -83,7 +83,7 @@ export function TokenTable() {
               </button>
             </div>
 
-            <div className="flex bg-muted rounded-lg p-1">
+            {/* <div className="flex bg-muted rounded-lg p-1">
               {timeFilters.map((filter) => (
                 <button
                   key={filter}
@@ -98,7 +98,7 @@ export function TokenTable() {
                   {filter}
                 </button>
               ))}
-            </div>
+            </div> */}
 
             <div className="flex bg-muted rounded-lg p-1">
               {topFilters.map((filter) => (
@@ -119,11 +119,11 @@ export function TokenTable() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Rank by:</span>
+            {/* <span className="text-sm text-muted-foreground">Rank by:</span>
             <button className="flex items-center gap-1 text-sm text-foreground hover:text-primary">
               Trending 6H
               <ChevronDown className="w-4 h-4" />
-            </button>
+            </button> */}
             <button
               onClick={refetch}
               disabled={loading}
@@ -132,9 +132,9 @@ export function TokenTable() {
               <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
               Refresh
             </button>
-            <button className="px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground">
+            {/* <button className="px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground">
               Customize
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
