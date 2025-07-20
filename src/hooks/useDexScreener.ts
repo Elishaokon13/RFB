@@ -129,45 +129,80 @@ export const useMultipleDexScreenerPrices = (tokenAddresses: string[]) => {
     setError(null);
 
     try {
-      // Fetch prices for all tokens in parallel
-      const pricePromises = tokenAddresses.map(async (address) => {
-        try {
-          const response = await fetch(
-            `https://api.dexscreener.com/latest/dex/tokens/${address}`
-          );
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          const data: DexScreenerResponse = await response.json();
-
-          if (data.pairs && data.pairs.length > 0) {
-            // Find the most relevant pair
-            const bestPair = data.pairs.reduce((best, current) => {
-              const currentVolume = current.volume?.h24 || 0;
-              const bestVolume = best.volume?.h24 || 0;
-              return currentVolume > bestVolume ? current : best;
-            });
-
-            return { address, pair: bestPair };
-          }
-        } catch (err) {
-          console.warn(`Failed to fetch price for ${address}:`, err);
-        }
-        return null;
-      });
-
-      const results = await Promise.all(pricePromises);
+      // Limit concurrent requests to avoid rate limiting
+      const batchSize = 5;
+      const batches = [];
       
-      const newPricesData: Record<string, DexScreenerPair> = {};
-      results.forEach((result) => {
-        if (result) {
-          newPricesData[result.address] = result.pair;
-        }
-      });
+      for (let i = 0; i < tokenAddresses.length; i += batchSize) {
+        batches.push(tokenAddresses.slice(i, i + batchSize));
+      }
 
-      setPricesData(newPricesData);
+      const allResults: Record<string, DexScreenerPair> = {};
+
+      for (const batch of batches) {
+        const batchPromises = batch.map(async (address) => {
+          try {
+            const response = await fetch(
+              `https://api.dexscreener.com/latest/dex/tokens/${address}`,
+              {
+                // Add timeout to prevent hanging requests
+                signal: AbortSignal.timeout(3000), // Reduced timeout for faster updates
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data: DexScreenerResponse = await response.json();
+
+            if (data.pairs && data.pairs.length > 0) {
+              // Find the most relevant pair
+              const bestPair = data.pairs.reduce((best, current) => {
+                const currentVolume = current.volume?.h24 || 0;
+                const bestVolume = best.volume?.h24 || 0;
+                return currentVolume > bestVolume ? current : best;
+              });
+
+              return { address, pair: bestPair };
+            }
+          } catch (err) {
+            console.warn(`Failed to fetch price for ${address}:`, err);
+          }
+          return null;
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        batchResults.forEach((result) => {
+          if (result) {
+            allResults[result.address] = result.pair;
+          }
+        });
+
+        // Reduced delay between batches for faster updates
+        if (batches.length > 1) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+      }
+
+      // Only update state if data actually changed to prevent unnecessary re-renders
+      setPricesData(prevData => {
+        // Deep comparison to check if data actually changed
+        const hasChanged = Object.keys(allResults).some(key => {
+          const prevPair = prevData[key];
+          const nextPair = allResults[key];
+          
+          if (!prevPair || !nextPair) return true;
+          
+          return (
+            prevPair.priceUsd !== nextPair.priceUsd ||
+            prevPair.volume?.h24 !== nextPair.volume?.h24 ||
+            prevPair.priceChange?.h24 !== nextPair.priceChange?.h24
+          );
+        });
+
+        return hasChanged ? allResults : prevData;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch price data');
     } finally {
@@ -179,12 +214,10 @@ export const useMultipleDexScreenerPrices = (tokenAddresses: string[]) => {
     // Initial fetch
     fetchPrices();
 
-    // Set up interval for 20-second refresh
-    const intervalId = setInterval(() => {
-      fetchPrices();
-    }, 20000); // 20 seconds
+    // Set up interval for 2-second refresh (much faster for real-time data)
+    const interval = setInterval(fetchPrices, 2000);
 
-    return () => clearInterval(intervalId);
+    return () => clearInterval(interval);
   }, [fetchPrices]);
 
   return {
