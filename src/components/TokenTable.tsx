@@ -18,7 +18,7 @@ const getAgeFromTimestamp = (timestamp: string) => {
 };
 
 const timeFilters = ["5M", "1H", "6H", "24H"];
-const topFilters = ["Top Gainers", "Top Volume 24h", "New Pairs"];
+const topFilters = ["Trending", "Top Gainers", "Top Volume 24h", "New Pairs"];
 
 function PercentageCell({ value, cap }: { value: number; cap: any }) {
   const isPositive = value > 0;
@@ -58,48 +58,9 @@ export function TokenTable() {
     <div className="flex-1 bg-background">
       {/* Header Stats */}
       <div className="bg-card border-b border-border p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-8">
-            <div>
-              <span className="text-sm text-muted-foreground">24H Volume:</span>
-            </div>
-            <div>
-              <span className="text-sm text-muted-foreground">
-                Total Coins:
-              </span>
-            </div>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            Live data from Zora
-          </div>
-        </div>
-
         {/* Filters */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex bg-muted rounded-lg p-1">
-              <button className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm font-medium">
-                Trending
-              </button>
-            </div>
-
-            {/* <div className="flex bg-muted rounded-lg p-1">
-              {timeFilters.map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setActiveTimeFilter(filter)}
-                  className={cn(
-                    "px-3 py-1 rounded-md text-sm font-medium transition-colors",
-                    activeTimeFilter === filter
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div> */}
-
             <div className="flex bg-muted rounded-lg p-1">
               {topFilters.map((filter) => (
                 <button
