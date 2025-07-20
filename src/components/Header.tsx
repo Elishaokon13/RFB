@@ -25,11 +25,7 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Ad indicator */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="w-2 h-2 bg-primary rounded-full"></span>
-          Ad
-        </div>
+        
 
         {/* Notifications */}
         <button className="relative">
