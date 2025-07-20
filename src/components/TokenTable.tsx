@@ -20,12 +20,14 @@ const getAgeFromTimestamp = (timestamp: string) => {
 const timeFilters = ["5M", "1H", "6H", "24H"];
 const topFilters = ["Top", "Gainers", "New Pairs"];
 
-function PercentageCell({ value }: { value: number }) {
+function PercentageCell({ value, cap }: { value: number; cap: any }) {
   const isPositive = value > 0;
+  const calcValue = (cap / value) * 100;
+
   return (
     <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>
       {isPositive ? "+" : ""}
-      {value.toFixed(2)}%
+      {calcValue.toFixed(2)}%
     </span>
   );
 }
@@ -46,7 +48,7 @@ export function TokenTable() {
     loadNextPage,
     goToPage,
   } = useTrendingCoins(20);
-  
+
   // Calculate total volume for header stats
   const totalVolume = coins.reduce((sum, coin) => {
     return sum + (parseFloat(coin.volume24h || "0") || 0);
@@ -238,7 +240,8 @@ export function TokenTable() {
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <PercentageCell
-                        value={parseFloat(coin.priceChange24h || "0")}
+                        value={parseFloat(coin.marketCapDelta24h || "0")}
+                        cap={coin.marketCap}
                       />
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
