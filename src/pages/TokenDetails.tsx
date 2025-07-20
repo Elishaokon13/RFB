@@ -30,6 +30,7 @@ import {
   BasePayButton,
 } from "@base-org/account-ui/react";
 import { createBaseAccountSDK, pay, getPaymentStatus } from "@base-org/account";
+import { useNumberFormatter } from "@/lib/formatNumber";
 
 // Chart period types
 type ChartPeriod = "1H" | "6H" | "24H" | "7D" | "1M";
@@ -554,6 +555,9 @@ export default function TokenDetails() {
   const navigate = useNavigate();
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("24H");
 
+  const {  formatNumber } = useNumberFormatter();
+
+
   // Stabilize the address to prevent unnecessary re-renders
   const address = useMemo(() => {
     return rawAddress || null;
@@ -764,7 +768,7 @@ export default function TokenDetails() {
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Market Cap</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {formattedToken.formattedMarketCap}
+                  ${formatNumber(token.marketCap)}
                 </p>
                 {/* <p className="text-sm text-muted-foreground">N/A</p> */}
               </div>
@@ -773,7 +777,7 @@ export default function TokenDetails() {
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">24h Volume</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {token.totalVolume}
+                 ${formatNumber(token.volume24h)}
                 </p>
                 {/* <p className="text-sm text-muted-foreground">N/A</p> */}
               </div>
