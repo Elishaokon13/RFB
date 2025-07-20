@@ -40,6 +40,7 @@ export const useGetCoinsTopGainers = (params: ExploreQueryOptions = {}) => {
     queryKey: ["coins", "top-gainers", "zora", { count, after }],
     queryFn: async () => {
       const response = await getCoinsTopGainers({ count, after });
+      console.log('[getCoinsTopGainers] Full response:', response);
       
       // Extract coins from exploreList edges
       const tokens = response.data?.exploreList?.edges?.map(

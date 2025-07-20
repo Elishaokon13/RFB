@@ -9,6 +9,8 @@ import {
 import { memo, useMemo, useCallback, useRef, useEffect } from "react";
 import { useBasename } from '@/hooks/useBasename';
 import { Address } from 'viem';
+import { Star } from 'lucide-react';
+import { useWatchlist } from '@/hooks/useWatchlist';
 
 // Extend Coin type to include image property for table display
 type CoinWithImage = Coin & { image?: string };
@@ -86,21 +88,13 @@ const VolumeCell = memo(({ coin, dexScreenerData }: { coin: CoinWithImage; dexSc
 });
 VolumeCell.displayName = "VolumeCell";
 
-const Change24hCell = memo(({ coin, dexScreenerData }: { coin: CoinWithImage; dexScreenerData: Record<string, DexScreenerPair> }) => {
-  // Primary: use Zora/getCoins 24h market change
+const Change24hCell = memo(({ coin }: { coin: CoinWithImage }) => {
+  // Use Zora/getCoins 24h market change only
   if (coin.marketCapDelta24h && !isNaN(Number(coin.marketCapDelta24h))) {
     const value = Number(coin.marketCapDelta24h);
     const isPositive = value >= 0;
     return (
       <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>{isPositive ? '+' : ''}{value.toFixed(2)}%</span>
-    );
-  }
-  // Fallback: use DexScreener 24h price change
-  const priceData = dexScreenerData[coin.address.toLowerCase()];
-  if (priceData && typeof priceData.priceChange?.h24 === 'number' && !isNaN(priceData.priceChange.h24)) {
-    const isPositive = priceData.priceChange.h24 >= 0;
-    return (
-      <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>{priceData.priceChange.h24 >= 0 ? '+' : ''}{priceData.priceChange.h24.toFixed(2)}%</span>
     );
   }
   return <span className="text-muted-foreground">N/A</span>;
@@ -139,12 +133,18 @@ const TableRow = memo(
     index,
     onCoinClick,
     dexScreenerData,
+    isWatched,
+    onToggleWatch,
   }: {
     coin: CoinWithImage;
     index: number;
     onCoinClick: (address: string) => void;
     dexScreenerData: Record<string, DexScreenerPair>;
+    isWatched: boolean;
+    onToggleWatch: () => void;
   }) => {
+    // Log the full coin object for debugging
+    console.log('[Token Row]', coin);
     const formattedCoin = formatCoinData(coin);
     // Create a stable key for the row based on coin data
     const rowKey = useMemo(() => {
@@ -167,6 +167,16 @@ const TableRow = memo(
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center gap-3">
+            <button
+              onClick={e => { e.stopPropagation(); onToggleWatch(); }}
+              className={cn(
+                'mr-2 p-1 rounded-full hover:bg-muted transition-colors',
+                isWatched ? 'text-yellow-500' : 'text-muted-foreground'
+              )}
+              title={isWatched ? 'Remove from Watchlist' : 'Add to Watchlist'}
+            >
+              <Star fill={isWatched ? 'currentColor' : 'none'} strokeWidth={2} className="w-5 h-5" />
+            </button>
             {coin.image ? (
               <img
                 src={coin.image}
@@ -197,7 +207,7 @@ const TableRow = memo(
           <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
         </td>
         <td className="px-4 py-3">
-          <Change24hCell coin={coin} dexScreenerData={dexScreenerData} />
+          <Change24hCell coin={coin} />
         </td>
         <td className="px-4 py-3 text-sm text-muted-foreground">
           {formattedCoin.formattedMarketCap}
@@ -240,6 +250,7 @@ interface TokenDataTableProps {
   onGoToPage: (page: number) => void;
   showPagination?: boolean;
   itemsPerPage?: number;
+  walletAddress?: string;
 }
 
 export function TokenDataTable({
@@ -253,7 +264,9 @@ export function TokenDataTable({
   onGoToPage,
   showPagination = true,
   itemsPerPage = 20,
+  walletAddress,
 }: TokenDataTableProps) {
+  const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist(walletAddress);
   // Memoize the click handler to prevent unnecessary re-renders
   const handleCoinClick = useCallback(
     (address: string) => {
@@ -271,9 +284,14 @@ export function TokenDataTable({
         index={index}
         dexScreenerData={dexScreenerData}
         onCoinClick={handleCoinClick}
+        isWatched={isInWatchlist(coin.address)}
+        onToggleWatch={() => {
+          if (isInWatchlist(coin.address)) removeFromWatchlist(coin.address);
+          else addToWatchlist(coin.address);
+        }}
       />
     ));
-  }, [coins, dexScreenerData, handleCoinClick]);
+  }, [coins, dexScreenerData, handleCoinClick, isInWatchlist, addToWatchlist, removeFromWatchlist]);
 
   if (coins.length === 0) {
     return (
