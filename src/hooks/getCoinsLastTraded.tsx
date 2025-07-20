@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { getCoinsNew } from "@zoralabs/coins-sdk";
+import { getCoinsLastTraded } from "@zoralabs/coins-sdk";
 
-// Core types for new coin data matching Zora Protocol structure
-interface NewCoin {
+// Core types for last traded coin data matching Zora Protocol structure
+interface LastTradedCoin {
   id?: string;
   name?: string;
   description?: string;
@@ -17,6 +17,7 @@ interface NewCoin {
   marketCapDelta24h?: string;
   chainId?: number;
   uniqueHolders?: number;
+  lastTradedAt?: string;
   image?: string;
 }
 
@@ -26,20 +27,20 @@ interface ExploreQueryOptions {
 }
 
 interface QueryResponse {
-  coins: NewCoin[];
+  coins: LastTradedCoin[];
   pagination?: {
     cursor?: string;
   };
 }
 
 // Optimized hook with correct Zora Protocol response structure
-export const useGetCoins = (params: ExploreQueryOptions = {}) => {
+export const useGetCoinsLastTraded = (params: ExploreQueryOptions = {}) => {
   const { count = 20, after } = params;
   
   return useQuery<QueryResponse>({
-    queryKey: ["coins", "new", "zora", { count, after }],
+    queryKey: ["coins", "last-traded", "zora", { count, after }],
     queryFn: async () => {
-      const response = await getCoinsNew({ count, after });
+      const response = await getCoinsLastTraded({ count, after });
       
       // Extract coins from exploreList edges
       const tokens = response.data?.exploreList?.edges?.map(
@@ -47,29 +48,29 @@ export const useGetCoins = (params: ExploreQueryOptions = {}) => {
       ) || [];
       
       return {
-        coins: tokens as NewCoin[],
+        coins: tokens as LastTradedCoin[],
         pagination: {
           cursor: response.data?.exploreList?.pageInfo?.endCursor,
         },
       };
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes - faster refresh for new coins
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 1 * 60 * 1000, // 1 minute - very fast refresh for trading data
+    gcTime: 3 * 60 * 1000, // 3 minutes
     retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    refetchOnWindowFocus: false,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 8000),
+    refetchOnWindowFocus: true, // Important for trading data
     refetchOnReconnect: true,
   });
 };
 
 // Optimized formatting functions with memoization-friendly design
-export const formatCreationDate = (createdAt?: string): string => {
-  if (!createdAt) return "N/A";
+export const formatLastTradedTime = (lastTradedAt?: string): string => {
+  if (!lastTradedAt) return "N/A";
   
   try {
-    const date = new Date(createdAt);
+    const tradedTime = new Date(lastTradedAt);
     const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    const diffInMinutes = Math.floor((now.getTime() - tradedTime.getTime()) / (1000 * 60));
     
     if (diffInMinutes < 1) return "Just now";
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
@@ -114,29 +115,42 @@ export const formatVolume = (volume24h?: string): string => {
   return formatter.format(value);
 };
 
-export const formatCreatorAddress = (creatorAddress?: string): string => {
-  if (!creatorAddress) return "N/A";
-  return creatorAddress.length <= 10 
-    ? creatorAddress 
-    : `${creatorAddress.slice(0, 6)}...${creatorAddress.slice(-4)}`;
-};
-
 // Activity indicators for micro-interactions
-export const getCreationActivityLevel = (createdAt?: string): string => {
-  if (!createdAt) return "bg-gray-100 text-gray-800";
+export const getActivityColor = (lastTradedAt?: string): string => {
+  if (!lastTradedAt) return "bg-gray-100 text-gray-800";
   
   try {
-    const date = new Date(createdAt);
+    const tradedTime = new Date(lastTradedAt);
     const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    const diffInMinutes = Math.floor((now.getTime() - tradedTime.getTime()) / (1000 * 60));
     
-    if (diffInMinutes < 5) return "bg-green-100 text-green-800"; // Very recent
-    if (diffInMinutes < 30) return "bg-blue-100 text-blue-800"; // Recent
-    if (diffInMinutes < 120) return "bg-yellow-100 text-yellow-800"; // Moderate
+    if (diffInMinutes < 2) return "bg-green-100 text-green-800"; // Very recent
+    if (diffInMinutes < 10) return "bg-blue-100 text-blue-800"; // Recent
+    if (diffInMinutes < 30) return "bg-yellow-100 text-yellow-800"; // Moderate
     return "bg-gray-100 text-gray-800"; // Old
   } catch {
     return "bg-gray-100 text-gray-800";
   }
 };
 
-export type { NewCoin, ExploreQueryOptions, QueryResponse };
+// Trading intensity indicator
+export const getTradingIntensity = (volume24h?: string, marketCap?: string): string => {
+  if (!volume24h || !marketCap) return "bg-gray-100 text-gray-800";
+  
+  const volumeValue = parseFloat(volume24h);
+  const marketCapValue = parseFloat(marketCap);
+  
+  if (isNaN(volumeValue) || isNaN(marketCapValue) || marketCapValue === 0) {
+    return "bg-gray-100 text-gray-800";
+  }
+  
+  const ratio = (volumeValue / marketCapValue) * 100;
+  
+  if (ratio >= 50) return "bg-purple-100 text-purple-800"; // Very high
+  if (ratio >= 20) return "bg-green-100 text-green-800"; // High
+  if (ratio >= 10) return "bg-blue-100 text-blue-800"; // Moderate
+  if (ratio >= 5) return "bg-yellow-100 text-yellow-800"; // Low
+  return "bg-gray-100 text-gray-800"; // Very low
+};
+
+export type { LastTradedCoin, ExploreQueryOptions, QueryResponse }; 
