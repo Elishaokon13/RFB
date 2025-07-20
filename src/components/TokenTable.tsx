@@ -46,7 +46,7 @@ export function TokenTable() {
     loadNextPage,
     goToPage,
   } = useTrendingCoins(20);
-
+  
   // Calculate total volume for header stats
   const totalVolume = coins.reduce((sum, coin) => {
     return sum + (parseFloat(coin.volume24h || "0") || 0);
