@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { ChevronDown, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTrendingCoins, formatCoinData } from "@/hooks/useTopVolume24h";
+import { useTrendingCoins, formatCoinData, Coin } from "@/hooks/useTopVolume24h";
+import { useMultipleDexScreenerPrices, formatDexScreenerPrice, DexScreenerPair } from "@/hooks/useDexScreener";
+import { useNavigate } from "react-router-dom";
 
 // Helper function to calculate age from timestamp
 const getAgeFromTimestamp = (timestamp: string) => {
@@ -26,9 +28,10 @@ const topFilters = [
   "Creator",
 ];
 
-function PercentageCell({ value, cap }: { value: number; cap: any }) {
+function PercentageCell({ value, cap }: { value: number; cap: string | undefined }) {
   const isPositive = value > 0;
-  const calcValue = (cap / value) * 100;
+  const capValue = parseFloat(cap || "0");
+  const calcValue = capValue > 0 ? (capValue / value) * 100 : 0;
 
   return (
     <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>
@@ -38,9 +41,79 @@ function PercentageCell({ value, cap }: { value: number; cap: any }) {
   );
 }
 
+// Component to display price with DexScreener data
+function PriceCell({ coin, dexScreenerData }: { coin: Coin; dexScreenerData: Record<string, DexScreenerPair> }) {
+  const priceData = dexScreenerData[coin.address];
+  
+  if (priceData) {
+    const formatted = formatDexScreenerPrice(priceData);
+    return (
+      <div className="text-sm font-medium text-foreground">
+        {formatted.priceUsd}
+      </div>
+    );
+  }
+  
+  // Fallback to Zora data if DexScreener data not available
+  const formattedCoin = formatCoinData(coin);
+  return (
+    <div className="text-sm font-medium text-foreground">
+      {formattedCoin.formattedPrice}
+    </div>
+  );
+}
+
+// Component to display 24h change with DexScreener data
+function Change24hCell({ coin, dexScreenerData }: { coin: Coin; dexScreenerData: Record<string, DexScreenerPair> }) {
+  const priceData = dexScreenerData[coin.address];
+  
+  if (priceData) {
+    const formatted = formatDexScreenerPrice(priceData);
+    const changeValue = priceData.priceChange?.h24;
+    const isPositive = changeValue && changeValue >= 0;
+    
+    return (
+      <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>
+        {formatted.priceChange24h}
+      </span>
+    );
+  }
+  
+  // Fallback to Zora data
+  return (
+    <PercentageCell
+      value={parseFloat(coin.marketCapDelta24h || "0")}
+      cap={coin.marketCap}
+    />
+  );
+}
+
+// Component to display volume with DexScreener data
+function VolumeCell({ coin, dexScreenerData }: { coin: Coin; dexScreenerData: Record<string, DexScreenerPair> }) {
+  const priceData = dexScreenerData[coin.address];
+  
+  if (priceData) {
+    const formatted = formatDexScreenerPrice(priceData);
+    return (
+      <div className="text-sm text-muted-foreground">
+        {formatted.volume24h}
+      </div>
+    );
+  }
+  
+  // Fallback to Zora data
+  const formattedCoin = formatCoinData(coin);
+  return (
+    <div className="text-sm text-muted-foreground">
+      {formattedCoin.formattedVolume24h}
+    </div>
+  );
+}
+
 export function TokenTable() {
   const [activeTimeFilter, setActiveTimeFilter] = useState("6H");
   const [activeTopFilter, setActiveTopFilter] = useState("Top");
+  const navigate = useNavigate();
 
   // Fetch real coin data from Zora SDK
   const {
@@ -55,10 +128,33 @@ export function TokenTable() {
     goToPage,
   } = useTrendingCoins(20);
 
+  // Extract token addresses for DexScreener API - memoized to prevent unnecessary re-renders
+  const tokenAddresses = useMemo(() => 
+    coins.map(coin => coin.address).filter(Boolean), 
+    [coins]
+  );
+
+  // Fetch DexScreener price data for all tokens
+  const {
+    pricesData: dexScreenerData,
+    loading: dexScreenerLoading,
+    error: dexScreenerError,
+    refetch: refetchDexScreener,
+  } = useMultipleDexScreenerPrices(tokenAddresses);
+
   // Calculate total volume for header stats
   const totalVolume = coins.reduce((sum, coin) => {
     return sum + (parseFloat(coin.volume24h || "0") || 0);
   }, 0);
+
+  const handleCoinClick = useCallback((coinAddress: string) => {
+    navigate(`/token/${coinAddress}`);
+  }, [navigate]);
+
+  const handleRefresh = useCallback(() => {
+    refetch();
+    refetchDexScreener();
+  }, [refetch, refetchDexScreener]);
 
   return (
     <div className="flex-1 bg-background">
@@ -86,22 +182,14 @@ export function TokenTable() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* <span className="text-sm text-muted-foreground">Rank by:</span>
-            <button className="flex items-center gap-1 text-sm text-foreground hover:text-primary">
-              Trending 6H
-              <ChevronDown className="w-4 h-4" />
-            </button> */}
             <button
-              onClick={refetch}
+              onClick={handleRefresh}
               disabled={loading}
               className="flex items-center gap-1 px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground"
             >
               <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
               Refresh
             </button>
-            {/* <button className="px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground">
-              Customize
-            </button> */}
           </div>
         </div>
       </div>
@@ -117,12 +205,14 @@ export function TokenTable() {
       )}
 
       {/* Error State */}
-      {error && (
+      {(error || dexScreenerError) && (
         <div className="flex items-center justify-center p-8">
           <div className="text-center">
-            <p className="text-red-500 mb-2">Error loading data: {error}</p>
+            <p className="text-red-500 mb-2">
+              {error || dexScreenerError}
+            </p>
             <button
-              onClick={refetch}
+              onClick={handleRefresh}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
             >
               Retry
@@ -166,6 +256,7 @@ export function TokenTable() {
                 return (
                   <tr
                     key={coin.id}
+                    onClick={() => handleCoinClick(coin.address)}
                     className={cn(
                       "border-b border-border hover:bg-muted/50 transition-colors cursor-pointer",
                       index % 2 === 0 ? "bg-card" : "bg-background"
@@ -187,29 +278,23 @@ export function TokenTable() {
                             <span className="font-medium text-foreground">
                               {coin.symbol}
                             </span>
-                            {/* <span className="text-xs text-muted-foreground">
-                              /{coin.name}
-                            </span> */}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-medium text-foreground">
-                      {formattedCoin.formattedPrice}
+                    <td className="px-4 py-3">
+                      <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
                       {coin.createdAt
                         ? getAgeFromTimestamp(coin.createdAt)
                         : "N/A"}
                     </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {formattedCoin.formattedVolume24h}
+                    <td className="px-4 py-3">
+                      <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
                     </td>
-                    <td className="px-4 py-3 text-sm">
-                      <PercentageCell
-                        value={parseFloat(coin.marketCapDelta24h || "0")}
-                        cap={coin.marketCap}
-                      />
+                    <td className="px-4 py-3">
+                      <Change24hCell coin={coin} dexScreenerData={dexScreenerData} />
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
                       {formattedCoin.formattedMarketCap}
