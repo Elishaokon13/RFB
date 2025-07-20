@@ -1,7 +1,10 @@
 import { RefreshCw } from "lucide-react";
 import { cn, truncateAddress } from "@/lib/utils";
 import { formatCoinData, Coin } from "@/hooks/useTopVolume24h";
-import { formatDexScreenerPrice, DexScreenerPair } from "@/hooks/useDexScreener";
+import {
+  formatDexScreenerPrice,
+  DexScreenerPair,
+} from "@/hooks/useDexScreener";
 import { memo, useMemo, useCallback, useRef, useEffect } from "react";
 
 // Helper function to calculate age from timestamp
@@ -19,7 +22,12 @@ const getAgeFromTimestamp = (timestamp: string) => {
 };
 
 // Deep comparison function for coin data
-const areCoinsEqual = (prevCoin: Coin, nextCoin: Coin, prevDexData: DexScreenerPair | null, nextDexData: DexScreenerPair | null) => {
+const areCoinsEqual = (
+  prevCoin: Coin,
+  nextCoin: Coin,
+  prevDexData: DexScreenerPair | null,
+  nextDexData: DexScreenerPair | null
+) => {
   // Compare core coin properties
   if (
     prevCoin.id !== nextCoin.id ||
@@ -52,193 +60,252 @@ const areCoinsEqual = (prevCoin: Coin, nextCoin: Coin, prevDexData: DexScreenerP
 };
 
 // Memoized price cell component with aggressive memoization
-const PriceCell = memo(({ coin, dexScreenerData }: { coin: Coin; dexScreenerData: Record<string, DexScreenerPair> }) => {
-  const priceData = dexScreenerData[coin.address];
-  
-  if (priceData) {
-    const formatted = formatDexScreenerPrice(priceData);
+const PriceCell = memo(
+  ({
+    coin,
+    dexScreenerData,
+  }: {
+    coin: Coin;
+    dexScreenerData: Record<string, DexScreenerPair>;
+  }) => {
+    const priceData = dexScreenerData[coin.address];
+
+    if (priceData) {
+      const formatted = formatDexScreenerPrice(priceData);
+      return (
+        <div className="text-sm font-medium text-foreground">
+          {formatted.priceUsd}
+        </div>
+      );
+    }
+
+    // Always show fallback data immediately, no loading states
+    const formattedCoin = formatCoinData(coin);
     return (
       <div className="text-sm font-medium text-foreground">
-        {formatted.priceUsd}
+        {formattedCoin.formattedPrice}
       </div>
     );
+  },
+  (prevProps, nextProps) => {
+    const prevPriceData = prevProps.dexScreenerData[prevProps.coin.address];
+    const nextPriceData = nextProps.dexScreenerData[nextProps.coin.address];
+    return areCoinsEqual(
+      prevProps.coin,
+      nextProps.coin,
+      prevPriceData,
+      nextPriceData
+    );
   }
-  
-  // Always show fallback data immediately, no loading states
-  const formattedCoin = formatCoinData(coin);
-  return (
-    <div className="text-sm font-medium text-foreground">
-      {formattedCoin.formattedPrice}
-    </div>
-  );
-}, (prevProps, nextProps) => {
-  const prevPriceData = prevProps.dexScreenerData[prevProps.coin.address];
-  const nextPriceData = nextProps.dexScreenerData[nextProps.coin.address];
-  return areCoinsEqual(prevProps.coin, nextProps.coin, prevPriceData, nextPriceData);
-});
+);
 
-PriceCell.displayName = 'PriceCell';
+PriceCell.displayName = "PriceCell";
 
 // Memoized volume cell component
-const VolumeCell = memo(({ coin, dexScreenerData }: { coin: Coin; dexScreenerData: Record<string, DexScreenerPair> }) => {
-  const priceData = dexScreenerData[coin.address];
-  
-  if (priceData) {
-    const formatted = formatDexScreenerPrice(priceData);
+const VolumeCell = memo(
+  ({
+    coin,
+    dexScreenerData,
+  }: {
+    coin: Coin;
+    dexScreenerData: Record<string, DexScreenerPair>;
+  }) => {
+    const priceData = dexScreenerData[coin.address];
+
+    if (priceData) {
+      const formatted = formatDexScreenerPrice(priceData);
+      return (
+        <div className="text-sm text-muted-foreground">
+          {formatted.volume24h}
+        </div>
+      );
+    }
+
+    // Always show fallback data immediately, no loading states
+    const formattedCoin = formatCoinData(coin);
     return (
       <div className="text-sm text-muted-foreground">
-        {formatted.volume24h}
+        {formattedCoin.formattedVolume24h}
       </div>
     );
-  }
-  
-  // Always show fallback data immediately, no loading states
-  const formattedCoin = formatCoinData(coin);
-  return (
-    <div className="text-sm text-muted-foreground">
-      {formattedCoin.formattedVolume24h}
-    </div>
-  );
-}, (prevProps, nextProps) => {
-  const prevPriceData = prevProps.dexScreenerData[prevProps.coin.address];
-  const nextPriceData = nextProps.dexScreenerData[nextProps.coin.address];
-  return areCoinsEqual(prevProps.coin, nextProps.coin, prevPriceData, nextPriceData);
-});
-
-VolumeCell.displayName = 'VolumeCell';
-
-// Memoized 24h change cell component
-const Change24hCell = memo(({ coin, dexScreenerData }: { coin: Coin; dexScreenerData: Record<string, DexScreenerPair> }) => {
-  const priceData = dexScreenerData[coin.address];
-  
-  if (priceData) {
-    const formatted = formatDexScreenerPrice(priceData);
-    const changeValue = priceData.priceChange?.h24;
-    const isPositive = changeValue && changeValue >= 0;
-    
-    return (
-      <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>
-        {formatted.priceChange24h}
-      </span>
+  },
+  (prevProps, nextProps) => {
+    const prevPriceData = prevProps.dexScreenerData[prevProps.coin.address];
+    const nextPriceData = nextProps.dexScreenerData[nextProps.coin.address];
+    return areCoinsEqual(
+      prevProps.coin,
+      nextProps.coin,
+      prevPriceData,
+      nextPriceData
     );
   }
-  
-  // Always show fallback data immediately, no loading states
-  return (
-    <PercentageCell
-      value={parseFloat(coin.marketCapDelta24h || "0")}
-      cap={coin.marketCap}
-    />
-  );
-}, (prevProps, nextProps) => {
-  const prevPriceData = prevProps.dexScreenerData[prevProps.coin.address];
-  const nextPriceData = nextProps.dexScreenerData[nextProps.coin.address];
-  return areCoinsEqual(prevProps.coin, nextProps.coin, prevPriceData, nextPriceData);
-});
+);
 
-Change24hCell.displayName = 'Change24hCell';
+VolumeCell.displayName = "VolumeCell";
+
+// Memoized 24h change cell component
+const Change24hCell = memo(
+  ({
+    coin,
+    dexScreenerData,
+  }: {
+    coin: Coin;
+    dexScreenerData: Record<string, DexScreenerPair>;
+  }) => {
+    const priceData = dexScreenerData[coin.address];
+
+    if (priceData) {
+      const formatted = formatDexScreenerPrice(priceData);
+      const changeValue = priceData.priceChange?.h24;
+      const isPositive = changeValue && changeValue >= 0;
+
+      return (
+        <span
+          className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}
+        >
+          {formatted.priceChange24h}
+        </span>
+      );
+    }
+
+    // Always show fallback data immediately, no loading states
+    return (
+      <PercentageCell
+        value={parseFloat(coin.marketCapDelta24h || "0")}
+        cap={coin.marketCap}
+      />
+    );
+  },
+  (prevProps, nextProps) => {
+    const prevPriceData = prevProps.dexScreenerData[prevProps.coin.address];
+    const nextPriceData = nextProps.dexScreenerData[nextProps.coin.address];
+    return areCoinsEqual(
+      prevProps.coin,
+      nextProps.coin,
+      prevPriceData,
+      nextPriceData
+    );
+  }
+);
+
+Change24hCell.displayName = "Change24hCell";
 
 // Memoized percentage cell component
-const PercentageCell = memo(({ value, cap }: { value: number; cap: string | undefined }) => {
-  const isPositive = value > 0;
-  const capValue = parseFloat(cap || "0");
-  const calcValue = capValue > 0 ? (capValue / value) * 100 : 0;
+const PercentageCell = memo(
+  ({ value, cap }: { value: number; cap: string | undefined }) => {
+    const isPositive = value > 0;
+    const capValue = parseFloat(cap || "0");
+    const calcValue = capValue > 0 ? (capValue / value) * 100 : 0;
 
-  return (
-    <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>
-      {isPositive ? "+" : ""}
-      {calcValue.toFixed(2)}%
-    </span>
-  );
-}, (prevProps, nextProps) => {
-  return prevProps.value === nextProps.value && prevProps.cap === nextProps.cap;
-});
+    return (
+      <span
+        className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}
+      >
+        {isPositive ? "+" : ""}
+        {calcValue.toFixed(2)}%
+      </span>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.value === nextProps.value && prevProps.cap === nextProps.cap
+    );
+  }
+);
 
-PercentageCell.displayName = 'PercentageCell';
+PercentageCell.displayName = "PercentageCell";
 
 // Memoized table row component with stable keys and aggressive memoization
-const TableRow = memo(({ 
-  coin, 
-  index, 
-  dexScreenerData, 
-  onCoinClick 
-}: { 
-  coin: Coin; 
-  index: number; 
-  dexScreenerData: Record<string, DexScreenerPair>; 
-  onCoinClick: (address: string) => void;
-}) => {
-  const formattedCoin = formatCoinData(coin);
-  const priceData = dexScreenerData[coin.address];
-  
-  // Create a stable key for the row based on coin data
-  const rowKey = useMemo(() => {
-    const priceKey = priceData ? `${priceData.priceUsd}-${priceData.volume?.h24}-${priceData.priceChange?.h24}` : 'no-price';
-    return `${coin.id}-${coin.marketCap}-${coin.volume24h}-${priceKey}`;
-  }, [coin.id, coin.marketCap, coin.volume24h, priceData]);
+const TableRow = memo(
+  ({
+    coin,
+    index,
+    dexScreenerData,
+    onCoinClick,
+  }: {
+    coin: Coin;
+    index: number;
+    dexScreenerData: Record<string, DexScreenerPair>;
+    onCoinClick: (address: string) => void;
+  }) => {
+    const formattedCoin = formatCoinData(coin);
+    const priceData = dexScreenerData[coin.address];
 
-  return (
-    <tr
-      key={rowKey}
-      onClick={() => onCoinClick(coin.address)}
-      className={cn(
-        "border-b border-border hover:bg-muted/50 transition-colors cursor-pointer",
-        index % 2 === 0 ? "bg-card" : "bg-background",
-        // Add subtle animation for real-time updates
-        "animate-pulse-subtle"
-      )}
-    >
-      <td className="px-4 py-3 text-sm text-muted-foreground">
-        #{index + 1}
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            <span className="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center text-xs">
-              ◎
-            </span>
-            <span className="w-4 h-4 bg-orange-500 rounded-full"></span>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-foreground">
-                {coin.symbol}
+    // Create a stable key for the row based on coin data
+    const rowKey = useMemo(() => {
+      const priceKey = priceData
+        ? `${priceData.priceUsd}-${priceData.volume?.h24}-${priceData.priceChange?.h24}`
+        : "no-price";
+      return `${coin.id}-${coin.marketCap}-${coin.volume24h}-${priceKey}`;
+    }, [coin.id, coin.marketCap, coin.volume24h, priceData]);
+
+    return (
+      <tr
+        key={rowKey}
+        onClick={() => onCoinClick(coin.address)}
+        className={cn(
+          "border-b border-border hover:bg-muted/50 transition-colors cursor-pointer",
+          index % 2 === 0 ? "bg-card" : "bg-background",
+          // Add subtle animation for real-time updates
+          "animate-pulse-subtle"
+        )}
+      >
+        <td className="px-4 py-3 text-sm text-muted-foreground">
+          #{index + 1}
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <span className="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center text-xs">
+                ◎
               </span>
+              <span className="w-4 h-4 bg-orange-500 rounded-full"></span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-foreground">
+                  {coin.symbol}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      </td>
-      <td className="px-4 py-3">
-        <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
-      </td>
-      <td className="px-4 py-3 text-sm text-muted-foreground">
-        {coin.createdAt
-          ? getAgeFromTimestamp(coin.createdAt)
-          : "N/A"}
-      </td>
-      <td className="px-4 py-3">
-        <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
-      </td>
-      <td className="px-4 py-3">
-        <Change24hCell coin={coin} dexScreenerData={dexScreenerData} />
-      </td>
-      <td className="px-4 py-3 text-sm text-muted-foreground">
-        {formattedCoin.formattedMarketCap}
-      </td>
-    </tr>
-  );
-}, (prevProps, nextProps) => {
-  // Deep comparison for the entire row
-  const prevPriceData = prevProps.dexScreenerData[prevProps.coin.address];
-  const nextPriceData = nextProps.dexScreenerData[nextProps.coin.address];
-  
-  return (
-    prevProps.index === nextProps.index &&
-    areCoinsEqual(prevProps.coin, nextProps.coin, prevPriceData, nextPriceData)
-  );
-});
+        </td>
+        <td className="px-4 py-3">
+          <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
+        </td>
+        <td className="px-4 py-3 text-sm text-muted-foreground">
+          {coin.createdAt ? getAgeFromTimestamp(coin.createdAt) : "N/A"}
+        </td>
+        <td className="px-4 py-3">
+          <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
+        </td>
+        <td className="px-4 py-3">
+          <Change24hCell coin={coin} dexScreenerData={dexScreenerData} />
+        </td>
+        <td className="px-4 py-3 text-sm text-muted-foreground">
+          {formattedCoin.formattedMarketCap}
+        </td>
+      </tr>
+    );
+  },
+  (prevProps, nextProps) => {
+    // Deep comparison for the entire row
+    const prevPriceData = prevProps.dexScreenerData[prevProps.coin.address];
+    const nextPriceData = nextProps.dexScreenerData[nextProps.coin.address];
 
-TableRow.displayName = 'TableRow';
+    return (
+      prevProps.index === nextProps.index &&
+      areCoinsEqual(
+        prevProps.coin,
+        nextProps.coin,
+        prevPriceData,
+        nextPriceData
+      )
+    );
+  }
+);
+
+TableRow.displayName = "TableRow";
 
 interface TokenDataTableProps {
   coins: Coin[];
@@ -266,7 +333,7 @@ export function TokenDataTable({
   onLoadNextPage,
   onGoToPage,
   showPagination = true,
-  itemsPerPage = 20
+  itemsPerPage = 20,
 }: TokenDataTableProps) {
   // Always show data if we have coins, regardless of loading state
   if (coins.length === 0) {
@@ -281,9 +348,12 @@ export function TokenDataTable({
   }
 
   // Memoize the click handler to prevent unnecessary re-renders
-  const handleCoinClick = useCallback((address: string) => {
-    onCoinClick(address);
-  }, [onCoinClick]);
+  const handleCoinClick = useCallback(
+    (address: string) => {
+      onCoinClick(address);
+    },
+    [onCoinClick]
+  );
 
   // Memoize the table body with stable keys to prevent unnecessary re-renders
   const tableBody = useMemo(() => {
@@ -365,18 +435,22 @@ export function TokenDataTable({
                   <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
-                  {coin.createdAt
-                    ? getAgeFromTimestamp(coin.createdAt)
-                    : "N/A"}
+                  {coin.createdAt ? getAgeFromTimestamp(coin.createdAt) : "N/A"}
                 </td>
                 <td className="px-4 py-3">
                   <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
                 </td>
                 <td className="px-4 py-3">
-                  <Change24hCell coin={coin} dexScreenerData={dexScreenerData} />
+                  <Change24hCell
+                    coin={coin}
+                    dexScreenerData={dexScreenerData}
+                  />
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
                   {formattedCoin.formattedMarketCap}
+                </td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">
+                  {truncateAddress(coin.creatorAddress)}
                 </td>
               </tr>
             );
@@ -404,30 +478,27 @@ export function TokenDataTable({
 
             {/* Page Numbers */}
             <div className="flex items-center gap-1">
-              {Array.from(
-                { length: Math.min(currentPage + 2, 5) },
-                (_, i) => {
-                  const pageNum = i + 1;
-                  if (pageNum <= currentPage) {
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => onGoToPage(pageNum)}
-                        disabled={loading}
-                        className={cn(
-                          "px-3 py-1 rounded-md text-sm font-medium transition-colors",
-                          pageNum === currentPage
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground hover:bg-muted/80"
-                        )}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  }
-                  return null;
+              {Array.from({ length: Math.min(currentPage + 2, 5) }, (_, i) => {
+                const pageNum = i + 1;
+                if (pageNum <= currentPage) {
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => onGoToPage(pageNum)}
+                      disabled={loading}
+                      className={cn(
+                        "px-3 py-1 rounded-md text-sm font-medium transition-colors",
+                        pageNum === currentPage
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      )}
+                    >
+                      {pageNum}
+                    </button>
+                  );
                 }
-              )}
+                return null;
+              })}
             </div>
 
             {/* Next Page */}
@@ -452,4 +523,4 @@ export function TokenDataTable({
       )}
     </div>
   );
-} 
+}
