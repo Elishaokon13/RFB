@@ -85,19 +85,20 @@ export const useTrendingCoins = (count: number = 5, after?: string) => {
 
       if (response.data?.exploreList?.edges) {
         const coinList = response.data.exploreList.edges.map((edge: any) => edge.node);
-        
+        const filteredCoinList = coinList.filter((coin: Coin) => coin.chainId === 8453);
+
         // Store all coins and cursors for pagination
         if (pageNumber === 1) {
-          setAllCoins(coinList);
+          setAllCoins(filteredCoinList);
           setCursors([response.data.exploreList.pageInfo?.endCursor || '']);
         } else {
-          setAllCoins(prev => [...prev, ...coinList]);
+          setAllCoins(prev => [...prev, ...filteredCoinList]);
           setCursors(prev => [...prev, response.data.exploreList.pageInfo?.endCursor || '']);
         }
         
-        setCoins(coinList);
+        setCoins(filteredCoinList);
         setPageInfo(response.data.exploreList.pageInfo || null);
-        setTotalCount(allCoins.length + coinList.length);
+        setTotalCount(allCoins.length + filteredCoinList.length);
         setCurrentPage(pageNumber);
         
         // Log token count for debugging
