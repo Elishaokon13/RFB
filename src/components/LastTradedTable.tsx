@@ -110,10 +110,10 @@ export const LastTradedTable: React.FC<LastTradedTableProps> = ({ count = 10 }) 
           ))}
         </div>
         
-        {data?.pageInfo?.endCursor && (
+        {data?.pagination?.cursor && (
           <div className="mt-4 text-center">
             <p className="text-sm text-muted-foreground">
-              Next page available - cursor: {data.pageInfo.endCursor}
+              Next page available - cursor: {data.pagination.cursor}
             </p>
           </div>
         )}
