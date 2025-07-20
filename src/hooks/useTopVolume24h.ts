@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getCoinsTopVolume24h, getCoin } from "@zoralabs/coins-sdk";
 
 // Types for the coin data - updated to match SDK structure
@@ -159,13 +159,94 @@ export const useTrendingCoins = (count: number = 5, after?: string) => {
   };
 };
 
-// Hook for fetching individual coin details
+// Optimized hook with additional safeguards
 export const useCoinDetails = (coinAddress: string | null) => {
   const [coin, setCoin] = useState<Coin | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Track the last fetched address to prevent duplicate calls
+  const lastFetchedAddress = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const fetchCoinDetails = useCallback(async () => {
+  useEffect(() => {
+    console.log('useCoinDetails effect triggered with:', coinAddress);
+    
+    const fetchCoinDetails = async () => {
+      // Early return if address hasn't changed
+      if (coinAddress === lastFetchedAddress.current) {
+        console.log('Address unchanged, skipping fetch');
+        return;
+      }
+
+      if (!coinAddress) {
+        setCoin(null);
+        setError(null);
+        lastFetchedAddress.current = null;
+        return;
+      }
+
+      // Cancel previous request if still pending
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      // Create new abort controller for this request
+      abortControllerRef.current = new AbortController();
+      
+      setLoading(true);
+      setError(null);
+      lastFetchedAddress.current = coinAddress;
+      
+      try {
+        console.log('Fetching coin details for:', coinAddress);
+        const response: any = await getCoin({ 
+          address: coinAddress,
+          signal: abortControllerRef.current.signal // Add abort signal if your API supports it
+        });
+        
+        // Check if request was aborted
+        if (abortControllerRef.current.signal.aborted) {
+          return;
+        }
+        
+        if (response.data?.zora20Token) {
+          const coinData = response.data.zora20Token;
+          setCoin(coinData);
+          
+          // Only log once, not on every render
+          console.log("=== COIN FETCHED ===", coinData.name);
+        } else {
+          setCoin(null);
+          setError('Coin not found');
+        }
+      } catch (err) {
+        // Ignore abort errors
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
+        
+        setError(err instanceof Error ? err.message : 'Failed to fetch coin details');
+        setCoin(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCoinDetails();
+
+    // Cleanup function
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [coinAddress]); // Keep only coinAddress as dependency
+
+  const refetch = useCallback(async () => {
+    // Force refetch by clearing the last fetched address
+    lastFetchedAddress.current = null;
+    
     if (!coinAddress) {
       setCoin(null);
       return;
@@ -180,31 +261,7 @@ export const useCoinDetails = (coinAddress: string | null) => {
       if (response.data?.zora20Token) {
         const coinData = response.data.zora20Token;
         setCoin(coinData);
-        
-        // Log detailed metadata
-        console.log("=== DETAILED COIN METADATA ===");
-        console.log(`Name: ${coinData.name}`);
-        console.log(`Symbol: ${coinData.symbol}`);
-        console.log(`Description: ${coinData.description || 'No description'}`);
-        console.log(`Creator: ${coinData.creatorAddress}`);
-        console.log(`Contract Address: ${coinData.address}`);
-        console.log(`Created: ${new Date(coinData.createdAt || '').toLocaleString()}`);
-        console.log(`Market Cap: ${coinData.marketCap}`);
-        console.log(`Price: ${coinData.price}`);
-        console.log(`Total Supply: ${coinData.totalSupply}`);
-        console.log(`Volume 24h: ${coinData.volume24h}`);
-        console.log(`Price Change 24h: ${coinData.priceChange24h}%`);
-        
-        // Social links
-        if (coinData.website) console.log(`Website: ${coinData.website}`);
-        if (coinData.twitter) console.log(`Twitter: ${coinData.twitter}`);
-        if (coinData.telegram) console.log(`Telegram: ${coinData.telegram}`);
-        if (coinData.discord) console.log(`Discord: ${coinData.discord}`);
-        
-        // Image
-        if (coinData.imageUrl) console.log(`Image URL: ${coinData.imageUrl}`);
-        
-        console.log("=== END METADATA ===");
+        lastFetchedAddress.current = coinAddress;
       } else {
         setCoin(null);
         setError('Coin not found');
@@ -216,14 +273,6 @@ export const useCoinDetails = (coinAddress: string | null) => {
       setLoading(false);
     }
   }, [coinAddress]);
-
-  useEffect(() => {
-    fetchCoinDetails();
-  }, [fetchCoinDetails]);
-
-  const refetch = useCallback(() => {
-    fetchCoinDetails();
-  }, [fetchCoinDetails]);
 
   return {
     coin,

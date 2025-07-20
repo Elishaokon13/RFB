@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import {
   useTrendingCoins,
   formatCoinData,
-  Coin,
+  useCoinDetails,
 } from "@/hooks/useTopVolume24h";
 import {
   useDexScreenerTokens,
@@ -21,12 +21,8 @@ import {
 } from "@/hooks/useDexScreener";
 import { tradeCoin, TradeParameters } from "@zoralabs/coins-sdk";
 import { base } from "viem/chains";
+import { getCoin } from "@zoralabs/coins-sdk";
 import type { WalletClient, PublicClient } from "viem";
-import { useGetCoins } from "@/hooks/getCoins";
-import { useGetCoinsLastTraded } from "@/hooks/getCoinsLastTraded";
-import { useGetCoinsTopGainers } from "@/hooks/getCoinsTopGainers";
-import { useGetCoinsLastTradedUnique } from "@/hooks/getCoinsLastTradedUnique";
-import { useGetCoinsTopVolume24h } from "@/hooks/getCoinsTopVolume24h";
 import type { Account } from "viem/accounts";
 import { Identity } from "@coinbase/onchainkit/identity";
 import {
@@ -554,100 +550,109 @@ function useTradeCoin({
 }
 
 export default function TokenDetails() {
-  const { address } = useParams<{ address: string }>();
+  const { address: rawAddress } = useParams<{ address: string }>();
   const navigate = useNavigate();
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("24H");
 
-  // Fetch token data from Zora SDK
-  const {
-    coins,
-    loading,
-    error,
-    refetch,
-  } = useTrendingCoins(1000); // Fetch more to find our token
+  // Stabilize the address to prevent unnecessary re-renders
+  const address = useMemo(() => {
+    return rawAddress || null;
+  }, [rawAddress]);
 
-  // Find the specific token
-  const token = coins.find((coin) => coin.address === address);
+  // Debug logging for address changes
+  const prevAddress = useRef(address);
+  useEffect(() => {
+    if (prevAddress.current !== address) {
+      console.log(
+        "[TokenDetails] Address changed from",
+        prevAddress.current,
+        "to",
+        address
+      );
+      prevAddress.current = address;
+    }
+  }, [address]);
 
-  // Debug: log the full token object
-  console.log("[TokenDetails] Full token object:", token);
+  // Fetch coin details using the proper hook
+  const { coin: token, loading, error } = useCoinDetails(address);
+
+  // Debug: log the full token object (but only when it actually changes)
+  useEffect(() => {
+    console.log("[TokenDetails] Token data updated:", token);
+  }, [token]);
 
   // Fetch DexScreener data for this token
+  const dexScreenerAddresses = useMemo(
+    () => (address ? [address] : []),
+    [address]
+  );
+
   const {
     tokens: dexTokens,
     loading: dexLoading,
     error: dexError,
-  } = useDexScreenerTokens("8453", address ? [address] : []);
-  const dexData: DexScreenerPair | undefined =
-    dexTokens && dexTokens.length > 0 ? dexTokens[0] : undefined;
+  } = useDexScreenerTokens("8453", dexScreenerAddresses);
 
-  // Get related tokens (exclude current token)
-  const relatedTokens = coins
-    .filter((coin) => coin.address !== address)
-    .slice(0, 10);
+  const dexData: DexScreenerPair | undefined = useMemo(
+    () => (dexTokens && dexTokens.length > 0 ? dexTokens[0] : undefined),
+    [dexTokens]
+  );
 
-  const handleRefresh = () => {
-    refetch();
-  };
-
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     navigate(-1);
-  };
+  }, [navigate]);
 
-  const handleCoinClick = (coinAddress: string) => {
-    navigate(`/token/${coinAddress}`);
-  };
+  const handleCoinClick = useCallback(
+    (coinAddress: string) => {
+      navigate(`/token/${coinAddress}`);
+    },
+    [navigate]
+  );
 
   // Base Account SDK state
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState("");
   const [paymentId, setPaymentId] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const toggleTheme = () => setTheme(theme === "light" ? "dark" : "light");
+  const toggleTheme = useCallback(
+    () => setTheme((prev) => (prev === "light" ? "dark" : "light")),
+    []
+  );
 
   // Trading UI state
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
   const [tradeAmount, setTradeAmount] = useState("");
   const [slippage, setSlippage] = useState(0.5); // Default slippage
 
-  // Fetch Zora Protocol 24h change from all relevant hooks
-  const { data: newCoinsData } = useGetCoins({ count: 100 });
-  const { data: lastTradedCoinsData } = useGetCoinsLastTraded({ count: 100 });
-  const { data: mostValuableCoinsData } = useGetCoinsMostValuable({
-    count: 100,
-  });
-  const { data: topGainersCoinsData } = useGetCoinsTopGainers({ count: 100 });
-  const { data: lastTradedUniqueCoinsData } = useGetCoinsLastTradedUnique({
-    count: 100,
-  });
-  const { data: topVolumeCoinsData } = useGetCoinsTopVolume24h({ count: 100 });
+  // Price from DexScreener
+  const price = useMemo(
+    () => (dexData && dexData.priceUsd ? parseFloat(dexData.priceUsd) : null),
+    [dexData]
+  );
 
-  const newCoins = newCoinsData?.coins || [];
-  const lastTradedCoins = lastTradedCoinsData?.coins || [];
-  const mostValuableCoins = mostValuableCoinsData?.coins || [];
-  const topGainersCoins = topGainersCoinsData?.coins || [];
-  const lastTradedUniqueCoins = lastTradedUniqueCoinsData?.coins || [];
-  const topVolumeCoins = topVolumeCoinsData?.coins || [];
-
-  // Helper to get 24h change from all sources
-  function get24hChange(address: string | undefined): string | null {
-    if (!address) return null;
-    const sources = [
-      ...newCoins,
-      ...lastTradedCoins,
-      ...mostValuableCoins,
-      ...topGainersCoins,
-      ...lastTradedUniqueCoins,
-      ...topVolumeCoins,
-    ];
-    const found = sources.find(
-      (c) => c.address?.toLowerCase() === address.toLowerCase()
+  // Early return if no address (before hooks that depend on it)
+  if (!address) {
+    return (
+      <div className="flex-1 bg-background">
+        <div className="flex items-center justify-center p-8">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              Invalid Token Address
+            </h2>
+            <p className="text-muted-foreground mb-4">
+              No token address provided in the URL.
+            </p>
+            <button
+              onClick={handleBack}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Go Back
+            </button>
+          </div>
+        </div>
+      </div>
     );
-    if (found && found.marketCapDelta24h !== undefined) {
-      const val = parseFloat(found.marketCapDelta24h || "");
-      if (!isNaN(val)) return val.toFixed(2) + "%";
-    }
-    return null;
   }
 
   if (loading) {
@@ -689,12 +694,6 @@ export default function TokenDetails() {
 
   const formattedToken = formatCoinData(token);
 
-  // Price from DexScreener
-  const price =
-    dexData && dexData.priceUsd ? parseFloat(dexData.priceUsd) : null;
-  // 24h change from Zora hooks
-  const variation24h = get24hChange(token.address);
-
   return (
     <div className="flex-1 bg-background">
       {/* Header */}
@@ -725,7 +724,6 @@ export default function TokenDetails() {
           </div>
 
           <button
-            onClick={handleRefresh}
             disabled={loading || dexLoading}
             className="flex items-center gap-1 px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground"
           >
@@ -757,38 +755,7 @@ export default function TokenDetails() {
                         token.marketCap,
                         token.totalSupply
                       )}
-                  {variation24h !== null && (
-                    <span
-                      className={cn(
-                        "ml-2 text-base",
-                        parseFloat(variation24h) >= 0
-                          ? "text-gain"
-                          : "text-loss"
-                      )}
-                    >
-                      {variation24h}
-                    </span>
-                  )}
                 </p>
-                {variation24h !== null && (
-                  <div className="flex items-center gap-2">
-                    {parseFloat(variation24h) >= 0 ? (
-                      <TrendingUp className="w-4 h-4 text-gain" />
-                    ) : (
-                      <TrendingDown className="w-4 h-4 text-loss" />
-                    )}
-                    <span
-                      className={cn(
-                        "text-sm font-medium",
-                        parseFloat(variation24h) >= 0
-                          ? "text-gain"
-                          : "text-loss"
-                      )}
-                    >
-                      {variation24h}
-                    </span>
-                  </div>
-                )}
               </div>
 
               {/* Market Cap */}
@@ -797,10 +764,7 @@ export default function TokenDetails() {
                 <p className="text-2xl font-bold text-foreground">
                   {formattedToken.formattedMarketCap}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {/* No longer using DexScreener data for liquidity */}
-                  N/A
-                </p>
+                <p className="text-sm text-muted-foreground">N/A</p>
               </div>
 
               {/* Volume */}
@@ -811,10 +775,7 @@ export default function TokenDetails() {
                     ? dexData.volume.h24.toLocaleString()
                     : "N/A"}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {/* No longer using DexScreener data for transactions */}
-                  N/A
-                </p>
+                <p className="text-sm text-muted-foreground">N/A</p>
               </div>
             </div>
           </div>
@@ -921,7 +882,7 @@ export default function TokenDetails() {
                 align="center"
                 variant="solid"
                 colorScheme={theme}
-                onClick={() => setIsSignedIn(true)} // Simulate sign-in
+                onClick={() => setIsSignedIn(true)}
               />
               {isSignedIn && (
                 <div className="text-green-600 text-sm">
@@ -935,7 +896,7 @@ export default function TokenDetails() {
                   setPaymentStatus(
                     'Payment initiated! Click "Check Status" to see the result.'
                   );
-                }} // Simulate payment
+                }}
               />
               {paymentId && (
                 <button
@@ -1016,23 +977,6 @@ export default function TokenDetails() {
           )}
         </div>
       </div>
-
-      {/* Related Tokens Section */}
-      {/* <div className="bg-card border border-border rounded-lg p-6">
-         <h2 className="text-lg font-semibold text-foreground mb-4">Related Tokens</h2>
-         <TokenDataTable
-           coins={relatedTokens}
-           dexScreenerData={null} // No longer passing DexScreener data
-           currentPage={1}
-           loading={false} // No longer loading related DexScreener data
-           pageInfo={null}
-           onCoinClick={handleCoinClick}
-           onLoadNextPage={() => {}}
-           onGoToPage={() => {}}
-           showPagination={false}
-           itemsPerPage={10}
-         />
-       </div> */}
     </div>
   );
 }
