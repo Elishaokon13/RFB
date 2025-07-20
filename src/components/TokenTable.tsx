@@ -1,131 +1,150 @@
 import { useState, useMemo, useCallback } from "react";
-import { ChevronDown, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTrendingCoins, formatCoinData, Coin } from "@/hooks/useTopVolume24h";
-import { useMultipleDexScreenerPrices, formatDexScreenerPrice, DexScreenerPair } from "@/hooks/useDexScreener";
+import { useTrendingCoins } from "@/hooks/useTopVolume24h";
+import { useGetCoinsMostValuable, MostValuableCoin } from "@/hooks/getCoinsMostValuable";
+import { useGetCoinsTopGainers, TopGainerCoin } from "@/hooks/getCoinsTopGainers";
+import { useMultipleDexScreenerPrices } from "@/hooks/useDexScreener";
 import { useNavigate } from "react-router-dom";
+import { TokenDataTable } from "./TokenDataTable";
 
-// Helper function to calculate age from timestamp
-const getAgeFromTimestamp = (timestamp: string) => {
-  const now = new Date();
-  const created = new Date(timestamp);
-  const diffInHours = Math.floor(
-    (now.getTime() - created.getTime()) / (1000 * 60 * 60)
-  );
-
-  if (diffInHours < 1) return "<1h";
-  if (diffInHours < 24) return `${diffInHours}h`;
-  const days = Math.floor(diffInHours / 24);
-  return `${days}d`;
-};
-
-const timeFilters = ["5M", "1H", "6H", "24H"];
 const topFilters = [
-  "Trending",
+  "Most Valuable",
   "Top Gainers",
   "Top Volume 24h",
   "New Pairs",
   "Creator",
 ];
 
-function PercentageCell({ value, cap }: { value: number; cap: any }) {
-  const isPositive = value > 0;
-  const calcValue = (cap / value) * 100;
+// Helper function to convert MostValuableCoin to Coin format for compatibility
+const convertMostValuableToCoin = (mostValuableCoin: MostValuableCoin) => ({
+  id: mostValuableCoin.id || "",
+  name: mostValuableCoin.name || "",
+  symbol: mostValuableCoin.symbol || "",
+  description: mostValuableCoin.description || "",
+  address: mostValuableCoin.address || "",
+  totalSupply: mostValuableCoin.totalSupply || "",
+  totalVolume: mostValuableCoin.totalVolume || "",
+  volume24h: mostValuableCoin.volume24h || "",
+  createdAt: mostValuableCoin.createdAt || "",
+  creatorAddress: mostValuableCoin.creatorAddress || "",
+  creatorEarnings: [],
+  marketCap: mostValuableCoin.marketCap || "",
+  marketCapDelta24h: mostValuableCoin.marketCapDelta24h || "",
+  chainId: mostValuableCoin.chainId || 0,
+  price: "",
+  priceChange24h: "",
+  imageUrl: mostValuableCoin.image || "",
+  website: "",
+  twitter: "",
+  telegram: "",
+  discord: "",
+  metadata: {},
+  uniswapV3PoolAddress: "",
+  uniqueHolders: mostValuableCoin.uniqueHolders || 0,
+  uniswapV4PoolKey: null,
+  zoraComments: null,
+});
 
-  return (
-    <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>
-      {isPositive ? "+" : ""}
-      {calcValue.toFixed(2)}%
-    </span>
-  );
-}
-
-// Component to display price with DexScreener data
-function PriceCell({ coin, dexScreenerData }: { coin: Coin; dexScreenerData: Record<string, DexScreenerPair> }) {
-  const priceData = dexScreenerData[coin.address];
-  
-  if (priceData) {
-    const formatted = formatDexScreenerPrice(priceData);
-    return (
-      <div className="text-sm font-medium text-foreground">
-        {formatted.priceUsd}
-      </div>
-    );
-  }
-  
-  // Fallback to Zora data if DexScreener data not available
-  const formattedCoin = formatCoinData(coin);
-  return (
-    <div className="text-sm font-medium text-foreground">
-      {formattedCoin.formattedPrice}
-    </div>
-  );
-}
-
-// Component to display 24h change with DexScreener data
-function Change24hCell({ coin, dexScreenerData }: { coin: Coin; dexScreenerData: Record<string, DexScreenerPair> }) {
-  const priceData = dexScreenerData[coin.address];
-  
-  if (priceData) {
-    const formatted = formatDexScreenerPrice(priceData);
-    const changeValue = priceData.priceChange?.h24;
-    const isPositive = changeValue && changeValue >= 0;
-    
-    return (
-      <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>
-        {formatted.priceChange24h}
-      </span>
-    );
-  }
-  
-  // Fallback to Zora data
-  return (
-    <PercentageCell
-      value={parseFloat(coin.marketCapDelta24h || "0")}
-      cap={coin.marketCap}
-    />
-  );
-}
-
-// Component to display volume with DexScreener data
-function VolumeCell({ coin, dexScreenerData }: { coin: Coin; dexScreenerData: Record<string, DexScreenerPair> }) {
-  const priceData = dexScreenerData[coin.address];
-  
-  if (priceData) {
-    const formatted = formatDexScreenerPrice(priceData);
-    return (
-      <div className="text-sm text-muted-foreground">
-        {formatted.volume24h}
-      </div>
-    );
-  }
-  
-  // Fallback to Zora data
-  const formattedCoin = formatCoinData(coin);
-  return (
-    <div className="text-sm text-muted-foreground">
-      {formattedCoin.formattedVolume24h}
-    </div>
-  );
-}
+// Helper function to convert TopGainerCoin to Coin format for compatibility
+const convertTopGainerToCoin = (topGainerCoin: TopGainerCoin) => ({
+  id: topGainerCoin.id || "",
+  name: topGainerCoin.name || "",
+  symbol: topGainerCoin.symbol || "",
+  description: topGainerCoin.description || "",
+  address: topGainerCoin.address || "",
+  totalSupply: topGainerCoin.totalSupply || "",
+  totalVolume: topGainerCoin.totalVolume || "",
+  volume24h: topGainerCoin.volume24h || "",
+  createdAt: topGainerCoin.createdAt || "",
+  creatorAddress: topGainerCoin.creatorAddress || "",
+  creatorEarnings: [],
+  marketCap: topGainerCoin.marketCap || "",
+  marketCapDelta24h: topGainerCoin.marketCapDelta24h || "",
+  chainId: topGainerCoin.chainId || 0,
+  price: "",
+  priceChange24h: "",
+  imageUrl: topGainerCoin.image || "",
+  website: "",
+  twitter: "",
+  telegram: "",
+  discord: "",
+  metadata: {},
+  uniswapV3PoolAddress: "",
+  uniqueHolders: topGainerCoin.uniqueHolders || 0,
+  uniswapV4PoolKey: null,
+  zoraComments: null,
+});
 
 export function TokenTable() {
   const [activeTimeFilter, setActiveTimeFilter] = useState("6H");
-  const [activeTopFilter, setActiveTopFilter] = useState("Top");
+  const [activeTopFilter, setActiveTopFilter] = useState("Trending");
   const navigate = useNavigate();
 
-  // Fetch real coin data from Zora SDK
+  // Fetch trending coin data from Zora SDK
   const {
-    coins,
-    loading,
-    error,
-    refetch,
-    totalCount,
-    currentPage,
-    pageInfo,
-    loadNextPage,
-    goToPage,
+    coins: trendingCoins,
+    loading: trendingLoading,
+    error: trendingError,
+    refetch: refetchTrending,
+    totalCount: trendingTotalCount,
+    currentPage: trendingCurrentPage,
+    pageInfo: trendingPageInfo,
+    loadNextPage: loadNextTrendingPage,
+    goToPage: goToTrendingPage,
   } = useTrendingCoins(20);
+
+  // Fetch most valuable coin data from Zora SDK
+  const {
+    data: mostValuableData,
+    isLoading: mostValuableLoading,
+    error: mostValuableError,
+    refetch: refetchMostValuable,
+  } = useGetCoinsMostValuable({ count: 20 });
+
+  // Fetch top gainers coin data from Zora SDK
+  const {
+    data: topGainersData,
+    isLoading: topGainersLoading,
+    error: topGainersError,
+    refetch: refetchTopGainers,
+  } = useGetCoinsTopGainers({ count: 20 });
+
+  // Convert most valuable coins to compatible format
+  const mostValuableCoins = useMemo(() => {
+    if (!mostValuableData?.coins) return [];
+    return mostValuableData.coins.map(convertMostValuableToCoin);
+  }, [mostValuableData]);
+
+  // Convert top gainers coins to compatible format
+  const topGainersCoins = useMemo(() => {
+    if (!topGainersData?.coins) return [];
+    return topGainersData.coins.map(convertTopGainerToCoin);
+  }, [topGainersData]);
+
+  // Determine which data to use based on active filter
+  const isTrendingActive = activeTopFilter === "Trending";
+  const isTopGainersActive = activeTopFilter === "Top Gainers";
+  
+  let coins = trendingCoins;
+  let loading = trendingLoading;
+  let error: string | null = trendingError;
+  let currentPage = trendingCurrentPage;
+  let pageInfo = trendingPageInfo;
+
+  if (isTopGainersActive) {
+    coins = topGainersCoins;
+    loading = topGainersLoading;
+    error = topGainersError?.toString() || null;
+    currentPage = 1;
+    pageInfo = null;
+  } else if (!isTrendingActive) {
+    coins = mostValuableCoins;
+    loading = mostValuableLoading;
+    error = mostValuableError?.toString() || null;
+    currentPage = 1;
+    pageInfo = null;
+  }
 
   // Extract token addresses for DexScreener API - memoized to prevent unnecessary re-renders
   const tokenAddresses = useMemo(() => 
@@ -151,9 +170,27 @@ export function TokenTable() {
   }, [navigate]);
 
   const handleRefresh = useCallback(() => {
-    refetch();
+    if (isTrendingActive) {
+      refetchTrending();
+    } else if (isTopGainersActive) {
+      refetchTopGainers();
+    } else {
+      refetchMostValuable();
+    }
     refetchDexScreener();
-  }, [refetch, refetchDexScreener]);
+  }, [isTrendingActive, isTopGainersActive, refetchTrending, refetchTopGainers, refetchMostValuable, refetchDexScreener]);
+
+  const handleLoadNextPage = useCallback(() => {
+    if (isTrendingActive && loadNextTrendingPage) {
+      loadNextTrendingPage();
+    }
+  }, [isTrendingActive, loadNextTrendingPage]);
+
+  const handleGoToPage = useCallback((page: number) => {
+    if (isTrendingActive && goToTrendingPage) {
+      goToTrendingPage(page);
+    }
+  }, [isTrendingActive, goToTrendingPage]);
 
   return (
     <div className="flex-1 bg-background">
@@ -208,7 +245,7 @@ export function TokenTable() {
         <div className="flex items-center justify-center p-8">
           <div className="text-center">
             <p className="text-red-500 mb-2">
-              {error || dexScreenerError}
+              {error?.toString() || dexScreenerError?.toString() || "An error occurred"}
             </p>
             <button
               onClick={handleRefresh}
@@ -222,153 +259,18 @@ export function TokenTable() {
 
       {/* Table */}
       {!loading && !error && (
-        <div className="overflow-auto">
-          <table className="w-full">
-            <thead className="bg-muted border-b border-border">
-              <tr className="text-left">
-                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  #
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  TOKEN
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  PRICE
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  AGE
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  VOLUME
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  24H
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  MCAP
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {coins.map((coin, index) => {
-                const formattedCoin = formatCoinData(coin);
-                return (
-                  <tr
-                    key={coin.id}
-                    onClick={() => handleCoinClick(coin.address)}
-                    className={cn(
-                      "border-b border-border hover:bg-muted/50 transition-colors cursor-pointer",
-                      index % 2 === 0 ? "bg-card" : "bg-background"
-                    )}
-                  >
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      #{(currentPage - 1) * 20 + index + 1}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1">
-                          <span className="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center text-xs">
-                            ◎
-                          </span>
-                          <span className="w-4 h-4 bg-orange-500 rounded-full"></span>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-foreground">
-                              {coin.symbol}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
-                    </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {coin.createdAt
-                        ? getAgeFromTimestamp(coin.createdAt)
-                        : "N/A"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Change24hCell coin={coin} dexScreenerData={dexScreenerData} />
-                    </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {formattedCoin.formattedMarketCap}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {/* Pagination Controls */}
-          <div className="flex items-center justify-between p-4 border-t border-border">
-            <div className="text-sm text-muted-foreground">
-              Page {currentPage} - Showing {coins.length} coins
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Previous Page */}
-              {currentPage > 1 && (
-                <button
-                  onClick={() => goToPage(currentPage - 1)}
-                  disabled={loading}
-                  className="px-3 py-1 bg-muted text-muted-foreground rounded-md text-sm font-medium hover:bg-muted/80 disabled:opacity-50"
-                >
-                  Previous
-                </button>
-              )}
-
-              {/* Page Numbers */}
-              <div className="flex items-center gap-1">
-                {Array.from(
-                  { length: Math.min(currentPage + 2, 5) },
-                  (_, i) => {
-                    const pageNum = i + 1;
-                    if (pageNum <= currentPage) {
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => goToPage(pageNum)}
-                          disabled={loading}
-                          className={cn(
-                            "px-3 py-1 rounded-md text-sm font-medium transition-colors",
-                            pageNum === currentPage
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground hover:bg-muted/80"
-                          )}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    }
-                    return null;
-                  }
-                )}
-              </div>
-
-              {/* Next Page */}
-              {pageInfo?.hasNextPage && (
-                <button
-                  onClick={loadNextPage}
-                  disabled={loading}
-                  className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
-                >
-                  {loading ? (
-                    <div className="flex items-center gap-1">
-                      <RefreshCw className="w-3 h-3 animate-spin" />
-                      Loading
-                    </div>
-                  ) : (
-                    "Next"
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        <TokenDataTable
+          coins={coins}
+          dexScreenerData={dexScreenerData}
+          currentPage={currentPage}
+          loading={loading}
+          pageInfo={pageInfo}
+          onCoinClick={handleCoinClick}
+          onLoadNextPage={handleLoadNextPage}
+          onGoToPage={handleGoToPage}
+          showPagination={isTrendingActive}
+          itemsPerPage={20}
+        />
       )}
     </div>
   );

@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, RefreshCw, TrendingUp, TrendingDown, DollarSign, BarChart3, Activity, Globe, Calendar, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTrendingCoins, formatCoinData, Coin } from "@/hooks/useTopVolume24h";
-import { useDexScreenerPrice, formatDexScreenerPrice, DexScreenerPair } from "@/hooks/useDexScreener";
+import { useDexScreenerPrice, useMultipleDexScreenerPrices, formatDexScreenerPrice, DexScreenerPair } from "@/hooks/useDexScreener";
+import { TokenDataTable } from "@/components/TokenDataTable";
 
 export default function TokenDetails() {
   const { address } = useParams<{ address: string }>();
@@ -16,10 +17,17 @@ export default function TokenDetails() {
     loading,
     error,
     refetch,
+    pageInfo,
+    loadNextPage,
+    goToPage,
+    currentPage,
   } = useTrendingCoins(1000); // Fetch more to find our token
 
   // Find the specific token
   const token = coins.find(coin => coin.address === address);
+
+  // Get related tokens (exclude current token)
+  const relatedTokens = coins.filter(coin => coin.address !== address).slice(0, 10);
 
   // Fetch DexScreener data for this specific token
   const {
@@ -29,13 +37,29 @@ export default function TokenDetails() {
     refetch: refetchDexScreener,
   } = useDexScreenerPrice(address || "");
 
+  // Extract token addresses for DexScreener API for related tokens
+  const relatedTokenAddresses = relatedTokens.map(coin => coin.address).filter(Boolean);
+
+  // Fetch DexScreener price data for related tokens
+  const {
+    pricesData: relatedDexScreenerData,
+    loading: relatedDexScreenerLoading,
+    error: relatedDexScreenerError,
+    refetch: refetchRelatedDexScreener,
+  } = useMultipleDexScreenerPrices(relatedTokenAddresses);
+
   const handleRefresh = () => {
     refetch();
     refetchDexScreener();
+    refetchRelatedDexScreener();
   };
 
   const handleBack = () => {
     navigate(-1);
+  };
+
+  const handleCoinClick = (coinAddress: string) => {
+    navigate(`/token/${coinAddress}`);
   };
 
   if (loading) {
@@ -310,12 +334,29 @@ export default function TokenDetails() {
                 </div>
               </div>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+                     )}
+         </div>
+       </div>
+
+       {/* Related Tokens Section */}
+       {/* <div className="bg-card border border-border rounded-lg p-6">
+         <h2 className="text-lg font-semibold text-foreground mb-4">Related Tokens</h2>
+         <TokenDataTable
+           coins={relatedTokens}
+           dexScreenerData={relatedDexScreenerData}
+           currentPage={1}
+           loading={relatedDexScreenerLoading}
+           pageInfo={null}
+           onCoinClick={handleCoinClick}
+           onLoadNextPage={() => {}}
+           onGoToPage={() => {}}
+           showPagination={false}
+           itemsPerPage={10}
+         />
+       </div> */}
+     </div>
+   );
+ }
 
 // Helper function to calculate age from timestamp
 const getAgeFromTimestamp = (timestamp: string) => {
