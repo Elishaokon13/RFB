@@ -24,7 +24,7 @@ export function TokenTable() {
     isLoading,
     refetchAll,
     refetchActive,
-    hasData
+    hasData,
   } = useTokenFeed(activeTopFilter);
 
   // Save active filter to localStorage whenever it changes
@@ -33,16 +33,19 @@ export function TokenTable() {
   }, [activeTopFilter]);
 
   // Handle coin click
-  const handleCoinClick = useCallback((address: string) => {
-    navigate(`/token/${address}`);
-  }, [navigate]);
+  const handleCoinClick = useCallback(
+    (address: string) => {
+      navigate(`/token/${address}`);
+    },
+    [navigate]
+  );
 
   // Handle pagination
   const handleLoadNextPage = useCallback(() => {
     if (pageInfo?.endCursor) {
       // Update the query with new cursor
       const newParams = { count: 20, after: pageInfo.endCursor };
-      
+
       // Refetch with new parameters
       refetchActive();
     }
@@ -60,43 +63,47 @@ export function TokenTable() {
   return (
     <div className="space-y-4">
       {/* Header with Live Indicator */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold">Token Explorer</h1>
-          <div className="flex items-center gap-2 text-sm text-green-500">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span>Live</span>
+      <div className="bg-card border-b border-border p-4">
+        {/* Filters */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex bg-muted rounded-lg p-1">
+              {topFilters.map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => {
+                    setActiveTopFilter(filter);
+                  }}
+                  className={cn(
+                    "px-3 py-1 rounded-md text-sm font-medium transition-colors",
+                    activeTopFilter === filter
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-xs text-green-600">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span>Live</span>
+            </div>
+            <button
+              onClick={refetchAll}
+              disabled={isLoading}
+              className="flex items-center gap-1 px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground"
+            >
+              <RefreshCw
+                className={cn("w-4 h-4", isLoading && "animate-spin")}
+              />
+              Refresh
+            </button>
           </div>
         </div>
-        
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleRefresh}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-3 py-1 bg-muted text-muted-foreground rounded-md text-sm font-medium hover:bg-muted/80 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex space-x-1 bg-muted p-1 rounded-lg">
-        {topFilters.map((filter) => (
-          <button
-            key={filter}
-            onClick={() => setActiveTopFilter(filter)}
-            className={cn(
-              "flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-              activeTopFilter === filter
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {filter}
-          </button>
-        ))}
       </div>
 
       {/* Progressive Loading - Show data as soon as it's available */}
