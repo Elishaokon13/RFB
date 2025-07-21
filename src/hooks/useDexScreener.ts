@@ -129,7 +129,7 @@ export async function fetchDexScreenerTokens(chainId: string, tokenAddresses: st
  * @param tokenAddresses Array of token addresses (max 60 per request)
  * @returns { tokens, loading, error }
  */
-export function useDexScreenerTokens(chainId: string, tokenAddresses: string) {
+export function useDexScreenerTokens(chainId: string, tokenAddresses: string[]) {
   const [tokens, setTokens] = useState<DexScreenerPair[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -159,7 +159,6 @@ const TableRow = memo(
     onToggleWatch: () => void;
   }) => {
     // Log the full coin object for debugging
-    console.log('[Token Row]', coin);
     const formattedCoin = formatCoinData(coin);
     // Create a stable key for the row based on coin data
     const rowKey = useMemo(() => {
@@ -255,7 +254,7 @@ const truncateMiddle = (address: string) => {
 const CreatorCell = memo(({ creatorAddress }: { creatorAddress?: string }) => {
   const { basename, loading, error } = useBasename(creatorAddress as `0x${string}`);
   // Log the full Basename object for debugging
-  console.log('[TokenDataTable] Basename:', { address: creatorAddress, basename, loading, error });
+  // console.log('[TokenDataTable] Basename:', { address: creatorAddress, basename, loading, error });
   if (!creatorAddress) return <span>N/A</span>;
   if (loading) return <span>Resolving...</span>;
   if (basename) return <span>{basename}</span>;
