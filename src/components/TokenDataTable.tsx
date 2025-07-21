@@ -165,6 +165,9 @@ const TableRow = memo(
       return `${coin.id}-${coin.marketCap}-${coin.volume24h}`;
     }, [coin.id, coin.marketCap, coin.volume24h]);
 
+    // console.log(coin);
+    
+
     return (
       <tr
         key={rowKey}

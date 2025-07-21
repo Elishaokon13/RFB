@@ -108,43 +108,16 @@ export function TokenTable() {
   // Pagination logic for 20 per page
   const paginatedCoins = useMemo(() => {
     if (activeTopFilter === "New Picks") {
-      // Sort by createdAt descending (latest first)
       const sorted = [...newCoins].sort((a, b) => {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
       });
-      // Map TopVolumeCoin to CoinWithImage with default values for missing fields
-      return sorted.map((c) => ({
-        id: c.id || "",
-        name: c.name || "",
-        symbol: c.symbol || "",
-        address: c.address || "",
-        totalSupply: c.totalSupply || "",
-        totalVolume: c.totalVolume || "",
-        volume24h: c.volume24h || "",
-        createdAt: c.createdAt || "",
-        creatorAddress: c.creatorAddress || "",
-        marketCap: c.marketCap || "",
-        chainId: c.chainId || 0,
-        uniqueHolders: c.uniqueHolders || 0,
-        image: c.image || "",
-        uniswapV3PoolAddress: "",
-        creatorEarnings: [],
-        marketCapDelta24h: "",
-        price: "",
-        priceChange24h: "",
-        imageUrl: c.image || "",
-        website: "",
-        twitter: "",
-        telegram: "",
-        discord: "",
-        metadata: {},
-        zoraComments: null,
-        mediaContent: undefined,
-        description: "",
-        // Add fine-grained age for New Picks
-        fineAge: c.createdAt ? getFineAgeFromTimestamp(c.createdAt) : "",
+      // Add missing properties to match Coin type
+      return sorted.map((coin) => ({
+        ...coin,
+        uniswapV3PoolAddress: "", // Add missing property
+        // Add other missing properties as needed
       }));
     }
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
