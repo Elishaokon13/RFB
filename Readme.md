@@ -48,7 +48,7 @@
 ### Installation
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/Elishaokon13/RFB
 cd RFB
 yarn install
 # or
@@ -63,7 +63,7 @@ yarn dev
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Open [http://localhost:8080](http://localhost:8080) in your browser.
 
 ---
 
@@ -126,19 +126,7 @@ src/
 - `yarn preview` – Preview production build
 - `yarn lint` – Lint code with ESLint
 
----
 
-## Contributing
-
-Pull requests and issues are welcome! Please open an issue to discuss major changes.
-
----
-
-## License
-
-MIT
-
----
 
 ## Acknowledgements
 
