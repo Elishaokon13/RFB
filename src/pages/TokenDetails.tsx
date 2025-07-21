@@ -8,7 +8,7 @@ import {
   DollarSign,
   BarChart3,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, truncateAddress } from "@/lib/utils";
 import {
   useTrendingCoins,
   formatCoinData,
@@ -555,8 +555,7 @@ export default function TokenDetails() {
   const navigate = useNavigate();
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("24H");
 
-  const {  formatNumber } = useNumberFormatter();
-
+  const { formatNumber } = useNumberFormatter();
 
   // Stabilize the address to prevent unnecessary re-renders
   const address = useMemo(() => {
@@ -580,27 +579,21 @@ export default function TokenDetails() {
   // Fetch coin details using the proper hook
   const { coin: token, loading, error } = useCoinDetails(address);
 
-  // Debug: log the full token object (but only when it actually changes)
-  useEffect(() => {
-    console.log("[TokenDetails] Token data updated:", token);
-  }, [token]);
-
   // Fetch DexScreener data for this token
-  const dexScreenerAddresses = useMemo(
-    () => (address ? [address] : []),
-    [address]
-  );
+  const dexScreenerAddresses = rawAddress as string;
 
   const {
     tokens: dexTokens,
     loading: dexLoading,
     error: dexError,
-  } = useDexScreenerTokens("8453", dexScreenerAddresses);
+  } = useDexScreenerTokens("8453", rawAddress);
 
   const dexData: DexScreenerPair | undefined = useMemo(
     () => (dexTokens && dexTokens.length > 0 ? dexTokens[0] : undefined),
     [dexTokens]
   );
+
+  console.log(dexData, rawAddress, "dexdata");
 
   const handleBack = useCallback(() => {
     navigate(-1);
@@ -629,10 +622,12 @@ export default function TokenDetails() {
   const [slippage, setSlippage] = useState(0.5); // Default slippage
 
   // Price from DexScreener
-  const price = useMemo(
-    () => (dexData && dexData.priceUsd ? parseFloat(dexData.priceUsd) : null),
-    [dexData]
-  );
+  // const price = useMemo(
+  //   () => (dexData && dexData.priceUsd ? parseFloat(dexData.priceUsd) : null),
+  //   [dexData]
+  // );
+
+  const price = Number(token?.marketCap) / Number(token?.totalSupply);
 
   // Early return if no address (before hooks that depend on it)
   if (!address) {
@@ -697,8 +692,6 @@ export default function TokenDetails() {
   }
 
   const formattedToken = formatCoinData(token);
-  console.log(formattedToken);
-  
 
   return (
     <div className="flex-1 bg-background">
@@ -755,7 +748,7 @@ export default function TokenDetails() {
                 <p className="text-sm text-muted-foreground">Current Price</p>
                 <p className="text-2xl font-bold text-foreground">
                   {price !== null
-                    ? `$${price.toFixed(6)}`
+                    ? `$${price.toFixed(4)}`
                     : formattedToken.formattedPrice ||
                       calculateFallbackPrice(
                         token.marketCap,
@@ -777,7 +770,7 @@ export default function TokenDetails() {
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">24h Volume</p>
                 <p className="text-2xl font-bold text-foreground">
-                 ${formatNumber(token.volume24h)}
+                  ${formatNumber(token.volume24h)}
                 </p>
                 {/* <p className="text-sm text-muted-foreground">N/A</p> */}
               </div>
@@ -805,7 +798,7 @@ export default function TokenDetails() {
                     Token Address
                   </span>
                   <span className="text-sm font-mono text-foreground">
-                    {token.address}
+                    {truncateAddress(token.address)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
