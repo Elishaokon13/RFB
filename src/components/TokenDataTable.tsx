@@ -159,12 +159,14 @@ const TableRow = memo(
     onToggleWatch: () => void;
   }) => {
     // Log the full coin object for debugging
-    console.log('[Token Row]', coin);
     const formattedCoin = formatCoinData(coin);
     // Create a stable key for the row based on coin data
     const rowKey = useMemo(() => {
       return `${coin.id}-${coin.marketCap}-${coin.volume24h}`;
     }, [coin.id, coin.marketCap, coin.volume24h]);
+
+    // console.log(coin);
+    
 
     return (
       <tr
@@ -183,18 +185,25 @@ const TableRow = memo(
         <td className="px-4 py-3">
           <div className="flex items-center gap-3">
             <button
-              onClick={e => { e.stopPropagation(); onToggleWatch(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleWatch();
+              }}
               className={cn(
-                'mr-2 p-1 rounded-full hover:bg-muted transition-colors',
-                isWatched ? 'text-yellow-500' : 'text-muted-foreground'
+                "mr-2 p-1 rounded-full hover:bg-muted transition-colors",
+                isWatched ? "text-yellow-500" : "text-muted-foreground"
               )}
-              title={isWatched ? 'Remove from Watchlist' : 'Add to Watchlist'}
+              title={isWatched ? "Remove from Watchlist" : "Add to Watchlist"}
             >
-              <Star fill={isWatched ? 'currentColor' : 'none'} strokeWidth={2} className="w-5 h-5" />
+              <Star
+                fill={isWatched ? "currentColor" : "none"}
+                strokeWidth={2}
+                className="w-5 h-5"
+              />
             </button>
-            {coin.mediaContent?.previewImage?.small ? (
+            {/* {coin.mediaContent?.previewImage?.medium ? (
               <CachedImage
-                src={coin.mediaContent.previewImage.small}
+                src={coin.mediaContent.previewImage.medium}
                 alt={coin.symbol || 'token'}
                 className="w-7 h-7 rounded-full border bg-white object-cover"
               />
@@ -208,7 +217,14 @@ const TableRow = memo(
               <span className="w-7 h-7 rounded-full bg-gray-200 border flex items-center justify-center text-xs text-gray-400">
                 ◎
               </span>
-            )}
+            )} */}
+            <div className="">
+              <img
+                src={coin?.mediaContent?.previewImage?.medium}
+                alt=""
+                className="w-7 h-7 rounded-full overflow-hidden object-cover"
+              />
+            </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-medium text-foreground">
@@ -222,7 +238,11 @@ const TableRow = memo(
           <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
         </td>
         <td className="px-4 py-3 text-sm text-muted-foreground">
-          {coin.fineAge ? coin.fineAge : (coin.createdAt ? getAgeFromTimestamp(coin.createdAt) : "N/A")}
+          {coin.fineAge
+            ? coin.fineAge
+            : coin.createdAt
+            ? getAgeFromTimestamp(coin.createdAt)
+            : "N/A"}
         </td>
         <td className="px-4 py-3">
           <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
@@ -255,7 +275,7 @@ const truncateMiddle = (address: string) => {
 const CreatorCell = memo(({ creatorAddress }: { creatorAddress?: string }) => {
   const { basename, loading, error } = useBasename(creatorAddress as `0x${string}`);
   // Log the full Basename object for debugging
-  console.log('[TokenDataTable] Basename:', { address: creatorAddress, basename, loading, error });
+  // console.log('[TokenDataTable] Basename:', { address: creatorAddress, basename, loading, error });
   if (!creatorAddress) return <span>N/A</span>;
   if (loading) return <span>Resolving...</span>;
   if (basename) return <span>{basename}</span>;

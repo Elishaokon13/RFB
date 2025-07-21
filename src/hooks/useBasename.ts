@@ -21,7 +21,7 @@ export function useBasename(address: Address | undefined) {
       setBasename(basenameCache.get(address) ?? null);
       setError(null);
       // Log cache hit
-      console.log('[useBasename] Cache hit:', { address, basename: basenameCache.get(address) });
+      // console.log('[useBasename] Cache hit:', { address, basename: basenameCache.get(address) });
       return;
     }
     setLoading(true);
@@ -31,7 +31,7 @@ export function useBasename(address: Address | undefined) {
         setBasename(name);
         setLoading(false);
         basenameCache.set(address, name);
-        console.log('[useBasename] Resolved:', { address, basename: name });
+        // console.log('[useBasename] Resolved:', { address, basename: name });
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : String(err));
@@ -44,7 +44,7 @@ export function useBasename(address: Address | undefined) {
 
   useEffect(() => {
     // Log whenever the basename, loading, or error changes
-    console.log('[useBasename] State:', { address, basename, loading, error });
+    // console.log('[useBasename] State:', { address, basename, loading, error });
   }, [address, basename, loading, error]);
 
   return { basename, loading, error };

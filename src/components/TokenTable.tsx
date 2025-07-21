@@ -4,14 +4,19 @@ import { useNavigate } from "react-router-dom";
 import { TokenDataTable } from "./TokenDataTable";
 import { RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState, useMemo, useRef } from "react";
-import { useBasename } from '@/hooks/useBasename';
-import { Address } from 'viem';
-import { Coin } from '@/hooks/useTopVolume24h';
-import { useDexScreenerTokens, DexScreenerPair } from '@/hooks/useDexScreener';
-import { useGetCoinsTopVolume24h } from '@/hooks/getCoinsTopVolume24h';
+import { useBasename } from "@/hooks/useBasename";
+import { Address } from "viem";
+import { Coin } from "@/hooks/useTopVolume24h";
+import { useDexScreenerTokens, DexScreenerPair } from "@/hooks/useDexScreener";
+import { useGetCoinsTopVolume24h } from "@/hooks/getCoinsTopVolume24h";
 
 // Filter options
-const topFilters = ["Most Valuable", "Top Gainers", "Top Volume 24h", "New Picks"];
+const topFilters = [
+  "Most Valuable",
+  "Top Gainers",
+  "Top Volume 24h",
+  "New Picks",
+];
 
 const ITEMS_PER_PAGE = 20;
 
@@ -44,22 +49,26 @@ export function TokenTable() {
   const newCoins = newPicksData?.coins || [];
 
   // Log the full API response for New Picks every time it changes
-  useEffect(() => {
-    if (newPicksData) {
-      console.log('[New Picks API Raw Response]', newPicksData);
-      if (Array.isArray(newPicksData.coins)) {
-        newPicksData.coins.forEach((coin, index) => {
-          console.log(`New Coin ${index + 1}:`);
-          console.log(`- Name: ${coin.name}`);
-          console.log(`- Created At: ${coin.createdAt}`);
-        });
-      }
-    }
-  }, [newPicksData]);
+  // useEffect(() => {
+  //   if (newPicksData) {
+  //     console.log('[New Picks API Raw Response]', newPicksData);
+  //     if (Array.isArray(newPicksData.coins)) {
+  //       newPicksData.coins.forEach((coin, index) => {
+  //         console.log(`New Coin ${index + 1}:`);
+  //         console.log(`- Name: ${coin.name}`);
+  //         console.log(`- Created At: ${coin.createdAt}`);
+  //       });
+  //     }
+  //   }
+  // }, [newPicksData]);
 
   // Auto-retry logic for New Picks on internal server error
   useEffect(() => {
-    if (activeTopFilter === "New Picks" && (newError?.toString().includes("500") || (!newCoins.length && !newLoading))) {
+    if (
+      activeTopFilter === "New Picks" &&
+      (newError?.toString().includes("500") ||
+        (!newCoins.length && !newLoading))
+    ) {
       if (!retryTimeout.current) {
         retryTimeout.current = setTimeout(() => {
           refetchNewPicks();
@@ -99,43 +108,16 @@ export function TokenTable() {
   // Pagination logic for 20 per page
   const paginatedCoins = useMemo(() => {
     if (activeTopFilter === "New Picks") {
-      // Sort by createdAt descending (latest first)
       const sorted = [...newCoins].sort((a, b) => {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
       });
-      // Map TopVolumeCoin to CoinWithImage with default values for missing fields
-      return sorted.map((c) => ({
-        id: c.id || '',
-        name: c.name || '',
-        symbol: c.symbol || '',
-        address: c.address || '',
-        totalSupply: c.totalSupply || '',
-        totalVolume: c.totalVolume || '',
-        volume24h: c.volume24h || '',
-        createdAt: c.createdAt || '',
-        creatorAddress: c.creatorAddress || '',
-        marketCap: c.marketCap || '',
-        chainId: c.chainId || 0,
-        uniqueHolders: c.uniqueHolders || 0,
-        image: c.image || '',
-        uniswapV3PoolAddress: '',
-        creatorEarnings: [],
-        marketCapDelta24h: '',
-        price: '',
-        priceChange24h: '',
-        imageUrl: c.image || '',
-        website: '',
-        twitter: '',
-        telegram: '',
-        discord: '',
-        metadata: {},
-        zoraComments: null,
-        mediaContent: undefined,
-        description: '',
-        // Add fine-grained age for New Picks
-        fineAge: c.createdAt ? getFineAgeFromTimestamp(c.createdAt) : '',
+      // Add missing properties to match Coin type
+      return sorted.map((coin) => ({
+        ...coin,
+        uniswapV3PoolAddress: "", // Add missing property
+        // Add other missing properties as needed
       }));
     }
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -143,15 +125,22 @@ export function TokenTable() {
   }, [coins, newCoins, currentPage, activeTopFilter]);
 
   // Get token addresses for the current page
-  const tokenAddresses = useMemo(() => paginatedCoins.map(c => c.address), [paginatedCoins]);
+  const tokenAddresses = useMemo(
+    () => paginatedCoins.map((c) => c.address),
+    [paginatedCoins]
+  );
 
   // Fetch token details from DexScreener
-  const { tokens: dexScreenerTokens, loading: dexLoading, error: dexError } = useDexScreenerTokens('8453', tokenAddresses);
+  const {
+    tokens: dexScreenerTokens,
+    loading: dexLoading,
+    error: dexError,
+  } = useDexScreenerTokens("8453", tokenAddresses);
 
   // Map address to DexScreenerPair for fast lookup
   const dexScreenerData = useMemo(() => {
     const map: Record<string, DexScreenerPair> = {};
-    dexScreenerTokens.forEach(pair => {
+    dexScreenerTokens.forEach((pair) => {
       if (pair.baseToken?.address) {
         map[pair.baseToken.address.toLowerCase()] = pair;
       }
@@ -186,17 +175,28 @@ export function TokenTable() {
   }, [activeTopFilter, refetchAll]);
 
   const loading = activeTopFilter === "New Picks" ? newLoading : isLoading;
-  const errorMsg = activeTopFilter === "New Picks" ? newError : error || dexError;
+  const errorMsg =
+    activeTopFilter === "New Picks" ? newError : error || dexError;
   const pageInfoToUse = pageInfo; // Not used for New Picks
 
-  const safeErrorMsg = typeof errorMsg === 'string' ? errorMsg : (errorMsg instanceof Error ? errorMsg.message : 'Unknown error');
+  const safeErrorMsg =
+    typeof errorMsg === "string"
+      ? errorMsg
+      : errorMsg instanceof Error
+      ? errorMsg.message
+      : "Unknown error";
 
   // Animated fire loading state for New Picks
   const fireLoading = (
     <div className="flex flex-col items-center justify-center py-16 animate-pulse">
       <span className="text-6xl animate-bounce">🔥</span>
-      <span className="mt-4 text-lg font-semibold text-primary animate-pulse">Loading the hottest new picks...</span>
-      <span className="mt-2 text-sm text-muted-foreground">Fetching the latest tokens. This may take a moment if the network is busy.</span>
+      <span className="mt-4 text-lg font-semibold text-primary animate-pulse">
+        Loading the hottest new picks...
+      </span>
+      <span className="mt-2 text-sm text-muted-foreground">
+        Fetching the latest tokens. This may take a moment if the network is
+        busy.
+      </span>
     </div>
   );
 
@@ -238,9 +238,7 @@ export function TokenTable() {
               disabled={loading}
               className="flex items-center gap-1 px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground"
             >
-              <RefreshCw
-                className={cn("w-4 h-4", loading && "animate-spin")}
-              />
+              <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
               Refresh
             </button>
           </div>
@@ -248,7 +246,9 @@ export function TokenTable() {
       </div>
 
       {/* Progressive Loading - Show data as soon as it's available */}
-      {activeTopFilter === "New Picks" && (newLoading || (!newCoins.length && !newError)) && fireLoading}
+      {activeTopFilter === "New Picks" &&
+        (newLoading || (!newCoins.length && !newError)) &&
+        fireLoading}
       {paginatedCoins.length > 0 && (
         <TokenDataTable
           coins={paginatedCoins}
@@ -265,25 +265,35 @@ export function TokenTable() {
       )}
 
       {/* Only show error if we have no data at all, except for New Picks which fails silently */}
-      {activeTopFilter !== "New Picks" && safeErrorMsg && paginatedCoins.length === 0 && (
-        <div className="flex items-center justify-center p-8">
-          <div className="text-center text-red-500">
-            <p>Error loading {activeTopFilter.toLowerCase()} coins:</p>
-            <p className="text-sm">{safeErrorMsg}</p>
+      {activeTopFilter !== "New Picks" &&
+        safeErrorMsg &&
+        paginatedCoins.length === 0 && (
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center text-red-500">
+              <p>Error loading {activeTopFilter.toLowerCase()} coins:</p>
+              <p className="text-sm">{safeErrorMsg}</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 }
 
-const CreatorRow = ({ address, count, idx }: { address: string; count: number; idx: number }) => {
+const CreatorRow = ({
+  address,
+  count,
+  idx,
+}: {
+  address: string;
+  count: number;
+  idx: number;
+}) => {
   const { basename } = useBasename(address as Address);
   return (
     <tr className="border-b border-border transition-colors duration-200 hover:bg-muted/50 animate-fade-in">
       <td className="px-4 py-3 text-sm text-muted-foreground">{idx + 1}</td>
       <td className="px-4 py-3 text-sm font-mono">{address}</td>
-      <td className="px-4 py-3 text-sm">{basename || '-'}</td>
+      <td className="px-4 py-3 text-sm">{basename || "-"}</td>
       <td className="px-4 py-3 text-sm">{count}</td>
     </tr>
   );
@@ -299,25 +309,40 @@ export function CreatorsTable({ coins }: { coins: Coin[] }) {
       });
     }
   });
-  const creators = Array.from(creatorsMap.entries()).map(([address, { count }]) => ({ address, count }));
+  const creators = Array.from(creatorsMap.entries()).map(
+    ([address, { count }]) => ({ address, count })
+  );
 
   return (
     <div className="w-full max-w-full overflow-x-auto sm:overflow-x-visible">
       <table className="min-w-full w-full max-w-full">
-            <thead className="bg-muted border-b border-border">
-              <tr className="text-left">
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">#</th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Creator</th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Basename</th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Tokens Created</th>
-              </tr>
-            </thead>
-            <tbody>
+        <thead className="bg-muted border-b border-border">
+          <tr className="text-left">
+            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              #
+            </th>
+            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Creator
+            </th>
+            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Basename
+            </th>
+            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Tokens Created
+            </th>
+          </tr>
+        </thead>
+        <tbody>
           {creators.map((creator, idx) => (
-            <CreatorRow key={creator.address} address={creator.address} count={creator.count} idx={idx} />
+            <CreatorRow
+              key={creator.address}
+              address={creator.address}
+              count={creator.count}
+              idx={idx}
+            />
           ))}
-            </tbody>
-          </table>
+        </tbody>
+      </table>
     </div>
   );
 }

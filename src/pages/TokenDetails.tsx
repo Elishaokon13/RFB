@@ -1,31 +1,46 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, RefreshCw, TrendingUp, TrendingDown, DollarSign, BarChart3, Activity, Globe, Calendar, Users } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useTrendingCoins, formatCoinData, Coin } from "@/hooks/useTopVolume24h";
-import { useDexScreenerTokens, DexScreenerPair, calculateFallbackPrice } from "@/hooks/useDexScreener";
-import { TokenDataTable } from "@/components/TokenDataTable";
-import { TradeToken } from "@/components/TradeToken";
+import {
+  ArrowLeft,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  BarChart3,
+} from "lucide-react";
+import { cn, truncateAddress } from "@/lib/utils";
+import {
+  useTrendingCoins,
+  formatCoinData,
+  useCoinDetails,
+} from "@/hooks/useTopVolume24h";
+import {
+  useDexScreenerTokens,
+  DexScreenerPair,
+  calculateFallbackPrice,
+} from "@/hooks/useDexScreener";
 import { tradeCoin, TradeParameters } from "@zoralabs/coins-sdk";
-import { createWalletClient, createPublicClient, http, parseEther } from "viem";
 import { base } from "viem/chains";
-import type { WalletClient, PublicClient } from 'viem';
-import { useGetCoins } from '@/hooks/getCoins';
-import { useGetCoinsLastTraded } from '@/hooks/getCoinsLastTraded';
-import { useGetCoinsMostValuable } from '@/hooks/getCoinsMostValuable';
-import { useGetCoinsTopGainers } from '@/hooks/getCoinsTopGainers';
-import { useGetCoinsLastTradedUnique } from '@/hooks/getCoinsLastTradedUnique';
-import { useGetCoinsTopVolume24h } from '@/hooks/getCoinsTopVolume24h';
-import type { Account } from 'viem/accounts';
-import { Identity } from '@coinbase/onchainkit/identity';
-import { SignInWithBaseButton, BasePayButton } from '@base-org/account-ui/react';
-import { createBaseAccountSDK, pay, getPaymentStatus } from '@base-org/account';
+import { getCoin } from "@zoralabs/coins-sdk";
+import type { WalletClient, PublicClient } from "viem";
+import type { Account } from "viem/accounts";
+import { Identity } from "@coinbase/onchainkit/identity";
+import {
+  SignInWithBaseButton,
+  BasePayButton,
+} from "@base-org/account-ui/react";
+import { createBaseAccountSDK, pay, getPaymentStatus } from "@base-org/account";
+import { useNumberFormatter } from "@/lib/formatNumber";
 
 // Chart period types
 type ChartPeriod = "1H" | "6H" | "24H" | "7D" | "1M";
 
 // Mock historical data generator (in real app, you'd fetch this from API)
-const generateHistoricalData = (period: ChartPeriod, currentPrice: number, priceChange: number) => {
+const generateHistoricalData = (
+  period: ChartPeriod,
+  currentPrice: number,
+  priceChange: number
+) => {
   const now = Date.now();
   let dataPoints = 50;
   let interval = 60000; // 1 minute default
@@ -55,20 +70,20 @@ const generateHistoricalData = (period: ChartPeriod, currentPrice: number, price
 
   const data = [];
   const volatility = Math.abs(priceChange) / 100;
-  
+
   for (let i = dataPoints; i >= 0; i--) {
-    const timestamp = now - (i * interval);
+    const timestamp = now - i * interval;
     const progress = i / dataPoints;
-    
+
     // Create realistic price movement
     const basePrice = currentPrice * (1 - (priceChange / 100) * progress);
     const randomFactor = 1 + (Math.random() - 0.5) * volatility * 0.1;
     const price = basePrice * randomFactor;
-    
+
     data.push({
       timestamp,
       price,
-      volume: Math.random() * 1000000 + 100000 // Random volume
+      volume: Math.random() * 1000000 + 100000, // Random volume
     });
   }
 
@@ -76,21 +91,28 @@ const generateHistoricalData = (period: ChartPeriod, currentPrice: number, price
 };
 
 // Interactive Price Chart Component
-const PriceChart = ({ 
-  dexScreenerData, 
-  period, 
-  onPeriodChange 
-}: { 
+const PriceChart = ({
+  dexScreenerData,
+  period,
+  onPeriodChange,
+}: {
   dexScreenerData: DexScreenerPair | undefined;
   period: ChartPeriod;
   onPeriodChange: (period: ChartPeriod) => void;
 }) => {
-  const [hoveredPoint, setHoveredPoint] = useState<{ price: number; timestamp: number } | null>(null);
+  const [hoveredPoint, setHoveredPoint] = useState<{
+    price: number;
+    timestamp: number;
+  } | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [chartContainer, setChartContainer] = useState<HTMLDivElement | null>(null);
+  const [chartContainer, setChartContainer] = useState<HTMLDivElement | null>(
+    null
+  );
 
   // DexScreener data is no longer used; use mock or prop values if needed
-  const currentPrice = dexScreenerData?.priceUsd ? parseFloat(dexScreenerData.priceUsd) : 0;
+  const currentPrice = dexScreenerData?.priceUsd
+    ? parseFloat(dexScreenerData.priceUsd)
+    : 0;
   const priceChange = dexScreenerData?.priceChange?.h24 || 0;
 
   const chartData = useMemo(() => {
@@ -106,7 +128,7 @@ const PriceChart = ({
   const padding = 60; // Increased padding for better labels
 
   // Calculate chart scales
-  const prices = chartData.map(d => d.price);
+  const prices = chartData.map((d) => d.price);
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
   const priceRange = maxPrice - minPrice;
@@ -114,37 +136,57 @@ const PriceChart = ({
 
   const xScale = (timestamp: number) => {
     if (chartData.length === 0) return padding;
-    const timeRange = chartData[chartData.length - 1].timestamp - chartData[0].timestamp;
-    return padding + ((timestamp - chartData[0].timestamp) / timeRange) * (chartWidth - 2 * padding);
+    const timeRange =
+      chartData[chartData.length - 1].timestamp - chartData[0].timestamp;
+    return (
+      padding +
+      ((timestamp - chartData[0].timestamp) / timeRange) *
+        (chartWidth - 2 * padding)
+    );
   };
 
   const yScale = (price: number) => {
-    return chartHeight - padding - ((price - (minPrice - pricePadding)) / (priceRange + 2 * pricePadding)) * (chartHeight - 2 * padding);
+    return (
+      chartHeight -
+      padding -
+      ((price - (minPrice - pricePadding)) / (priceRange + 2 * pricePadding)) *
+        (chartHeight - 2 * padding)
+    );
   };
 
   // Generate SVG path for the line
-  const linePath = chartData.map((point, index) => {
-    const x = xScale(point.timestamp);
-    const y = yScale(point.price);
-    return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-  }).join(' ');
+  const linePath = chartData
+    .map((point, index) => {
+      const x = xScale(point.timestamp);
+      const y = yScale(point.price);
+      return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+    })
+    .join(" ");
 
   // Generate area path for fill
-  const areaPath = chartData.map((point, index) => {
-    const x = xScale(point.timestamp);
-    const y = yScale(point.price);
-    return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-  }).join(' ') + ` L ${xScale(chartData[chartData.length - 1]?.timestamp || 0)} ${chartHeight - padding} L ${xScale(chartData[0]?.timestamp || 0)} ${chartHeight - padding} Z`;
+  const areaPath =
+    chartData
+      .map((point, index) => {
+        const x = xScale(point.timestamp);
+        const y = yScale(point.price);
+        return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+      })
+      .join(" ") +
+    ` L ${xScale(chartData[chartData.length - 1]?.timestamp || 0)} ${
+      chartHeight - padding
+    } L ${xScale(chartData[0]?.timestamp || 0)} ${chartHeight - padding} Z`;
 
   const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
-    
+
     // Find closest data point
     const closestPoint = chartData.reduce((closest, point) => {
       const pointX = xScale(point.timestamp);
       const distance = Math.abs(x - pointX);
-      return distance < Math.abs(x - xScale(closest.timestamp)) ? point : closest;
+      return distance < Math.abs(x - xScale(closest.timestamp))
+        ? point
+        : closest;
     });
 
     setHoveredPoint(closestPoint);
@@ -165,15 +207,24 @@ const PriceChart = ({
     const date = new Date(timestamp);
     switch (period) {
       case "1H":
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
       case "6H":
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
       case "24H":
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
       case "7D":
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        return date.toLocaleDateString([], { month: "short", day: "numeric" });
       case "1M":
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        return date.toLocaleDateString([], { month: "short", day: "numeric" });
     }
   };
 
@@ -205,7 +256,7 @@ const PriceChart = ({
       </div>
 
       {/* Chart Container */}
-      <div 
+      <div
         ref={setChartContainer}
         className="relative bg-muted/10 rounded-lg border border-border p-6 w-full"
         style={{ minHeight: `${chartHeight + 40}px` }}
@@ -222,8 +273,19 @@ const PriceChart = ({
           >
             {/* Grid Lines */}
             <defs>
-              <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
-                <path d="M 60 0 L 0 0 0 60" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-border opacity-20" />
+              <pattern
+                id="grid"
+                width="60"
+                height="60"
+                patternUnits="userSpaceOnUse"
+              >
+                <path
+                  d="M 60 0 L 0 0 0 60"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="0.5"
+                  className="text-border opacity-20"
+                />
               </pattern>
             </defs>
             <rect width="100%" height="100%" fill="url(#grid)" />
@@ -231,8 +293,12 @@ const PriceChart = ({
             {/* Price Labels */}
             <g className="text-xs text-gray-500">
               {[0, 0.2, 0.4, 0.6, 0.8, 1].map((ratio) => {
-                const price = minPrice - pricePadding + (priceRange + 2 * pricePadding) * ratio;
-                const y = chartHeight - padding - (chartHeight - 2 * padding) * ratio;
+                const price =
+                  minPrice -
+                  pricePadding +
+                  (priceRange + 2 * pricePadding) * ratio;
+                const y =
+                  chartHeight - padding - (chartHeight - 2 * padding) * ratio;
                 return (
                   <g key={ratio}>
                     <line
@@ -244,7 +310,12 @@ const PriceChart = ({
                       strokeWidth="0.5"
                       className="text-gray-300 opacity-40"
                     />
-                    <text x={padding - 8} y={y + 3} textAnchor="end" className="text-xs font-medium text-gray-500">
+                    <text
+                      x={padding - 8}
+                      y={y + 3}
+                      textAnchor="end"
+                      className="text-xs font-medium text-gray-500"
+                    >
                       {formatPrice(price)}
                     </text>
                   </g>
@@ -270,7 +341,12 @@ const PriceChart = ({
                       strokeWidth="0.5"
                       className="text-gray-300 opacity-40"
                     />
-                    <text x={x} y={chartHeight - padding + 18} textAnchor="middle" className="text-xs text-gray-500">
+                    <text
+                      x={x}
+                      y={chartHeight - padding + 18}
+                      textAnchor="middle"
+                      className="text-xs text-gray-500"
+                    >
                       {formatTime(point.timestamp)}
                     </text>
                   </g>
@@ -328,13 +404,41 @@ const PriceChart = ({
             {/* Gradients */}
             <defs>
               <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="currentColor" className="text-primary" stopOpacity="0.6" />
-                <stop offset="100%" stopColor="currentColor" className="text-primary" stopOpacity="0" />
+                <stop
+                  offset="0%"
+                  stopColor="currentColor"
+                  className="text-primary"
+                  stopOpacity="0.6"
+                />
+                <stop
+                  offset="100%"
+                  stopColor="currentColor"
+                  className="text-primary"
+                  stopOpacity="0"
+                />
               </linearGradient>
-              <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="currentColor" className="text-primary" />
-                <stop offset="50%" stopColor="currentColor" className="text-blue-500" />
-                <stop offset="100%" stopColor="currentColor" className="text-purple-500" />
+              <linearGradient
+                id="lineGradient"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="0%"
+              >
+                <stop
+                  offset="0%"
+                  stopColor="currentColor"
+                  className="text-primary"
+                />
+                <stop
+                  offset="50%"
+                  stopColor="currentColor"
+                  className="text-blue-500"
+                />
+                <stop
+                  offset="100%"
+                  stopColor="currentColor"
+                  className="text-purple-500"
+                />
               </linearGradient>
             </defs>
           </svg>
@@ -343,7 +447,9 @@ const PriceChart = ({
             <div className="text-center">
               <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
               <p className="text-muted-foreground">No price data available</p>
-              <p className="text-sm text-muted-foreground">Check back later for updates</p>
+              <p className="text-sm text-muted-foreground">
+                Check back later for updates
+              </p>
             </div>
           </div>
         )}
@@ -355,7 +461,7 @@ const PriceChart = ({
             style={{
               left: `${xScale(hoveredPoint.timestamp)}px`,
               top: `${yScale(hoveredPoint.price) - 80}px`,
-              transform: 'translateX(-50%)'
+              transform: "translateX(-50%)",
             }}
           >
             <div className="text-sm font-medium text-foreground">
@@ -378,11 +484,14 @@ const PriceChart = ({
             </div>
             <div>
               <span className="text-muted-foreground">Change: </span>
-              <span className={cn(
-                "font-semibold",
-                priceChange >= 0 ? "text-green-600" : "text-red-600"
-              )}>
-                {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
+              <span
+                className={cn(
+                  "font-semibold",
+                  priceChange >= 0 ? "text-green-600" : "text-red-600"
+                )}
+              >
+                {priceChange >= 0 ? "+" : ""}
+                {priceChange.toFixed(2)}%
               </span>
             </div>
             <div>
@@ -402,7 +511,15 @@ const PriceChart = ({
 };
 
 // --- Trade Hook ---
-function useTradeCoin({ account, walletClient, publicClient }: { account: Account | null, walletClient: WalletClient | null, publicClient: PublicClient | null }) {
+function useTradeCoin({
+  account,
+  walletClient,
+  publicClient,
+}: {
+  account: Account | null;
+  walletClient: WalletClient | null;
+  publicClient: PublicClient | null;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<unknown>(null);
@@ -412,8 +529,14 @@ function useTradeCoin({ account, walletClient, publicClient }: { account: Accoun
     setError(null);
     setReceipt(null);
     try {
-      if (!account || !walletClient || !publicClient) throw new Error("Wallet not connected");
-      const result: unknown = await tradeCoin({ tradeParameters, walletClient, account, publicClient });
+      if (!account || !walletClient || !publicClient)
+        throw new Error("Wallet not connected");
+      const result: unknown = await tradeCoin({
+        tradeParameters,
+        walletClient,
+        account,
+        publicClient,
+      });
       setReceipt(result);
       return result;
     } catch (err: unknown) {
@@ -428,92 +551,107 @@ function useTradeCoin({ account, walletClient, publicClient }: { account: Accoun
 }
 
 export default function TokenDetails() {
-  const { address } = useParams<{ address: string }>();
+  const { address: rawAddress } = useParams<{ address: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("24H");
 
-  // Fetch token data from Zora SDK
-  const {
-    coins,
-    loading,
-    error,
-    refetch,
-    pageInfo,
-    loadNextPage,
-    goToPage,
-    currentPage,
-  } = useTrendingCoins(1000); // Fetch more to find our token
+  const { formatNumber } = useNumberFormatter();
 
-  // Find the specific token
-  const token = coins.find(coin => coin.address === address);
-  
-  // Debug: log the full token object
-  console.log('[TokenDetails] Full token object:', token);
+  // Stabilize the address to prevent unnecessary re-renders
+  const address = useMemo(() => {
+    return rawAddress || null;
+  }, [rawAddress]);
+
+  // Debug logging for address changes
+  const prevAddress = useRef(address);
+  useEffect(() => {
+    if (prevAddress.current !== address) {
+      console.log(
+        "[TokenDetails] Address changed from",
+        prevAddress.current,
+        "to",
+        address
+      );
+      prevAddress.current = address;
+    }
+  }, [address]);
+
+  // Fetch coin details using the proper hook
+  const { coin: token, loading, error } = useCoinDetails(address);
 
   // Fetch DexScreener data for this token
-  const { tokens: dexTokens, loading: dexLoading, error: dexError } = useDexScreenerTokens('8453', address ? [address] : []);
-  const dexData: DexScreenerPair | undefined = dexTokens && dexTokens.length > 0 ? dexTokens[0] : undefined;
+  const dexScreenerAddresses = rawAddress as string;
 
-  // Get related tokens (exclude current token)
-  const relatedTokens = coins.filter(coin => coin.address !== address).slice(0, 10);
+  const {
+    tokens: dexTokens,
+    loading: dexLoading,
+    error: dexError,
+  } = useDexScreenerTokens("8453", rawAddress);
 
-  const handleRefresh = () => {
-    refetch();
-  };
+  const dexData: DexScreenerPair | undefined = useMemo(
+    () => (dexTokens && dexTokens.length > 0 ? dexTokens[0] : undefined),
+    [dexTokens]
+  );
 
-  const handleBack = () => {
+  console.log(dexData, rawAddress, "dexdata");
+
+  const handleBack = useCallback(() => {
     navigate(-1);
-  };
+  }, [navigate]);
 
-  const handleCoinClick = (coinAddress: string) => {
-    navigate(`/token/${coinAddress}`);
-  };
+  const handleCoinClick = useCallback(
+    (coinAddress: string) => {
+      navigate(`/token/${coinAddress}`);
+    },
+    [navigate]
+  );
 
   // Base Account SDK state
   const [isSignedIn, setIsSignedIn] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState('');
-  const [paymentId, setPaymentId] = useState('');
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
+  const [paymentStatus, setPaymentStatus] = useState("");
+  const [paymentId, setPaymentId] = useState("");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const toggleTheme = useCallback(
+    () => setTheme((prev) => (prev === "light" ? "dark" : "light")),
+    []
+  );
 
   // Trading UI state
-  const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
-  const [tradeAmount, setTradeAmount] = useState('');
+  const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
+  const [tradeAmount, setTradeAmount] = useState("");
   const [slippage, setSlippage] = useState(0.5); // Default slippage
 
-  // Fetch Zora Protocol 24h change from all relevant hooks
-  const { data: newCoinsData } = useGetCoins({ count: 100 });
-  const { data: lastTradedCoinsData } = useGetCoinsLastTraded({ count: 100 });
-  const { data: mostValuableCoinsData } = useGetCoinsMostValuable({ count: 100 });
-  const { data: topGainersCoinsData } = useGetCoinsTopGainers({ count: 100 });
-  const { data: lastTradedUniqueCoinsData } = useGetCoinsLastTradedUnique({ count: 100 });
-  const { data: topVolumeCoinsData } = useGetCoinsTopVolume24h({ count: 100 });
+  // Price from DexScreener
+  // const price = useMemo(
+  //   () => (dexData && dexData.priceUsd ? parseFloat(dexData.priceUsd) : null),
+  //   [dexData]
+  // );
 
-  const newCoins = newCoinsData?.coins || [];
-  const lastTradedCoins = lastTradedCoinsData?.coins || [];
-  const mostValuableCoins = mostValuableCoinsData?.coins || [];
-  const topGainersCoins = topGainersCoinsData?.coins || [];
-  const lastTradedUniqueCoins = lastTradedUniqueCoinsData?.coins || [];
-  const topVolumeCoins = topVolumeCoinsData?.coins || [];
+  const price = Number(token?.marketCap) / Number(token?.totalSupply);
 
-  // Helper to get 24h change from all sources
-  function get24hChange(address: string | undefined): string | null {
-    if (!address) return null;
-    const sources = [
-      ...newCoins,
-      ...lastTradedCoins,
-      ...mostValuableCoins,
-      ...topGainersCoins,
-      ...lastTradedUniqueCoins,
-      ...topVolumeCoins,
-    ];
-    const found = sources.find(c => c.address?.toLowerCase() === address.toLowerCase());
-    if (found && found.marketCapDelta24h !== undefined) {
-      const val = parseFloat(found.marketCapDelta24h || '');
-      if (!isNaN(val)) return val.toFixed(2) + '%';
-    }
-    return null;
+  // Early return if no address (before hooks that depend on it)
+  if (!address) {
+    return (
+      <div className="flex-1 bg-background">
+        <div className="flex items-center justify-center p-8">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              Invalid Token Address
+            </h2>
+            <p className="text-muted-foreground mb-4">
+              No token address provided in the URL.
+            </p>
+            <button
+              onClick={handleBack}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Go Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (loading) {
@@ -534,8 +672,12 @@ export default function TokenDetails() {
       <div className="flex-1 bg-background">
         <div className="flex items-center justify-center p-8">
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-foreground mb-2">Token Not Found</h2>
-            <p className="text-muted-foreground mb-4">The token you're looking for doesn't exist or has been removed.</p>
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              Token Not Found
+            </h2>
+            <p className="text-muted-foreground mb-4">
+              The token you're looking for doesn't exist or has been removed.
+            </p>
             <button
               onClick={handleBack}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
@@ -551,11 +693,6 @@ export default function TokenDetails() {
 
   const formattedToken = formatCoinData(token);
 
-  // Price from DexScreener
-  const price = dexData && dexData.priceUsd ? parseFloat(dexData.priceUsd) : null;
-  // 24h change from Zora hooks
-  const variation24h = get24hChange(token.address);
-
   return (
     <div className="flex-1 bg-background">
       {/* Header */}
@@ -569,24 +706,32 @@ export default function TokenDetails() {
               <ArrowLeft className="w-4 h-4" />
               Back
             </button>
-            
+
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-primary" />
+              <div className="w-10 h-10 bg-primary/10 rounded-lg overflow-hidden object cover flex items-center justify-center">
+                <img src={token.mediaContent.previewImage.medium} alt="" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-foreground">{token.name || "Unknown Token"}</h1>
-                <p className="text-sm text-muted-foreground">{token.symbol || "N/A"}</p>
+                <h1 className="text-xl font-semibold text-foreground">
+                  {token.name || "Unknown Token"}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  {token.symbol || "N/A"}
+                </p>
               </div>
             </div>
           </div>
 
           <button
-            onClick={handleRefresh}
             disabled={loading || dexLoading}
             className="flex items-center gap-1 px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground"
           >
-            <RefreshCw className={cn("w-4 h-4", (loading || dexLoading) && "animate-spin")} />
+            <RefreshCw
+              className={cn(
+                "w-4 h-4",
+                (loading || dexLoading) && "animate-spin"
+              )}
+            />
             Refresh
           </button>
         </div>
@@ -602,56 +747,39 @@ export default function TokenDetails() {
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Current Price</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {price !== null ? `$${price.toFixed(6)}` : (formattedToken.formattedPrice || calculateFallbackPrice(token.marketCap, token.totalSupply))}
-                  {variation24h !== null && (
-                    <span className={cn("ml-2 text-base", parseFloat(variation24h) >= 0 ? "text-gain" : "text-loss")}>{variation24h}</span>
-                  )}
+                  {price !== null
+                    ? `$${price.toFixed(4)}`
+                    : formattedToken.formattedPrice ||
+                      calculateFallbackPrice(
+                        token.marketCap,
+                        token.totalSupply
+                      )}
                 </p>
-                {variation24h !== null && (
-                  <div className="flex items-center gap-2">
-                    {parseFloat(variation24h) >= 0 ? (
-                      <TrendingUp className="w-4 h-4 text-gain" />
-                    ) : (
-                      <TrendingDown className="w-4 h-4 text-loss" />
-                    )}
-                    <span className={cn("text-sm font-medium", 
-                      parseFloat(variation24h) >= 0 ? "text-gain" : "text-loss"
-                    )}>
-                      {variation24h}
-                    </span>
-                  </div>
-                )}
               </div>
 
               {/* Market Cap */}
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Market Cap</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {formattedToken.formattedMarketCap}
+                  ${formatNumber(token.marketCap)}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {/* No longer using DexScreener data for liquidity */}
-                  N/A
-                </p>
+                {/* <p className="text-sm text-muted-foreground">N/A</p> */}
               </div>
 
               {/* Volume */}
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">24h Volume</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {dexData && dexData.volume?.h24 !== undefined ? dexData.volume.h24.toLocaleString() : 'N/A'}
+                  ${formatNumber(token.volume24h)}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {/* No longer using DexScreener data for transactions */}
-                  N/A
-                </p>
+                {/* <p className="text-sm text-muted-foreground">N/A</p> */}
               </div>
             </div>
           </div>
 
           {/* Interactive Price Chart */}
           <div className="bg-card border border-border rounded-lg p-6">
-            <PriceChart 
+            <PriceChart
               dexScreenerData={dexData}
               period={chartPeriod}
               onPeriodChange={setChartPeriod}
@@ -660,50 +788,72 @@ export default function TokenDetails() {
 
           {/* Token Information */}
           <div className="bg-card border border-border rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Token Information</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-4">
+              Token Information
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Token Address</span>
-                  <span className="text-sm font-mono text-foreground">{token.address}</span>
+                  <span className="text-sm text-muted-foreground">
+                    Token Address
+                  </span>
+                  <span className="text-sm font-mono text-foreground">
+                    {truncateAddress(token.address)}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Total Supply</span>
-                  <span className="text-sm text-foreground">{formattedToken.formattedTotalSupply}</span>
+                  <span className="text-sm text-muted-foreground">
+                    Total Supply
+                  </span>
+                  <span className="text-sm text-foreground">
+                    {formattedToken.formattedTotalSupply}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Holders</span>
-                  <span className="text-sm text-foreground">{token.uniqueHolders || "N/A"}</span>
+                  <span className="text-sm text-foreground">
+                    {token.uniqueHolders || "N/A"}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Created</span>
                   <span className="text-sm text-foreground">
-                    {token.createdAt ? new Date(token.createdAt).toLocaleDateString() : "N/A"}
+                    {token.createdAt
+                      ? new Date(token.createdAt).toLocaleDateString()
+                      : "N/A"}
                   </span>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Chain</span>
                   <span className="text-sm text-foreground">Base</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Contract Type</span>
+                  <span className="text-sm text-muted-foreground">
+                    Contract Type
+                  </span>
                   <span className="text-sm text-foreground">ERC-20</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Creator</span>
                   <span className="text-sm text-foreground">
-                    {typeof token.creatorAddress === 'string' ? (
-                      <Identity address={token.creatorAddress as `0x${string}`}>{null}</Identity>
-                    ) : 'N/A'}
+                    {typeof token.creatorAddress === "string" ? (
+                      <Identity address={token.creatorAddress as `0x${string}`}>
+                        {null}
+                      </Identity>
+                    ) : (
+                      "N/A"
+                    )}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Age</span>
                   <span className="text-sm text-foreground">
-                    {token.createdAt ? getAgeFromTimestamp(token.createdAt) : "N/A"}
+                    {token.createdAt
+                      ? getAgeFromTimestamp(token.createdAt)
+                      : "N/A"}
                   </span>
                 </div>
               </div>
@@ -716,30 +866,42 @@ export default function TokenDetails() {
           {/* Base Account UI SDK Demo */}
           <div className="bg-card border border-border rounded-lg p-6 flex flex-col items-center">
             <button onClick={toggleTheme} className="mb-4 self-end text-lg">
-              {theme === 'light' ? '🌙' : '☀️'}
+              {theme === "light" ? "🌙" : "☀️"}
             </button>
-            <h3 className="text-lg font-semibold text-foreground mb-2">Base Account</h3>
-            <p className="text-sm text-muted-foreground mb-4">Experience seamless crypto payments</p>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Base Account
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Experience seamless crypto payments
+            </p>
             <div className="flex flex-col gap-4 w-full items-center">
-              <SignInWithBaseButton 
+              <SignInWithBaseButton
                 align="center"
                 variant="solid"
                 colorScheme={theme}
-                onClick={() => setIsSignedIn(true)} // Simulate sign-in
+                onClick={() => setIsSignedIn(true)}
               />
               {isSignedIn && (
-                <div className="text-green-600 text-sm">✅ Connected to Base Account</div>
+                <div className="text-green-600 text-sm">
+                  ✅ Connected to Base Account
+                </div>
               )}
-              <BasePayButton 
+              <BasePayButton
                 colorScheme={theme}
                 onClick={() => {
-                  setPaymentId('mock-payment-id');
-                  setPaymentStatus('Payment initiated! Click "Check Status" to see the result.');
-                }} // Simulate payment
+                  setPaymentId("mock-payment-id");
+                  setPaymentStatus(
+                    'Payment initiated! Click "Check Status" to see the result.'
+                  );
+                }}
               />
               {paymentId && (
-                <button 
-                  onClick={() => setPaymentStatus(`Payment status: Mock Payment ${paymentId}`)}
+                <button
+                  onClick={() =>
+                    setPaymentStatus(
+                      `Payment status: Mock Payment ${paymentId}`
+                    )
+                  }
                   className="px-4 py-2 rounded bg-muted text-foreground border mt-2"
                 >
                   Check Payment Status
@@ -756,57 +918,62 @@ export default function TokenDetails() {
           {/* Trading Coins - only show if Base Account is connected */}
           {isSignedIn && (
             <div className="bg-card border border-border rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Trading Coins</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-4">
+                Trading Coins
+              </h3>
               <div>
-                <div className="mb-2 text-sm text-muted-foreground">Connected: <span className="font-mono">Base Account</span></div>
+                <div className="mb-2 text-sm text-muted-foreground">
+                  Connected: <span className="font-mono">Base Account</span>
+                </div>
                 <div className="flex gap-2 mb-2">
                   <button
-                    className={`px-3 py-1 rounded ${tradeType === "buy" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+                    className={`px-3 py-1 rounded ${
+                      tradeType === "buy"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
+                    }`}
                     onClick={() => setTradeType("buy")}
-                  >Buy</button>
+                  >
+                    Buy
+                  </button>
                   <button
-                    className={`px-3 py-1 rounded ${tradeType === "sell" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+                    className={`px-3 py-1 rounded ${
+                      tradeType === "sell"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
+                    }`}
                     onClick={() => setTradeType("sell")}
-                  >Sell</button>
+                  >
+                    Sell
+                  </button>
                 </div>
                 <input
                   type="number"
                   min="0"
                   step="any"
-                  placeholder={tradeType === "buy" ? "ETH amount" : `${token.symbol} amount`}
+                  placeholder={
+                    tradeType === "buy"
+                      ? "ETH amount"
+                      : `${token.symbol} amount`
+                  }
                   value={tradeAmount}
-                  onChange={e => setTradeAmount(e.target.value)}
+                  onChange={(e) => setTradeAmount(e.target.value)}
                   className="w-full mb-2 px-3 py-2 border rounded"
                 />
                 <button
                   className="bg-primary text-primary-foreground px-4 py-2 rounded-lg w-full"
                   disabled={!tradeAmount || Number(tradeAmount) <= 0}
-                  onClick={() => alert('Trading logic not implemented.')}
+                  onClick={() => alert("Trading logic not implemented.")}
                 >
-                  {tradeType === "buy" ? `Buy ${token.symbol}` : `Sell ${token.symbol}`}
+                  {tradeType === "buy"
+                    ? `Buy ${token.symbol}`
+                    : `Sell ${token.symbol}`}
                 </button>
               </div>
             </div>
           )}
         </div>
       </div>
-
-       {/* Related Tokens Section */}
-       {/* <div className="bg-card border border-border rounded-lg p-6">
-         <h2 className="text-lg font-semibold text-foreground mb-4">Related Tokens</h2>
-         <TokenDataTable
-           coins={relatedTokens}
-           dexScreenerData={null} // No longer passing DexScreener data
-           currentPage={1}
-           loading={false} // No longer loading related DexScreener data
-           pageInfo={null}
-           onCoinClick={handleCoinClick}
-           onLoadNextPage={() => {}}
-           onGoToPage={() => {}}
-           showPagination={false}
-           itemsPerPage={10}
-         />
-       </div> */}
     </div>
   );
 }
@@ -823,4 +990,4 @@ const getAgeFromTimestamp = (timestamp: string) => {
   if (diffInHours < 24) return `${diffInHours}h`;
   const days = Math.floor(diffInHours / 24);
   return `${days}d`;
-}; 
+};
