@@ -4,7 +4,7 @@ import Trending from "@/components/Trending";
 
 const Index = () => {
   return (
-    <div className="w-full max-w-7xl mx-auto">
+    <div className="w-full mx-auto">
       <Trending />
       <TokenTable />
       {/* <Footer /> */}

@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import { WagmiProvider } from 'wagmi';
 import { wagmiConfig } from './wagmi';
+import WhaleTrackerPage from './pages/WhaleTrackerPage';
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/token/:address" element={<TokenDetails />} />
               <Route path="/creators" element={<Creators />} />
+              <Route path="/whale-tracker" element={<WhaleTrackerPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Route>

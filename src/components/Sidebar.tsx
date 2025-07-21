@@ -36,6 +36,7 @@ export function Sidebar() {
     { icon: TrendingUp, label: "Live Activity", path: "/" },
     { icon: Zap, label: "Trending", path: "/trending" },
     { icon: Users, label: "Creators", path: "/creators" },
+    { icon: BarChart3, label: "Whale Tracker", path: "/whale-tracker" },
     // { icon: BarChart3, label: "Top Creators", active: false },
     // { icon: Wallet, label: "Portfolio", active: false },
     // { icon: Settings, label: "Advertise", active: false },
