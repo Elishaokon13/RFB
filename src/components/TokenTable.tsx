@@ -107,8 +107,8 @@ export function TokenTable() {
   // Save active filter to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem("activeTopFilter", activeTopFilter);
-    setCurrentPage(1);
-  }, [activeTopFilter]);
+    if (currentPage !== 1) setCurrentPage(1);
+  }, [activeTopFilter, currentPage]);
 
   // Helper for fine-grained age (seconds/minutes/hours/days)
   function getFineAgeFromTimestamp(timestamp: string) {
@@ -334,16 +334,13 @@ const CreatorRow = ({
   idx: number;
 }) => {
   const { profile } = useZoraProfile(address);
-  const {balances, pageInfo, loading, error } =
+  const { balances, pageInfo, loading, error } =
     useZoraProfileBalances(address);
-  
-  const { sorted, totalPosts } = useUserBalances(
-    address
-  );
-  
+
+  const { sorted, totalPosts } = useUserBalances(address);
+
   // console.log(balances);
   // console.log('sorted', sorted, totalPosts);
-  
 
   // Robust fallback for USD value, similar to image logic
   const getUsdValue = (b: unknown): string | number => {

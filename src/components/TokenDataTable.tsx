@@ -1,6 +1,7 @@
 import { RefreshCw } from "lucide-react";
 import { cn, truncateAddress } from "@/lib/utils";
 import { formatCoinData, Coin } from "@/hooks/useTopVolume24h";
+import moment from 'moment'
 import {
   formatDexScreenerPrice,
   DexScreenerPair,
@@ -262,7 +263,7 @@ const TableRow = memo(
           {coin.fineAge
             ? coin.fineAge
             : coin.createdAt
-            ? getAgeFromTimestamp(coin.createdAt)
+              ?  moment(coin.createdAt).startOf('day').fromNow() 
             : "N/A"}
         </td>
         <td className="px-4 py-3">
