@@ -1,14 +1,21 @@
-import React from 'react';
-import { useGetCoinsTopGainers, formatPercentChange, formatMarketCap, formatVolume } from '../hooks/getCoinsTopGainers';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Skeleton } from './ui/skeleton';
+import React from "react";
+import {
+  useGetCoinsTopGainers,
+  formatPercentChange,
+  formatMarketCap,
+  formatVolume,
+} from "../hooks/getCoinsTopGainers";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Badge } from "./ui/badge";
+import { Skeleton } from "./ui/skeleton";
 
 interface TopGainersTableProps {
   count?: number;
 }
 
-export const TopGainersTable: React.FC<TopGainersTableProps> = ({ count = 10 }) => {
+export const TopGainersTable: React.FC<TopGainersTableProps> = ({
+  count = 10,
+}) => {
   const { data, isLoading, error } = useGetCoinsTopGainers({ count });
 
   if (isLoading) {
@@ -61,7 +68,10 @@ export const TopGainersTable: React.FC<TopGainersTableProps> = ({ count = 10 }) 
       <CardContent>
         <div className="space-y-4">
           {data?.coins?.map((coin, index) => (
-            <div key={coin.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+            <div
+              key={coin.id}
+              className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+            >
               <div className="flex items-center space-x-3">
                 <div className="flex items-center justify-center w-8 h-8 bg-primary/10 rounded-full">
                   <span className="text-sm font-medium text-primary">
@@ -70,10 +80,12 @@ export const TopGainersTable: React.FC<TopGainersTableProps> = ({ count = 10 }) 
                 </div>
                 <div>
                   <div className="font-medium">{coin.name}</div>
-                  <div className="text-sm text-muted-foreground">{coin.symbol}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {coin.symbol}
+                  </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-4">
                 <div className="text-right">
                   <div className="text-sm font-medium">
@@ -83,7 +95,7 @@ export const TopGainersTable: React.FC<TopGainersTableProps> = ({ count = 10 }) 
                     Market Cap
                   </div>
                 </div>
-                
+
                 <div className="text-right">
                   <div className="text-sm font-medium">
                     {formatVolume(coin.volume24h)}
@@ -92,7 +104,7 @@ export const TopGainersTable: React.FC<TopGainersTableProps> = ({ count = 10 }) 
                     Volume 24h
                   </div>
                 </div>
-                
+
                 <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
                   +{formatPercentChange(coin.marketCapDelta24h)}
                 </Badge>
@@ -100,7 +112,7 @@ export const TopGainersTable: React.FC<TopGainersTableProps> = ({ count = 10 }) 
             </div>
           ))}
         </div>
-        
+
         {data?.pagination?.cursor && (
           <div className="mt-4 text-center">
             <p className="text-sm text-muted-foreground">
@@ -111,4 +123,4 @@ export const TopGainersTable: React.FC<TopGainersTableProps> = ({ count = 10 }) 
       </CardContent>
     </Card>
   );
-}; 
+};

@@ -9,7 +9,11 @@ import { Address } from "viem";
 import { Coin } from "@/hooks/useTopVolume24h";
 import { useDexScreenerTokens, DexScreenerPair } from "@/hooks/useDexScreener";
 import { useGetCoinsTopVolume24h } from "@/hooks/getCoinsTopVolume24h";
-import { useZoraProfile, useZoraProfileBalances, getProfileImageSmall } from "@/hooks/useZoraProfile";
+import {
+  useZoraProfile,
+  useZoraProfileBalances,
+  getProfileImageSmall,
+} from "@/hooks/useZoraProfile";
 
 // Filter options
 const topFilters = [
@@ -124,22 +128,22 @@ export function TokenTable() {
   const ensureCoinWithImage = (coin: unknown): CoinWithImage => {
     const c = coin as Partial<CoinWithImage>;
     return {
-      id: c.id ?? c.address ?? '',
-      name: c.name ?? '',
-      symbol: c.symbol ?? '',
-      address: c.address ?? '',
-      description: c.description ?? '',
-      totalSupply: c.totalSupply ?? '',
-      totalVolume: c.totalVolume ?? '',
-      volume24h: c.volume24h ?? '',
-      createdAt: c.createdAt ?? '',
-      creatorAddress: c.creatorAddress ?? '',
-      marketCap: c.marketCap ?? '',
-      marketCapDelta24h: c.marketCapDelta24h ?? '',
+      id: c.id ?? c.address ?? "",
+      name: c.name ?? "",
+      symbol: c.symbol ?? "",
+      address: c.address ?? "",
+      description: c.description ?? "",
+      totalSupply: c.totalSupply ?? "",
+      totalVolume: c.totalVolume ?? "",
+      volume24h: c.volume24h ?? "",
+      createdAt: c.createdAt ?? "",
+      creatorAddress: c.creatorAddress ?? "",
+      marketCap: c.marketCap ?? "",
+      marketCapDelta24h: c.marketCapDelta24h ?? "",
       chainId: c.chainId ?? 8453,
       uniqueHolders: c.uniqueHolders ?? 0,
-      uniswapV3PoolAddress: c.uniswapV3PoolAddress ?? '',
-      imageUrl: c.imageUrl ?? '',
+      uniswapV3PoolAddress: c.uniswapV3PoolAddress ?? "",
+      imageUrl: c.imageUrl ?? "",
       mediaContent: c.mediaContent ?? {},
       fineAge: c.fineAge,
     };
@@ -329,25 +333,35 @@ const CreatorRow = ({
   idx: number;
 }) => {
   const { profile } = useZoraProfile(address);
-  const { balances, pageInfo, loading, error } = useZoraProfileBalances(address);
+  const { balances, pageInfo, loading, error } =
+    useZoraProfileBalances(address);
   // Debug: Log the raw API response for balances
-  console.log('[CreatorRow] useZoraProfileBalances response:', { balances, pageInfo, loading, error });
+  console.log("[CreatorRow] useZoraProfileBalances response:", {
+    balances,
+    pageInfo,
+    loading,
+    error,
+  });
   // Robust fallback for USD value, similar to image logic
   const getUsdValue = (b: unknown): string | number => {
-    if (typeof b === 'object' && b !== null) {
+    if (typeof b === "object" && b !== null) {
       // Check for amount.amountUsd
-      if ('amount' in b) {
+      if ("amount" in b) {
         const amount = (b as { amount?: unknown }).amount;
-        if (typeof amount === 'object' && amount !== null && 'amountUsd' in amount) {
+        if (
+          typeof amount === "object" &&
+          amount !== null &&
+          "amountUsd" in amount
+        ) {
           return (amount as { amountUsd?: string }).amountUsd ?? 0;
         }
       }
       // Check for valueUsd
-      if ('valueUsd' in b) {
+      if ("valueUsd" in b) {
         return (b as { valueUsd?: string }).valueUsd ?? 0;
       }
       // Check for amountUsd
-      if ('amountUsd' in b) {
+      if ("amountUsd" in b) {
         return (b as { amountUsd?: string }).amountUsd ?? 0;
       }
     }
@@ -357,26 +371,31 @@ const CreatorRow = ({
   const totalValueUsd = balances.reduce((sum: number, b): number => {
     if (
       b &&
-      typeof b === 'object' &&
-      'creatorEarnings' in b &&
+      typeof b === "object" &&
+      "creatorEarnings" in b &&
       Array.isArray((b as { creatorEarnings?: unknown }).creatorEarnings)
     ) {
-      const earningsArr = (b as { creatorEarnings: { amountUsd?: string }[] }).creatorEarnings;
-      const earningsSum = earningsArr.reduce((eSum: number, earning): number => {
-        if (earning && typeof earning.amountUsd === 'string') {
-          return eSum + (parseFloat(earning.amountUsd) || 0);
-        }
-        return eSum;
-      }, 0);
+      const earningsArr = (b as { creatorEarnings: { amountUsd?: string }[] })
+        .creatorEarnings;
+      const earningsSum = earningsArr.reduce(
+        (eSum: number, earning): number => {
+          if (earning && typeof earning.amountUsd === "string") {
+            return eSum + (parseFloat(earning.amountUsd) || 0);
+          }
+          return eSum;
+        },
+        0
+      );
       return Number(sum) + earningsSum;
     }
     return Number(sum);
   }, 0);
   // Prefer avatar.previewImage.small if available, else fallback
-  const imageUrl = profile?.avatar?.previewImage?.small || getProfileImageSmall(profile);
+  const imageUrl =
+    profile?.avatar?.previewImage?.small || getProfileImageSmall(profile);
 
   // Debug: Log balances and their amount property
-  console.log('[CreatorRow] balances:', balances);
+  console.log("[CreatorRow] balances:", balances);
   balances.forEach((b, i) => {
     console.log(`[CreatorRow] balances[${i}].amount:`, b.amount);
   });
@@ -394,7 +413,9 @@ const CreatorRow = ({
 
   return (
     <tr className="border-b border-border transition-colors duration-200 hover:bg-muted/50 animate-fade-in">
-      <td className="px-4 py-3 text-sm text-muted-foreground align-top">{idx + 1}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground align-top">
+        {idx + 1}
+      </td>
       <td className="px-4 py-3 text-sm align-top">
         <div className="flex items-center gap-3">
           {imageUrl && (
@@ -405,21 +426,38 @@ const CreatorRow = ({
             />
           )}
           <span className="font-semibold">
-            {profile?.displayName
-              ? (isUrl(profile.displayName)
-                  ? <a href={profile.displayName} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{profile.displayName}</a>
-                  : profile.displayName)
-              : truncateAddress(address)}
+            {profile?.displayName ? (
+              isUrl(profile.displayName) ? (
+                <a
+                  href={profile.displayName}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline"
+                >
+                  {profile.displayName}
+                </a>
+              ) : (
+                profile.displayName
+              )
+            ) : (
+              truncateAddress(address)
+            )}
           </span>
         </div>
       </td>
       <td className="px-4 py-3 text-sm align-top">{count}</td>
       <td className="px-4 py-3 text-sm align-top">
-        {totalValueUsd
-          ? `$${totalValueUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-          : <span className="text-xs text-muted-foreground">-</span>}
+        {totalValueUsd ? (
+          `$${totalValueUsd.toLocaleString(undefined, {
+            maximumFractionDigits: 2,
+          })}`
+        ) : (
+          <span className="text-xs text-muted-foreground">-</span>
+        )}
       </td>
-      <td className="px-4 py-3 text-sm align-top font-mono">{truncateAddress(address)}</td>
+      <td className="px-4 py-3 text-sm align-top font-mono">
+        {truncateAddress(address)}
+      </td>
     </tr>
   );
 };
@@ -443,11 +481,21 @@ export function CreatorsTable({ coins }: { coins: Coin[] }) {
       <table className="min-w-full w-full max-w-full">
         <thead className="bg-muted border-b border-border">
           <tr className="text-left">
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">#</th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Creator</th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Tokens Created</th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Balance (USD)</th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Address</th>
+            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              #
+            </th>
+            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Creator
+            </th>
+            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Tokens Created
+            </th>
+            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Total Balance (USD)
+            </th>
+            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Address
+            </th>
           </tr>
         </thead>
         <tbody>
