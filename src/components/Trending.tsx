@@ -4,13 +4,18 @@ import { useTrendingCoins } from "../hooks/useTrendingCoins";
 export default function Trending() {
   const { coins, loading, error } = useTrendingCoins(20);
   // Limit coins based on screen size to reduce width
-  const displayedCoins = coins.slice(0, window.innerWidth < 640 ? 8 : window.innerWidth < 1024 ? 12 : 16);
+  const displayedCoins = coins.slice(
+    0,
+    window.innerWidth < 640 ? 8 : window.innerWidth < 1024 ? 12 : 16
+  );
 
   if (loading)
-    return <div className="py-4 text-center">Loading trending coins...</div>;
+    return (
+      <div className="py-4 text-center text-xs">Loading trending coins...</div>
+    );
   if (error)
     return (
-      <div className="py-4 text-center text-red-500">
+      <div className="py-4 text-center text-red-500 text-xs">
         Failed to load trending coins
       </div>
     );
@@ -24,7 +29,7 @@ export default function Trending() {
         style={{
           animation: "marquee 30s linear infinite",
           willChange: "transform",
-          maxWidth: '80vw',
+          maxWidth: "80vw",
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.animationPlayState = "paused";
@@ -44,9 +49,9 @@ export default function Trending() {
             key={coin.address}
             className="flex items-center gap-2 flex-shrink-0"
           >
-            {coin.image && (
+            {coin.mediaContent.previewImage.medium && (
               <img
-                src={coin.image}
+                src={coin.mediaContent.previewImage.medium}
                 alt={coin.symbol}
                 className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border"
               />

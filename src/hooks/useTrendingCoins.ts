@@ -59,6 +59,15 @@ export interface TrendingCoin {
   uniqueHolders?: number;
   image?: string;
   score: number;
+  mediaContent?: {
+    mimeType?: string;
+    originalUri?: string;
+    previewImage?: {
+      small?: string;
+      medium?: string;
+      blurhash?: string;
+    };
+  }
 }
 
 export function useTrendingCoins(limit = 20) {

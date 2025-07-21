@@ -1,18 +1,19 @@
 import { RefreshCw } from "lucide-react";
 import { cn, truncateAddress } from "@/lib/utils";
 import { formatCoinData, Coin } from "@/hooks/useTopVolume24h";
+import moment from 'moment'
 import {
   formatDexScreenerPrice,
   DexScreenerPair,
   calculateFallbackPrice,
 } from "@/hooks/useDexScreener";
 import { memo, useMemo, useCallback, useRef, useEffect } from "react";
-import { Identity } from '@coinbase/onchainkit/identity';
-import { Address } from 'viem';
-import { Star } from 'lucide-react';
-import { useWatchlist } from '@/hooks/useWatchlist';
-import { useBasename } from '@/hooks/useBasename';
-import React, { useState } from 'react';
+import { Identity } from "@coinbase/onchainkit/identity";
+import { Address } from "viem";
+import { Star } from "lucide-react";
+import { useWatchlist } from "@/hooks/useWatchlist";
+import { useBasename } from "@/hooks/useBasename";
+import React, { useState } from "react";
 
 // Extend Coin type to include image property for table display
 type CoinWithImage = Coin & {
@@ -44,10 +45,7 @@ const getAgeFromTimestamp = (timestamp: string) => {
 };
 
 // Deep comparison function for coin data
-const areCoinsEqual = (
-  prevCoin: CoinWithImage,
-  nextCoin: CoinWithImage
-) => {
+const areCoinsEqual = (prevCoin: CoinWithImage, nextCoin: CoinWithImage) => {
   // Compare core coin properties
   return (
     prevCoin.id === nextCoin.id &&
@@ -80,26 +78,46 @@ const PriceCell = memo(
       );
     }
     // Fallback: calculate price as market cap / total supply
-    const fallbackPrice = calculateFallbackPrice(coin.marketCap, coin.totalSupply);
+    const fallbackPrice = calculateFallbackPrice(
+      coin.marketCap,
+      coin.totalSupply
+    );
     return (
-      <div className="text-sm font-medium text-foreground">
-        {fallbackPrice}
-      </div>
+      <div className="text-sm font-medium text-foreground">{fallbackPrice}</div>
     );
   },
-  (prevProps, nextProps) => prevProps.coin.address === nextProps.coin.address && prevProps.coin.marketCap === nextProps.coin.marketCap && prevProps.coin.totalSupply === nextProps.coin.totalSupply
+  (prevProps, nextProps) =>
+    prevProps.coin.address === nextProps.coin.address &&
+    prevProps.coin.marketCap === nextProps.coin.marketCap &&
+    prevProps.coin.totalSupply === nextProps.coin.totalSupply
 );
 PriceCell.displayName = "PriceCell";
 
 // Volume and 24h change cells now just show N/A (or fallback if you have another source)
-const VolumeCell = memo(({ coin, dexScreenerData }: { coin: CoinWithImage; dexScreenerData: Record<string, DexScreenerPair> }) => {
-  const priceData = dexScreenerData[coin.address.toLowerCase()];
-  if (priceData && priceData.volume?.h24 !== undefined) {
-    return <div className="text-sm text-muted-foreground">{priceData.volume.h24.toLocaleString()}</div>;
+const VolumeCell = memo(
+  ({
+    coin,
+    dexScreenerData,
+  }: {
+    coin: CoinWithImage;
+    dexScreenerData: Record<string, DexScreenerPair>;
+  }) => {
+    const priceData = dexScreenerData[coin.address.toLowerCase()];
+    if (priceData && priceData.volume?.h24 !== undefined) {
+      return (
+        <div className="text-sm text-muted-foreground">
+          {priceData.volume.h24.toLocaleString()}
+        </div>
+      );
+    }
+    const formattedCoin = formatCoinData(coin);
+    return (
+      <div className="text-sm text-muted-foreground">
+        {formattedCoin.formattedVolume24h || "N/A"}
+      </div>
+    );
   }
-  const formattedCoin = formatCoinData(coin);
-  return <div className="text-sm text-muted-foreground">{formattedCoin.formattedVolume24h || 'N/A'}</div>;
-});
+);
 VolumeCell.displayName = "VolumeCell";
 
 const Change24hCell = memo(({ coin }: { coin: CoinWithImage }) => {
@@ -109,7 +127,12 @@ const Change24hCell = memo(({ coin }: { coin: CoinWithImage }) => {
     const percent = (delta / (cap - delta)) * 100;
     const isPositive = percent >= 0;
     return (
-      <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>{isPositive ? '+' : ''}{percent.toFixed(2)}%</span>
+      <span
+        className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}
+      >
+        {isPositive ? "+" : ""}
+        {percent.toFixed(2)}%
+      </span>
     );
   }
   return <span className="text-muted-foreground">N/A</span>;
@@ -166,7 +189,6 @@ const TableRow = memo(
     }, [coin.id, coin.marketCap, coin.volume24h]);
 
     // console.log(coin);
-    
 
     return (
       <tr
@@ -241,7 +263,7 @@ const TableRow = memo(
           {coin.fineAge
             ? coin.fineAge
             : coin.createdAt
-            ? getAgeFromTimestamp(coin.createdAt)
+              ?  moment(coin.createdAt).startOf('day').fromNow() 
             : "N/A"}
         </td>
         <td className="px-4 py-3">
@@ -261,7 +283,10 @@ const TableRow = memo(
   },
   (prevProps, nextProps) => {
     // Deep comparison for the entire row
-    return prevProps.index === nextProps.index && prevProps.coin.address === nextProps.coin.address;
+    return (
+      prevProps.index === nextProps.index &&
+      prevProps.coin.address === nextProps.coin.address
+    );
   }
 );
 
@@ -269,11 +294,15 @@ TableRow.displayName = "TableRow";
 
 // Memoized creator cell component for Basename resolution
 const truncateMiddle = (address: string) => {
-  if (!address) return '';
-  return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
+  if (!address) return "";
+  return address.length > 10
+    ? `${address.slice(0, 6)}...${address.slice(-4)}`
+    : address;
 };
 const CreatorCell = memo(({ creatorAddress }: { creatorAddress?: string }) => {
-  const { basename, loading, error } = useBasename(creatorAddress as `0x${string}`);
+  const { basename, loading, error } = useBasename(
+    creatorAddress as `0x${string}`
+  );
   // Log the full Basename object for debugging
   // console.log('[TokenDataTable] Basename:', { address: creatorAddress, basename, loading, error });
   if (!creatorAddress) return <span>N/A</span>;
@@ -282,7 +311,7 @@ const CreatorCell = memo(({ creatorAddress }: { creatorAddress?: string }) => {
   if (error) return <span title={error}>{truncateMiddle(creatorAddress)}</span>;
   return <span>{truncateMiddle(creatorAddress)}</span>;
 });
-CreatorCell.displayName = 'CreatorCell';
+CreatorCell.displayName = "CreatorCell";
 
 interface TokenDataTableProps {
   coins: CoinWithImage[];
@@ -314,7 +343,8 @@ export function TokenDataTable({
   itemsPerPage = 20,
   walletAddress,
 }: TokenDataTableProps) {
-  const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist(walletAddress);
+  const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } =
+    useWatchlist(walletAddress);
   // Memoize the click handler to prevent unnecessary re-renders
   const handleCoinClick = useCallback(
     (address: string) => {
@@ -339,7 +369,14 @@ export function TokenDataTable({
         }}
       />
     ));
-  }, [coins, dexScreenerData, handleCoinClick, isInWatchlist, addToWatchlist, removeFromWatchlist]);
+  }, [
+    coins,
+    dexScreenerData,
+    handleCoinClick,
+    isInWatchlist,
+    addToWatchlist,
+    removeFromWatchlist,
+  ]);
 
   if (coins.length === 0) {
     return (
@@ -383,9 +420,7 @@ export function TokenDataTable({
             </th>
           </tr>
         </thead>
-        <tbody>
-          {tableBody}
-        </tbody>
+        <tbody>{tableBody}</tbody>
       </table>
 
       {/* Pagination Controls */}
@@ -455,12 +490,20 @@ export function TokenDataTable({
   );
 }
 
-export { CreatorsTable } from './TokenTable';
+export { CreatorsTable } from "./TokenTable";
 
 // Simple in-memory cache for loaded images
 const imageCache = new Map<string, string>();
 
-function CachedImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+function CachedImage({
+  src,
+  alt,
+  className,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+}) {
   const [imgSrc, setImgSrc] = useState(() => {
     if (src && imageCache.has(src)) return imageCache.get(src)!;
     return src;
@@ -486,7 +529,7 @@ function CachedImage({ src, alt, className }: { src: string; alt: string; classN
       onError={() => setError(true)}
       loading="lazy"
       crossOrigin="anonymous"
-      style={{ background: '#fff' }}
+      style={{ background: "#fff" }}
     />
   );
 }
