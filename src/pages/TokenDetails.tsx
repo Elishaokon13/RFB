@@ -550,6 +550,10 @@ function useTradeCoin({
   return { trade, loading, error, receipt };
 }
 
+function hasMediaContent(token: unknown): token is { mediaContent: { previewImage?: { medium?: string } } } {
+  return typeof token === 'object' && token !== null && 'mediaContent' in token;
+}
+
 export default function TokenDetails() {
   const { address: rawAddress } = useParams<{ address: string }>();
   const navigate = useNavigate();
@@ -586,7 +590,12 @@ export default function TokenDetails() {
     tokens: dexTokens,
     loading: dexLoading,
     error: dexError,
-  } = useDexScreenerTokens("8453", rawAddress);
+  } = useDexScreenerTokens("8453", rawAddress ? [rawAddress] : []);
+
+  // Log the full raw API response for pricing/chart
+  useEffect(() => {
+    console.log('[TokenDetails] Dex Screener raw API response:', dexTokens);
+  }, [dexTokens]);
 
   const dexData: DexScreenerPair | undefined = useMemo(
     () => (dexTokens && dexTokens.length > 0 ? dexTokens[0] : undefined),
@@ -709,8 +718,12 @@ export default function TokenDetails() {
 
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-primary/10 rounded-lg overflow-hidden object cover flex items-center justify-center">
-                <img src={token.mediaContent.previewImage.medium} alt="" />
-              </div>
+                {hasMediaContent(token) && token.mediaContent.previewImage?.medium ? (
+                  <img src={token.mediaContent.previewImage.medium} alt="" />
+                ) : (
+                  <span className="text-muted-foreground text-xl">◎</span>
+                )}
+                </div>
               <div>
                 <h1 className="text-xl font-semibold text-foreground">
                   {token.name || "Unknown Token"}

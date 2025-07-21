@@ -18,12 +18,13 @@ export default function Trending() {
     return <div className="py-4 text-center">No trending coins found</div>;
 
   return (
-    <div className="w-full max-w-full overflow-hidden py-2 bg-muted rounded mx-auto">
+    <div className="w-full max-w-full overflow-x-hidden py-2 bg-muted rounded mx-auto">
       <div
         className="marquee whitespace-nowrap flex items-center gap-4 sm:gap-6 md:gap-8 px-4"
         style={{
           animation: "marquee 30s linear infinite",
           willChange: "transform",
+          maxWidth: '80vw',
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.animationPlayState = "paused";
@@ -88,7 +89,8 @@ export default function Trending() {
 
         .marquee {
           display: inline-flex;
-          width: max-content;
+          width: 100%;
+          max-width: 100vw;
         }
 
         @media (max-width: 640px) {
