@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn, truncateAddress } from "@/lib/utils";
 import { useTokenFeed } from "@/hooks/useTokenFeed";
 import { useNavigate } from "react-router-dom";
 import { TokenDataTable } from "./TokenDataTable";
@@ -318,10 +318,10 @@ export function TokenTable() {
   );
 }
 
-const truncateAddress = (address: string) => {
-  if (!address) return "";
-  return address.slice(0, 6) + "..." + address.slice(-4);
-};
+// const truncateAddress = (address: string) => {
+//   if (!address) return "";
+//   return address.slice(0, 6) + "..." + address.slice(-4);
+// };
 
 const CreatorRow = ({
   address,
@@ -335,13 +335,10 @@ const CreatorRow = ({
   const { profile } = useZoraProfile(address);
   const { balances, pageInfo, loading, error } =
     useZoraProfileBalances(address);
-  // Debug: Log the raw API response for balances
-  console.log("[CreatorRow] useZoraProfileBalances response:", {
-    balances,
-    pageInfo,
-    loading,
-    error,
-  });
+  
+  // console.log(balances);
+  
+
   // Robust fallback for USD value, similar to image logic
   const getUsdValue = (b: unknown): string | number => {
     if (typeof b === "object" && b !== null) {
@@ -393,12 +390,6 @@ const CreatorRow = ({
   // Prefer avatar.previewImage.small if available, else fallback
   const imageUrl =
     profile?.avatar?.previewImage?.small || getProfileImageSmall(profile);
-
-  // Debug: Log balances and their amount property
-  console.log("[CreatorRow] balances:", balances);
-  balances.forEach((b, i) => {
-    console.log(`[CreatorRow] balances[${i}].amount:`, b.amount);
-  });
 
   // Helper to check if displayName is a URL
   const isUrl = (str?: string) => {

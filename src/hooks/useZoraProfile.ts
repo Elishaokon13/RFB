@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { getProfile, getProfileBalances } from '@zoralabs/coins-sdk';
+import { useState, useEffect } from "react";
+import { getProfile, getProfileBalances } from "@zoralabs/coins-sdk";
 
 // --- Types ---
 type Profile = {
@@ -54,14 +54,23 @@ export function useZoraProfile(identifier: string) {
     (async () => {
       try {
         const response = await getProfile({ identifier });
-        console.log('[useZoraProfile] Raw API response:', response);
+        // console.log("[useZoraProfile] Raw API response:", response);
         let profile = response?.data?.profile || null;
         // Always transform linkedWallets to an array
         if (profile) {
-          let linkedWalletsArr: { type?: string; url?: string }[] | undefined = undefined;
+          let linkedWalletsArr: { type?: string; url?: string }[] | undefined =
+            undefined;
           // Type guard for edges property
-          const hasEdges = (val: unknown): val is { edges: { node: { walletType?: string; walletAddress?: string } }[] } => {
-            return !!val && typeof val === 'object' && Array.isArray((val as { edges?: unknown }).edges);
+          const hasEdges = (
+            val: unknown
+          ): val is {
+            edges: { node: { walletType?: string; walletAddress?: string } }[];
+          } => {
+            return (
+              !!val &&
+              typeof val === "object" &&
+              Array.isArray((val as { edges?: unknown }).edges)
+            );
           };
           if (profile.linkedWallets && hasEdges(profile.linkedWallets)) {
             linkedWalletsArr = profile.linkedWallets.edges.map((edge) => ({
@@ -87,7 +96,7 @@ export function useZoraProfile(identifier: string) {
           }
         }
         setProfile(profile);
-        console.log('[useZoraProfile] Final profile:', profile);
+        // console.log("[useZoraProfile] Final profile:", profile);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -99,7 +108,11 @@ export function useZoraProfile(identifier: string) {
   return { profile, loading, error };
 }
 
-export function useZoraProfileBalances(identifier: string, count: number = 20, after?: string) {
+export function useZoraProfileBalances(
+  identifier: string,
+  count: number = 20,
+  after?: string
+) {
   const [balances, setBalances] = useState<CoinBalance[]>([]);
   const [pageInfo, setPageInfo] = useState<{ endCursor?: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -111,13 +124,20 @@ export function useZoraProfileBalances(identifier: string, count: number = 20, a
     setError(null);
     (async () => {
       try {
-        const response = await getProfileBalances({ identifier, count, after });
-        console.log('[useZoraProfileBalances] Raw API response:', response);
+        const response = await getProfileBalances({ identifier });
+        // console.log("[useZoraProfileBalances] Raw API response:", response);
         const profile = response?.data?.profile;
         const edges = profile?.coinBalances?.edges || [];
+        const edd = edges.map((edge: { node: CoinBalance }) => edge.node);
+
+        // console.log(edd);
+        
         setBalances(edges.map((edge: { node: CoinBalance }) => edge.node));
         setPageInfo(profile?.coinBalances?.pageInfo || null);
-        console.log('[useZoraProfileBalances] Final balances:', edges.map((edge: { node: CoinBalance }) => edge.node));
+        // console.log(
+        //   "[useZoraProfileBalances] Final balances:",
+        //   edges.map((edge: { node: CoinBalance }) => edge.node)
+        // );
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -130,6 +150,8 @@ export function useZoraProfileBalances(identifier: string, count: number = 20, a
 }
 
 // Helper to get the profile image URL (small)
-export function getProfileImageSmall(profile: Profile | null): string | undefined {
+export function getProfileImageSmall(
+  profile: Profile | null
+): string | undefined {
   return profile?.profileImage?.small;
-} 
+}
