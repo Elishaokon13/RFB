@@ -70,16 +70,16 @@ const generateHistoricalData = (
 
   const data = [];
   const volatility = Math.abs(priceChange) / 100;
-
+  
   for (let i = dataPoints; i >= 0; i--) {
     const timestamp = now - i * interval;
     const progress = i / dataPoints;
-
+    
     // Create realistic price movement
     const basePrice = currentPrice * (1 - (priceChange / 100) * progress);
     const randomFactor = 1 + (Math.random() - 0.5) * volatility * 0.1;
     const price = basePrice * randomFactor;
-
+    
     data.push({
       timestamp,
       price,
@@ -91,11 +91,11 @@ const generateHistoricalData = (
 };
 
 // Interactive Price Chart Component
-const PriceChart = ({
-  dexScreenerData,
-  period,
+const PriceChart = ({ 
+  dexScreenerData, 
+  period, 
   onPeriodChange,
-}: {
+}: { 
   dexScreenerData: DexScreenerPair | undefined;
   period: ChartPeriod;
   onPeriodChange: (period: ChartPeriod) => void;
@@ -157,8 +157,8 @@ const PriceChart = ({
   // Generate SVG path for the line
   const linePath = chartData
     .map((point, index) => {
-      const x = xScale(point.timestamp);
-      const y = yScale(point.price);
+    const x = xScale(point.timestamp);
+    const y = yScale(point.price);
       return `${index === 0 ? "M" : "L"} ${x} ${y}`;
     })
     .join(" ");
@@ -167,8 +167,8 @@ const PriceChart = ({
   const areaPath =
     chartData
       .map((point, index) => {
-        const x = xScale(point.timestamp);
-        const y = yScale(point.price);
+    const x = xScale(point.timestamp);
+    const y = yScale(point.price);
         return `${index === 0 ? "M" : "L"} ${x} ${y}`;
       })
       .join(" ") +
@@ -179,7 +179,7 @@ const PriceChart = ({
   const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
-
+    
     // Find closest data point
     const closestPoint = chartData.reduce((closest, point) => {
       const pointX = xScale(point.timestamp);
@@ -256,7 +256,7 @@ const PriceChart = ({
       </div>
 
       {/* Chart Container */}
-      <div
+      <div 
         ref={setChartContainer}
         className="relative bg-muted/10 rounded-lg border border-border p-6 w-full"
         style={{ minHeight: `${chartHeight + 40}px` }}
@@ -486,8 +486,8 @@ const PriceChart = ({
               <span className="text-muted-foreground">Change: </span>
               <span
                 className={cn(
-                  "font-semibold",
-                  priceChange >= 0 ? "text-green-600" : "text-red-600"
+                "font-semibold",
+                priceChange >= 0 ? "text-green-600" : "text-red-600"
                 )}
               >
                 {priceChange >= 0 ? "+" : ""}
@@ -579,7 +579,7 @@ export default function TokenDetails() {
       prevAddress.current = address;
     }
   }, [address]);
-
+  
   // Fetch coin details using the proper hook
   const { coin: token, loading, error } = useCoinDetails(address);
 
@@ -610,7 +610,7 @@ export default function TokenDetails() {
 
   const handleCoinClick = useCallback(
     (coinAddress: string) => {
-      navigate(`/token/${coinAddress}`);
+    navigate(`/token/${coinAddress}`);
     },
     [navigate]
   );
@@ -715,7 +715,7 @@ export default function TokenDetails() {
               <ArrowLeft className="w-4 h-4" />
               Back
             </button>
-
+            
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-primary/10 rounded-lg overflow-hidden object cover flex items-center justify-center">
                 {hasMediaContent(token) && token.mediaContent.previewImage?.medium ? (
@@ -723,7 +723,7 @@ export default function TokenDetails() {
                 ) : (
                   <span className="text-muted-foreground text-xl">◎</span>
                 )}
-                </div>
+              </div>
               <div>
                 <h1 className="text-xl font-semibold text-foreground">
                   {token.name || "Unknown Token"}
@@ -766,7 +766,7 @@ export default function TokenDetails() {
                       calculateFallbackPrice(
                         token.marketCap,
                         token.totalSupply
-                      )}
+                  )}
                 </p>
               </div>
 
@@ -792,7 +792,7 @@ export default function TokenDetails() {
 
           {/* Interactive Price Chart */}
           <div className="bg-card border border-border rounded-lg p-6">
-            <PriceChart
+            <PriceChart 
               dexScreenerData={dexData}
               period={chartPeriod}
               onPeriodChange={setChartPeriod}
@@ -837,7 +837,7 @@ export default function TokenDetails() {
                   </span>
                 </div>
               </div>
-
+              
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Chain</span>
@@ -920,17 +920,17 @@ export default function TokenDetails() {
                   Check Payment Status
                 </button>
               )}
-            </div>
+                </div>
             {paymentStatus && (
               <div className="mt-4 p-2 rounded bg-muted text-foreground text-xs w-full text-center">
                 {paymentStatus}
               </div>
             )}
-          </div>
-
+              </div>
+              
           {/* Trading Coins - only show if Base Account is connected */}
           {isSignedIn && (
-            <div className="bg-card border border-border rounded-lg p-6">
+          <div className="bg-card border border-border rounded-lg p-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">
                 Trading Coins
               </h3>
@@ -982,11 +982,11 @@ export default function TokenDetails() {
                     ? `Buy ${token.symbol}`
                     : `Sell ${token.symbol}`}
                 </button>
+                  </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
     </div>
   );
 }
@@ -1003,4 +1003,4 @@ const getAgeFromTimestamp = (timestamp: string) => {
   if (diffInHours < 24) return `${diffInHours}h`;
   const days = Math.floor(diffInHours / 24);
   return `${days}d`;
-};
+}; 
