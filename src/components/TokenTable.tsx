@@ -13,6 +13,7 @@ import {
   useZoraProfile,
   useZoraProfileBalances,
   getProfileImageSmall,
+  useUserBalances,
 } from "@/hooks/useZoraProfile";
 
 // Filter options
@@ -333,10 +334,15 @@ const CreatorRow = ({
   idx: number;
 }) => {
   const { profile } = useZoraProfile(address);
-  const { balances, pageInfo, loading, error } =
+  const {balances, pageInfo, loading, error } =
     useZoraProfileBalances(address);
   
+  const { sorted, totalPosts } = useUserBalances(
+    address
+  );
+  
   // console.log(balances);
+  // console.log('sorted', sorted, totalPosts);
   
 
   // Robust fallback for USD value, similar to image logic
@@ -365,7 +371,7 @@ const CreatorRow = ({
     return 0;
   };
   // Sum all amountUsd in all creatorEarnings arrays for all balances
-  const totalValueUsd = balances.reduce((sum: number, b): number => {
+  const totalValueUsd = balances?.reduce((sum: number, b): number => {
     if (
       b &&
       typeof b === "object" &&
