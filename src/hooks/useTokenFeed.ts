@@ -1,41 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { usePreloadAllData } from './usePreloadAllData';
-// Removed: import { useMultipleDexScreenerPrices } from './useDexScreener';
-import { Coin as PreloadCoin } from './usePreloadAllData';
-import { Coin as TokenDataCoin } from './useTopVolume24h';
-
-// Helper function to convert PreloadCoin to TokenDataCoin
-const convertToTokenDataCoin = (coin: PreloadCoin): TokenDataCoin => ({
-  id: coin.id || "",
-  name: coin.name || "",
-  symbol: coin.symbol || "",
-  description: coin.description || "",
-  address: coin.address || "",
-  totalSupply: coin.totalSupply || "",
-  totalVolume: coin.totalVolume || "",
-  volume24h: coin.volume24h || "",
-  createdAt: coin.createdAt || "",
-  creatorAddress: coin.creatorAddress || "",
-  creatorEarnings: [],
-  marketCap: coin.marketCap || "",
-  marketCapDelta24h: coin.marketCapDelta24h || "",
-  chainId: coin.chainId || 0,
-  price: "",
-  priceChange24h: "",
-  imageUrl: coin.image || "",
-  website: "",
-  twitter: "",
-  telegram: "",
-  discord: "",
-  metadata: {},
-  uniswapV3PoolAddress: "",
-  uniqueHolders: coin.uniqueHolders || 0,
-  uniswapV4PoolKey: null,
-  zoraComments: null,
-});
+import { useState, useEffect, useCallback, useRef } from "react";
+import { usePreloadAllData } from "./usePreloadAllData";
+import { Coin } from "./usePreloadAllData";
 
 // Deep comparison function for coin data
-const areCoinsEqual = (prevCoin: PreloadCoin, nextCoin: PreloadCoin) => {
+const areCoinsEqual = (prevCoin: Coin, nextCoin: Coin) => {
   return (
     prevCoin.id === nextCoin.id &&
     prevCoin.marketCap === nextCoin.marketCap &&
@@ -46,31 +14,48 @@ const areCoinsEqual = (prevCoin: PreloadCoin, nextCoin: PreloadCoin) => {
 };
 
 // Global cache to store data for each tab
-const tabDataCache = new Map<string, {
-  coins: TokenDataCoin[];
-  dexScreenerData: Record<string, unknown>;
-  pageInfo: { endCursor?: string; hasNextPage?: boolean } | null;
-  lastUpdate: number;
-  isInitialized: boolean;
-}>();
+const tabDataCache = new Map<
+  string,
+  {
+    coins: Coin[];
+    dexScreenerData: Record<string, unknown>;
+    pageInfo: { endCursor?: string; hasNextPage?: boolean } | null;
+    lastUpdate: number;
+    isInitialized: boolean;
+  }
+>();
 
 // Smart state management with diffing and tab-specific caching
 export function useTokenFeed(activeFilter: string) {
-  const [stableCoins, setStableCoins] = useState<TokenDataCoin[]>([]);
-  const [stableDexScreenerData, setStableDexScreenerData] = useState<Record<string, unknown>>({});
-  const [pageInfo, setPageInfo] = useState<{ endCursor?: string; hasNextPage?: boolean } | null>(null);
+  const [stableCoins, setStableCoins] = useState<Coin[]>([]);
+
+  const [stableDexScreenerData, setStableDexScreenerData] = useState<
+    Record<string, unknown>
+  >({});
+  const [pageInfo, setPageInfo] = useState<{
+    endCursor?: string;
+    hasNextPage?: boolean;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Refs to store previous data for comparison
-  const prevCoinsRef = useRef<PreloadCoin[]>([]);
+  const prevCoinsRef = useRef<Coin[]>([]);
   const prevDexDataRef = useRef<Record<string, unknown>>({});
-  const prevPageInfoRef = useRef<{ endCursor?: string; hasNextPage?: boolean } | null>(null);
+  const prevPageInfoRef = useRef<{
+    endCursor?: string;
+    hasNextPage?: boolean;
+  } | null>(null);
   const prevActiveFilterRef = useRef<string>(activeFilter);
   const hasInitializedRef = useRef<boolean>(false);
 
   // Preload all data sources
-  const { mostValuable, topGainers, topVolume, isLoading: preloadLoading } = usePreloadAllData();
+  const {
+    mostValuable,
+    topGainers,
+    topVolume,
+    isLoading: preloadLoading,
+  } = usePreloadAllData();
 
   // Get data for the active filter
   const getActiveData = useCallback(() => {
@@ -91,7 +76,9 @@ export function useTokenFeed(activeFilter: string) {
   const currentPageInfo = activeData?.pagination;
 
   // Extract token addresses for DexScreener API
-  const tokenAddresses = currentCoins.map(coin => coin.address).filter(Boolean);
+  const tokenAddresses = currentCoins
+    .map((coin) => coin.address)
+    .filter(Boolean);
 
   // Handle tab switching - restore cached data immediately
   useEffect(() => {
@@ -116,14 +103,15 @@ export function useTokenFeed(activeFilter: string) {
   // Smart diffing for coins data
   useEffect(() => {
     const prevCoins = prevCoinsRef.current;
-    
+
     // Only process if we have actual data
     if (currentCoins.length === 0 && !preloadLoading) {
       return;
     }
-    
+
     // Check if coins data actually changed
-    const coinsChanged = currentCoins.length !== prevCoins.length ||
+    const coinsChanged =
+      currentCoins.length !== prevCoins.length ||
       currentCoins.some((coin, index) => {
         const prevCoin = prevCoins[index];
         if (!prevCoin) return true;
@@ -132,23 +120,22 @@ export function useTokenFeed(activeFilter: string) {
 
     // Only update if data actually changed
     if (coinsChanged) {
-      const convertedCoins = currentCoins.map(convertToTokenDataCoin);
-      setStableCoins(convertedCoins);
+      setStableCoins(currentCoins);
       prevCoinsRef.current = currentCoins;
-      
+
       // Only cache if we have valid data
-      if (convertedCoins.length > 0) {
+      if (currentCoins.length > 0) {
         const currentCache = tabDataCache.get(activeFilter) || {
           coins: [],
           dexScreenerData: {},
           pageInfo: null,
           lastUpdate: 0,
-          isInitialized: false
+          isInitialized: false,
         };
-        
+
         tabDataCache.set(activeFilter, {
           ...currentCache,
-          coins: convertedCoins,
+          coins: currentCoins,
           lastUpdate: Date.now(),
           isInitialized: true,
           dexScreenerData: stableDexScreenerData,
@@ -156,29 +143,36 @@ export function useTokenFeed(activeFilter: string) {
         });
       }
     }
-  }, [currentCoins, activeFilter, preloadLoading, stableDexScreenerData, pageInfo]);
+  }, [
+    currentCoins,
+    activeFilter,
+    preloadLoading,
+    stableDexScreenerData,
+    pageInfo,
+  ]);
 
   // Smart diffing for page info
   useEffect(() => {
     const prevPageInfo = prevPageInfoRef.current;
-    
+
     if (currentPageInfo !== prevPageInfo) {
-      let newPageInfo: { endCursor?: string; hasNextPage?: boolean } | null = null;
+      let newPageInfo: { endCursor?: string; hasNextPage?: boolean } | null =
+        null;
       function hasCursor(obj: unknown): obj is { cursor?: string } {
-        return typeof obj === 'object' && obj !== null && 'cursor' in obj;
+        return typeof obj === "object" && obj !== null && "cursor" in obj;
       }
       if (hasCursor(currentPageInfo)) {
         const cursor = currentPageInfo.cursor;
         newPageInfo = {
-          endCursor: typeof cursor === 'string' ? cursor : undefined,
-          hasNextPage: typeof cursor === 'string' && cursor.length > 0,
+          endCursor: typeof cursor === "string" ? cursor : undefined,
+          hasNextPage: typeof cursor === "string" && cursor.length > 0,
         };
       } else {
         newPageInfo = null;
       }
       setPageInfo(newPageInfo);
       prevPageInfoRef.current = newPageInfo;
-      
+
       // Only cache if we have valid data
       if (stableCoins.length > 0) {
         const currentCache = tabDataCache.get(activeFilter) || {
@@ -186,9 +180,9 @@ export function useTokenFeed(activeFilter: string) {
           dexScreenerData: {},
           pageInfo: null,
           lastUpdate: 0,
-          isInitialized: false
+          isInitialized: false,
         };
-        
+
         tabDataCache.set(activeFilter, {
           ...currentCache,
           pageInfo: newPageInfo,
@@ -198,14 +192,19 @@ export function useTokenFeed(activeFilter: string) {
         });
       }
     }
-  }, [currentPageInfo, activeFilter, stableCoins.length, stableDexScreenerData]);
+  }, [
+    currentPageInfo,
+    activeFilter,
+    stableCoins.length,
+    stableDexScreenerData,
+  ]);
 
   // Smart diffing for DexScreener data
   useEffect(() => {
     const prevDexData = prevDexDataRef.current;
-    
+
     // Check if DexScreener data actually changed
-    const dexDataChanged = Object.keys(stableDexScreenerData).some(key => {
+    const dexDataChanged = Object.keys(stableDexScreenerData).some((key) => {
       const prevData = prevDexData[key];
       const currentData = stableDexScreenerData[key];
       return prevData !== currentData;
@@ -215,7 +214,7 @@ export function useTokenFeed(activeFilter: string) {
     if (dexDataChanged) {
       setStableDexScreenerData(stableDexScreenerData);
       prevDexDataRef.current = stableDexScreenerData;
-      
+
       // Only cache if we have valid data
       if (stableCoins.length > 0) {
         const currentCache = tabDataCache.get(activeFilter) || {
@@ -223,9 +222,9 @@ export function useTokenFeed(activeFilter: string) {
           dexScreenerData: {},
           pageInfo: null,
           lastUpdate: 0,
-          isInitialized: false
+          isInitialized: false,
         };
-        
+
         tabDataCache.set(activeFilter, {
           ...currentCache,
           dexScreenerData: stableDexScreenerData,
@@ -238,13 +237,14 @@ export function useTokenFeed(activeFilter: string) {
 
   // Handle errors
   useEffect(() => {
-    const currentError = mostValuable.error || topGainers.error || topVolume.error;
+    const currentError =
+      mostValuable.error || topGainers.error || topVolume.error;
     setError(currentError ? currentError.toString() : null);
   }, [mostValuable.error, topGainers.error, topVolume.error]);
 
   // Handle loading state
   useEffect(() => {
-    const shouldShowLoading = preloadLoading || (!stableCoins.length);
+    const shouldShowLoading = preloadLoading || !stableCoins.length;
     setIsLoading(shouldShowLoading);
   }, [preloadLoading, stableCoins.length]);
 
@@ -279,4 +279,4 @@ export function useTokenFeed(activeFilter: string) {
     refetchActive,
     hasData: stableCoins.length > 0,
   };
-} 
+}
