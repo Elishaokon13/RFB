@@ -9,7 +9,7 @@ export default function Layout() {
     <div>
       <div className="min-h-screen bg-background flex relative">
         <Sidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col pb-16">
           <Header />
           <Outlet />
         </div>

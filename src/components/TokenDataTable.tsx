@@ -182,18 +182,25 @@ const TableRow = memo(
         <td className="px-4 py-3">
           <div className="flex items-center gap-3">
             <button
-              onClick={e => { e.stopPropagation(); onToggleWatch(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleWatch();
+              }}
               className={cn(
-                'mr-2 p-1 rounded-full hover:bg-muted transition-colors',
-                isWatched ? 'text-yellow-500' : 'text-muted-foreground'
+                "mr-2 p-1 rounded-full hover:bg-muted transition-colors",
+                isWatched ? "text-yellow-500" : "text-muted-foreground"
               )}
-              title={isWatched ? 'Remove from Watchlist' : 'Add to Watchlist'}
+              title={isWatched ? "Remove from Watchlist" : "Add to Watchlist"}
             >
-              <Star fill={isWatched ? 'currentColor' : 'none'} strokeWidth={2} className="w-5 h-5" />
+              <Star
+                fill={isWatched ? "currentColor" : "none"}
+                strokeWidth={2}
+                className="w-5 h-5"
+              />
             </button>
-            {coin.mediaContent?.previewImage?.small ? (
+            {/* {coin.mediaContent?.previewImage?.medium ? (
               <CachedImage
-                src={coin.mediaContent.previewImage.small}
+                src={coin.mediaContent.previewImage.medium}
                 alt={coin.symbol || 'token'}
                 className="w-7 h-7 rounded-full border bg-white object-cover"
               />
@@ -207,7 +214,14 @@ const TableRow = memo(
               <span className="w-7 h-7 rounded-full bg-gray-200 border flex items-center justify-center text-xs text-gray-400">
                 ◎
               </span>
-            )}
+            )} */}
+            <div className="">
+              <img
+                src={coin?.mediaContent?.previewImage?.medium}
+                alt=""
+                className="w-7 h-7 rounded-full overflow-hidden object-cover"
+              />
+            </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-medium text-foreground">
@@ -221,7 +235,11 @@ const TableRow = memo(
           <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
         </td>
         <td className="px-4 py-3 text-sm text-muted-foreground">
-          {coin.fineAge ? coin.fineAge : (coin.createdAt ? getAgeFromTimestamp(coin.createdAt) : "N/A")}
+          {coin.fineAge
+            ? coin.fineAge
+            : coin.createdAt
+            ? getAgeFromTimestamp(coin.createdAt)
+            : "N/A"}
         </td>
         <td className="px-4 py-3">
           <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
