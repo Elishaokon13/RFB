@@ -10,9 +10,9 @@ export function Footer() {
     setMessage(null);
     try {
       const result = await pay({
-        amount: '1.00',
-        to: '0x1234567890123456789012345678901234567890', // Replace with your address
-        testnet: true,
+        amount: "5.00",
+        to: "0x1B958A48373109E9146A950a75F5bD25B845143b", // Replace with your address
+        testnet: false,
       });
       if ('error' in result) {
         setMessage('Payment failed: ' + result.error);
