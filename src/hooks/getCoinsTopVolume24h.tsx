@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getCoinsTopVolume24h } from "@zoralabs/coins-sdk";
 
-// Core types for top volume coin data matching Zora Protocol structure
 interface TopVolumeCoin {
   id?: string;
   name?: string;
