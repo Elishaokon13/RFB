@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getCoinsTopVolume24h } from "@zoralabs/coins-sdk";
+import { getCoinsNew } from "@zoralabs/coins-sdk";
 
 interface TopVolumeCoin {
   id?: string;
@@ -38,8 +38,8 @@ export const useGetCoinsTopVolume24h = (params: ExploreQueryOptions = {}) => {
   return useQuery<QueryResponse>({
     queryKey: ["coins", "top-volume", "zora", { count, after }],
     queryFn: async () => {
-      const response = await getCoinsTopVolume24h({ count, after });
-      console.log('[getCoinsTopVolume24h] Full response:', response);
+      const response = await getCoinsNew({ count, after });
+      console.log('testing:', response);
       
       // Extract coins from exploreList edges
       const tokens = response.data?.exploreList?.edges?.map(
