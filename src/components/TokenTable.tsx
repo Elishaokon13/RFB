@@ -206,13 +206,8 @@ export function TokenTable() {
   }, []);
 
   const handleRefresh = useCallback(() => {
-    if (activeTopFilter === "New Picks") {
-      // No explicit refetch for useGetCoinsTopVolume24h, but could add if needed
-      window.location.reload(); // crude but effective for now
-    } else {
-      refetchAll();
-    }
-  }, [activeTopFilter, refetchAll]);
+    refetchAll();
+  }, [refetchAll]);
 
   const loading = activeTopFilter === "New Picks" ? newLoading : isLoading;
   const errorMsg =

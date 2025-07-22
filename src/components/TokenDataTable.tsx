@@ -263,7 +263,7 @@ const TableRow = memo(
           {coin.fineAge
             ? coin.fineAge
             : coin.createdAt
-              ?  moment(coin.createdAt).startOf('day').fromNow() 
+              ?  moment(coin.createdAt).calendar() 
             : "N/A"}
         </td>
         <td className="px-4 py-3">
