@@ -65,22 +65,14 @@ export function WhaleTracker({ tokenAddress }: { tokenAddress: string }) {
   } = useTokenWhaleTracker({ tokenAddress });
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="w-full mx-auto">
       {tokenMetadata ? (
         <div className="mb-6 flex items-center gap-4 p-4 border rounded-lg bg-card">
           <div className="flex-shrink-0">
             <img
-              src={
-                tokenMetadata.logo ||
-                "https://raw.githubusercontent.com/ethereum-lists/chains/master/_data/icons/base.png"
-              }
+              src={tokenMetadata?.logo}
               alt={tokenMetadata.name}
-              className="w-16 h-16 rounded-full object-cover border-2 border-border"
-              onError={(e) => {
-                // Fallback to a generic token icon if image fails to load
-                (e.target as HTMLImageElement).src =
-                  "https://raw.githubusercontent.com/ethereum-lists/chains/master/_data/icons/base.png";
-              }}
+              className="w-16 h-16 bg-white/20 rounded-full object-cover border-2 border-border"
             />
           </div>
           <div>

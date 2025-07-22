@@ -85,7 +85,6 @@ export function useTokenWhaleTracker({
         return;
       }
 
-
       // Infura API key for Base network
       const INFURA_API_KEY = import.meta.env.VITE_INFURA_API_KEY;
 
@@ -145,7 +144,6 @@ export function useTokenWhaleTracker({
           totalSupply: 0n,
         };
 
-
         try {
           // Try to get token name
           metadata.name = await contract.name();
@@ -159,7 +157,6 @@ export function useTokenWhaleTracker({
         try {
           // Try to get token symbol
           metadata.symbol = await contract.symbol();
-          console.log("[useTokenWhaleTracker] Token symbol:", metadata.symbol);
         } catch (err) {
           console.warn(
             "[useTokenWhaleTracker] Could not fetch token symbol:",
@@ -170,10 +167,6 @@ export function useTokenWhaleTracker({
         try {
           // Try to get token decimals
           metadata.decimals = await contract.decimals();
-          console.log(
-            "[useTokenWhaleTracker] Token decimals:",
-            metadata.decimals
-          );
         } catch (err) {
           console.warn(
             "[useTokenWhaleTracker] Could not fetch decimals, using default (18):",
@@ -185,10 +178,6 @@ export function useTokenWhaleTracker({
           // Try to get total supply
           metadata.totalSupply = await contract.totalSupply();
           setTotalSupply(metadata.totalSupply);
-          console.log(
-            "[useTokenWhaleTracker] Total supply:",
-            metadata.totalSupply.toString()
-          );
         } catch (err) {
           console.warn(
             "[useTokenWhaleTracker] Could not fetch total supply:",
@@ -204,9 +193,6 @@ export function useTokenWhaleTracker({
 
           // Try Coingecko API first
           try {
-            console.log(
-              "[useTokenWhaleTracker] Trying to fetch token info from Coingecko"
-            );
             const coingeckoResponse = await fetch(
               `https://api.coingecko.com/api/v3/coins/base/contract/${sanitizedTokenAddress}`
             );
@@ -215,17 +201,8 @@ export function useTokenWhaleTracker({
               const tokenData = await coingeckoResponse.json();
               if (tokenData && tokenData.image && tokenData.image.large) {
                 metadata.logo = tokenData.image.large;
-                console.log(
-                  "[useTokenWhaleTracker] Found logo from Coingecko:",
-                  metadata.logo
-                );
               }
             } else {
-              console.log(
-                "[useTokenWhaleTracker] Coingecko API returned status:",
-                coingeckoResponse.status
-              );
-
               // Try Coingecko search as fallback
               if (metadata.symbol) {
                 const searchResponse = await fetch(
@@ -247,10 +224,6 @@ export function useTokenWhaleTracker({
 
                     if (matchingCoin && matchingCoin.image) {
                       metadata.logo = matchingCoin.image;
-                      console.log(
-                        "[useTokenWhaleTracker] Found logo from Coingecko search:",
-                        metadata.logo
-                      );
                     }
                   }
                 }
@@ -270,27 +243,17 @@ export function useTokenWhaleTracker({
 
             // Just set the URL - the image component will handle fallback if it fails to load
             metadata.logo = trustwalletLogoUrl;
-            console.log(
-              "[useTokenWhaleTracker] Using Trustwallet logo URL as fallback:",
-              metadata.logo
-            );
           }
 
           // Update metadata with logo
           setTokenMetadata(metadata);
-          console.log("[useTokenWhaleTracker] Token metadata:", metadata);
         } catch (err) {
-          console.warn(
-            "[useTokenWhaleTracker] Error fetching token logo:",
-            err
-          );
           setTokenMetadata(metadata);
         }
 
         // Get latest block
-        console.log("[useTokenWhaleTracker] Fetching latest block number");
+
         const latestBlock = await provider.getBlockNumber();
-        console.log("[useTokenWhaleTracker] Latest block:", latestBlock);
 
         // For free tier Infura, use smaller block ranges to avoid rate limits
         const MAX_BLOCK_RANGE = 2000; // Much smaller range to avoid rate limits
@@ -304,18 +267,6 @@ export function useTokenWhaleTracker({
         const initialFromBlock = Math.max(
           startBlock,
           latestBlock - BLOCKS_TO_SEARCH
-        );
-
-        console.log(
-          "[useTokenWhaleTracker] Will search from block",
-          initialFromBlock,
-          "to",
-          latestBlock
-        );
-        console.log(
-          "[useTokenWhaleTracker] Total block range:",
-          latestBlock - initialFromBlock,
-          "blocks"
         );
 
         // We'll collect all events from all chunks
@@ -332,27 +283,13 @@ export function useTokenWhaleTracker({
           chunks.push({ fromBlock: start, toBlock: end });
         }
 
-        console.log(
-          `[useTokenWhaleTracker] Splitting query into ${chunks.length} chunks of ≤${MAX_BLOCK_RANGE} blocks`
-        );
-
         // Process each chunk with delay between requests
         for (let i = 0; i < chunks.length && !cancelled; i++) {
           const { fromBlock, toBlock } = chunks[i];
-          console.log(
-            `[useTokenWhaleTracker] Querying chunk ${i + 1}/${
-              chunks.length
-            }: blocks ${fromBlock}-${toBlock} (range: ${
-              toBlock - fromBlock + 1
-            })`
-          );
 
           try {
             // Add delay between requests to avoid rate limits
             if (i > 0) {
-              console.log(
-                `[useTokenWhaleTracker] Waiting 1 second before next request...`
-              );
               await sleep(1000);
             }
 
@@ -362,11 +299,6 @@ export function useTokenWhaleTracker({
               toBlock
             );
 
-            console.log(
-              `[useTokenWhaleTracker] Found ${
-                chunkEvents.length
-              } events in chunk ${i + 1}`
-            );
             allEvents = [...allEvents, ...chunkEvents];
 
             // Update progress
@@ -380,18 +312,10 @@ export function useTokenWhaleTracker({
           }
         }
 
-        console.log(
-          "[useTokenWhaleTracker] Total events found across all chunks:",
-          allEvents.length
-        );
-
         // Aggregate balances
         const balances = new Map<string, bigint>();
         const txs: WhaleTransferEvent[] = [];
 
-        console.log(
-          "[useTokenWhaleTracker] Processing events to calculate balances"
-        );
         for (const event of allEvents) {
           if (!("args" in event) || !event.args) continue;
           const { from, to, value } = event.args as unknown as {
@@ -411,18 +335,6 @@ export function useTokenWhaleTracker({
             txHash: event.transactionHash,
           });
         }
-
-        console.log(
-          "[useTokenWhaleTracker] Processed",
-          txs.length,
-          "transfers"
-        );
-        console.log(
-          "[useTokenWhaleTracker] Found",
-          balances.size,
-          "unique addresses"
-        );
-
         // Convert to array and sort
         const holderArr: WhaleHolder[] = Array.from(balances.entries())
           .map(([address, balance]) => ({
@@ -438,20 +350,11 @@ export function useTokenWhaleTracker({
             b.balance > a.balance ? 1 : b.balance < a.balance ? -1 : 0
           );
 
-        console.log(
-          "[useTokenWhaleTracker] Filtered to",
-          holderArr.length,
-          "holders with positive balance"
-        );
-
         // Sort transactions newest first
         txs.sort((a, b) => b.blockNumber - a.blockNumber);
 
         // Only get timestamps for the 50 most recent transactions to avoid rate limits
         const recentTxs = txs.slice(0, 50);
-        console.log(
-          "[useTokenWhaleTracker] Getting timestamps for most recent 50 transactions"
-        );
 
         // Get timestamps in batches with delay
         const BATCH_SIZE = 5;
@@ -475,7 +378,6 @@ export function useTokenWhaleTracker({
         }
 
         if (!cancelled) {
-          console.log("[useTokenWhaleTracker] Setting state with results");
           setHolders(holderArr);
           setTransfers(txs);
           setProgress(100);
@@ -484,7 +386,6 @@ export function useTokenWhaleTracker({
         console.error("[useTokenWhaleTracker] Error:", err);
         setError(err instanceof Error ? err.message : String(err));
       } finally {
-        console.log("[useTokenWhaleTracker] Fetch completed");
         if (!cancelled) setLoading(false);
       }
     }
@@ -492,28 +393,22 @@ export function useTokenWhaleTracker({
     fetchTransfers();
     return () => {
       cancelled = true;
-      console.log(
-        "[useTokenWhaleTracker] Cleanup - cancelled any pending operations"
-      );
     };
   }, [tokenAddress, abi, startBlock]);
 
   // Follow whale logic
   useEffect(() => {
     if (!followed) {
-      console.log("[useTokenWhaleTracker] Cleared followed whale");
       setFollowedTrades([]);
       return;
     }
 
-    console.log("[useTokenWhaleTracker] Following whale:", followed);
     setFollowedTrades(
       transfers.filter((t) => t.from === followed || t.to === followed)
     );
   }, [followed, transfers]);
 
   const followWhale = useCallback((address: string) => {
-    console.log("[useTokenWhaleTracker] Setting followed whale to:", address);
     setFollowed(address);
   }, []);
 

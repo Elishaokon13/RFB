@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 // DexScreener API types
 export interface DexScreenerPair {
@@ -59,16 +59,16 @@ export interface DexScreenerPair {
 export const formatDexScreenerPrice = (priceData: DexScreenerPair | null) => {
   if (!priceData) {
     return {
-      priceUsd: 'N/A',
-      priceChange24h: 'N/A',
-      volume24h: 'N/A',
-      liquidity: 'N/A',
-      fdv: 'N/A',
+      priceUsd: "N/A",
+      priceChange24h: "N/A",
+      volume24h: "N/A",
+      liquidity: "N/A",
+      fdv: "N/A",
     };
   }
 
   const formatNumber = (value: number | undefined) => {
-    if (value === undefined || isNaN(value)) return 'N/A';
+    if (value === undefined || isNaN(value)) return "N/A";
     if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
     if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
     if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
@@ -76,13 +76,15 @@ export const formatDexScreenerPrice = (priceData: DexScreenerPair | null) => {
   };
 
   const formatPercentage = (value: number | undefined) => {
-    if (value === undefined || isNaN(value)) return 'N/A';
-    const sign = value >= 0 ? '+' : '';
+    if (value === undefined || isNaN(value)) return "N/A";
+    const sign = value >= 0 ? "+" : "";
     return `${sign}${value.toFixed(2)}%`;
   };
 
   return {
-    priceUsd: priceData.priceUsd ? `$${parseFloat(priceData.priceUsd).toFixed(6)}` : 'N/A',
+    priceUsd: priceData.priceUsd
+      ? `$${parseFloat(priceData.priceUsd).toFixed(6)}`
+      : "N/A",
     priceChange24h: formatPercentage(priceData.priceChange?.h24),
     volume24h: formatNumber(priceData.volume?.h24),
     liquidity: formatNumber(priceData.liquidity?.usd),
@@ -91,13 +93,16 @@ export const formatDexScreenerPrice = (priceData: DexScreenerPair | null) => {
 };
 
 // Utility function to calculate fallback price (market cap / total supply)
-export function calculateFallbackPrice(marketCap?: string, totalSupply?: string): string {
-  if (!marketCap || !totalSupply) return 'N/A';
+export function calculateFallbackPrice(
+  marketCap?: string,
+  totalSupply?: string
+): string {
+  if (!marketCap || !totalSupply) return "N/A";
   const cap = parseFloat(marketCap);
   const supply = parseFloat(totalSupply);
-  if (isNaN(cap) || isNaN(supply) || supply === 0) return 'N/A';
+  if (isNaN(cap) || isNaN(supply) || supply === 0) return "N/A";
   const price = cap / supply;
-  if (!isFinite(price)) return 'N/A';
+  if (!isFinite(price)) return "N/A";
   if (price < 0.000001) return `$${price.toExponential(2)}`;
   if (price < 0.01) return `$${price.toFixed(6)}`;
   if (price < 1) return `$${price.toFixed(4)}`;
@@ -112,41 +117,50 @@ export function calculateFallbackPrice(marketCap?: string, totalSupply?: string)
  * @returns Array of DexScreenerPair objects
  * @see https://docs.dexscreener.com/api/reference
  */
-export async function fetchDexScreenerTokens(chainId: string, tokenAddresses: string[]): Promise<DexScreenerPair[]> {
+export async function fetchDexScreenerTokens(
+  chainId: string,
+  tokenAddresses: string[]
+): Promise<DexScreenerPair[]> {
   if (tokenAddresses.length === 0) return [];
-  
+
   // Sanitize token addresses to ensure they're valid
-  const sanitizedAddresses = tokenAddresses.filter(addr => addr && addr.startsWith('0x'));
+  const sanitizedAddresses = tokenAddresses.filter(
+    (addr) => addr && addr.startsWith("0x")
+  );
   if (sanitizedAddresses.length === 0) {
-    console.warn('[fetchDexScreenerTokens] No valid addresses provided');
+    console.warn("[fetchDexScreenerTokens] No valid addresses provided");
     return [];
   }
-  
+
   // DexScreener API allows up to 60 addresses per request
-  const addressesParam = sanitizedAddresses.slice(0, 60).join(',');
+  const addressesParam = sanitizedAddresses.slice(0, 60).join(",");
   const url = `https://api.dexscreener.com/tokens/v1/${chainId}/${addressesParam}`;
-  
+
   console.log(`[fetchDexScreenerTokens] Fetching data from: ${url}`);
-  
+
   try {
-  const response = await fetch(url);
-    
+    const response = await fetch(url);
+
     if (!response.ok) {
-      console.error(`[fetchDexScreenerTokens] API error: ${response.status} ${response.statusText}`);
+      console.error(
+        `[fetchDexScreenerTokens] API error: ${response.status} ${response.statusText}`
+      );
       throw new Error(`DexScreener API error: ${response.status}`);
     }
-    
-  const data = await response.json();
-    console.log('[fetchDexScreenerTokens] API response:', data);
-    
+
+    const data = await response.json();
+    console.log("[fetchDexScreenerTokens] API response:", data);
+
     if (!Array.isArray(data)) {
-      console.warn('[fetchDexScreenerTokens] Unexpected response format, expected array');
+      console.warn(
+        "[fetchDexScreenerTokens] Unexpected response format, expected array"
+      );
       return [];
     }
-    
+
     return data;
   } catch (error) {
-    console.error('[fetchDexScreenerTokens] Error fetching data:', error);
+    console.error("[fetchDexScreenerTokens] Error fetching data:", error);
     throw error;
   }
 }
@@ -157,7 +171,10 @@ export async function fetchDexScreenerTokens(chainId: string, tokenAddresses: st
  * @param tokenAddresses Array of token addresses (max 60 per request)
  * @returns { tokens, loading, error }
  */
-export function useDexScreenerTokens(chainId: string, tokenAddresses: string[]) {
+export function useDexScreenerTokens(
+  chainId: string,
+  tokenAddresses: string[]
+) {
   const [tokens, setTokens] = useState<DexScreenerPair[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -171,7 +188,8 @@ export function useDexScreenerTokens(chainId: string, tokenAddresses: string[]) 
         const result = await fetchDexScreenerTokens(chainId, tokenAddresses);
         if (!cancelled) setTokens(result);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : String(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -184,7 +202,7 @@ export function useDexScreenerTokens(chainId: string, tokenAddresses: string[]) 
   }, [chainId, tokenAddresses]);
 
   return { tokens, loading, error };
-} 
+}
 
 // DefiLlama API integration for token prices
 export interface DefiLlamaPrice {
@@ -221,37 +239,42 @@ export interface DefiLlamaChartResponse {
  * @param tokenAddress Token address
  * @returns Price data for the token
  */
-export async function fetchDefiLlamaPrice(chainId: string, tokenAddress: string): Promise<DefiLlamaPrice | null> {
+export async function fetchDefiLlamaPrice(
+  chainId: string,
+  tokenAddress: string
+): Promise<DefiLlamaPrice | null> {
   if (!tokenAddress || !chainId) return null;
-  
+
   // Convert numeric chainId to DefiLlama chain name
   const chainName = chainId === "8453" ? "base" : chainId;
-  
+
   // Format the coin parameter as {chain}:{address}
   const coinParam = `${chainName}:${tokenAddress}`;
   const url = `https://coins.llama.fi/prices/current/${coinParam}`;
-  
+
   console.log(`[fetchDefiLlamaPrice] Fetching data from: ${url}`);
-  
+
   try {
     const response = await fetch(url);
-    
+
     if (!response.ok) {
-      console.error(`[fetchDefiLlamaPrice] API error: ${response.status} ${response.statusText}`);
+      console.error(
+        `[fetchDefiLlamaPrice] API error: ${response.status} ${response.statusText}`
+      );
       throw new Error(`DefiLlama API error: ${response.status}`);
     }
-    
+
     const data: DefiLlamaPriceResponse = await response.json();
-    console.log('[fetchDefiLlamaPrice] API response:', data);
-    
+    console.log("[fetchDefiLlamaPrice] API response:", data);
+
     if (!data.coins || !data.coins[coinParam]) {
-      console.warn('[fetchDefiLlamaPrice] No price data found for token');
+      console.warn("[fetchDefiLlamaPrice] No price data found for token");
       return null;
     }
-    
+
     return data.coins[coinParam];
   } catch (error) {
-    console.error('[fetchDefiLlamaPrice] Error fetching data:', error);
+    console.error("[fetchDefiLlamaPrice] Error fetching data:", error);
     return null;
   }
 }
@@ -265,73 +288,81 @@ export async function fetchDefiLlamaPrice(chainId: string, tokenAddress: string)
  * @returns Historical price data for the token
  */
 export async function fetchDefiLlamaChart(
-  chainId: string, 
+  chainId: string,
   tokenAddress: string,
-  period: string = '1h',
+  period: string = "1h",
   span: number = 24
-): Promise<Array<{timestamp: number; price: number}> | null> {
+): Promise<Array<{ timestamp: number; price: number }> | null> {
   if (!tokenAddress || !chainId) return null;
-  
+
   // Convert numeric chainId to DefiLlama chain name
   const chainName = chainId === "8453" ? "base" : chainId;
-  
+
   // Format the coin parameter as {chain}:{address}
   const coinParam = `${chainName}:${tokenAddress}`;
-  
+
   // Ensure we get enough data points (minimum 15, maximum 50)
   const adjustedSpan = Math.min(Math.max(span, 15), 50);
-  
+
   const url = `https://coins.llama.fi/chart/${coinParam}?period=${period}&span=${adjustedSpan}`;
-  
+
   console.log(`[fetchDefiLlamaChart] Fetching data from: ${url}`);
-  
+
   try {
     const response = await fetch(url);
-    
+
     if (!response.ok) {
-      console.error(`[fetchDefiLlamaChart] API error: ${response.status} ${response.statusText}`);
+      console.error(
+        `[fetchDefiLlamaChart] API error: ${response.status} ${response.statusText}`
+      );
       throw new Error(`DefiLlama API error: ${response.status}`);
     }
-    
+
     const data: DefiLlamaChartResponse = await response.json();
-    console.log('[fetchDefiLlamaChart] API response:', data);
-    
-    if (!data.coins || !data.coins[coinParam] || !data.coins[coinParam].prices) {
-      console.warn('[fetchDefiLlamaChart] No chart data found for token');
+    console.log("[fetchDefiLlamaChart] API response:", data);
+
+    if (
+      !data.coins ||
+      !data.coins[coinParam] ||
+      !data.coins[coinParam].prices
+    ) {
+      console.warn("[fetchDefiLlamaChart] No chart data found for token");
       return null;
     }
-    
+
     const prices = data.coins[coinParam].prices || [];
     console.log(`[fetchDefiLlamaChart] Retrieved ${prices.length} data points`);
-    
+
     // If we have fewer than 2 data points, try to create some synthetic ones
     if (prices.length < 2) {
-      console.warn('[fetchDefiLlamaChart] Not enough data points, creating synthetic ones');
-      
+      console.warn(
+        "[fetchDefiLlamaChart] Not enough data points, creating synthetic ones"
+      );
+
       if (prices.length === 1) {
         const basePrice = prices[0].price;
         const baseTimestamp = prices[0].timestamp;
-        
+
         // Create 15 synthetic data points with small variations
         const syntheticPrices = [];
         for (let i = 0; i < 15; i++) {
           const variation = 0.0001 * (Math.random() - 0.5); // Small random variation
           syntheticPrices.push({
             timestamp: baseTimestamp - (i + 1) * 3600, // 1 hour intervals
-            price: basePrice * (1 + variation)
+            price: basePrice * (1 + variation),
           });
         }
-        
+
         return [...prices, ...syntheticPrices];
       }
     }
-    
+
     return prices;
   } catch (error) {
-    console.error('[fetchDefiLlamaChart] Error fetching data:', error);
+    console.error("[fetchDefiLlamaChart] Error fetching data:", error);
     return null;
   }
-} 
+}
 
 /**
  * React hook to fetch current token price data from DefiLlama API
@@ -348,19 +379,20 @@ export function useDefiLlamaPrice(chainId: string, tokenAddress: string) {
     let cancelled = false;
     async function fetchPrice() {
       if (!tokenAddress || !chainId) return;
-      
+
       setLoading(true);
       setError(null);
       try {
         const result = await fetchDefiLlamaPrice(chainId, tokenAddress);
         if (!cancelled) setPriceData(result);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : String(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-    
+
     fetchPrice();
     return () => {
       cancelled = true;
@@ -379,12 +411,15 @@ export function useDefiLlamaPrice(chainId: string, tokenAddress: string) {
  * @returns { chartData, loading, error }
  */
 export function useDefiLlamaChart(
-  chainId: string, 
+  chainId: string,
   tokenAddress: string,
-  period: string = '1h',
+  period: string = "1h",
   span: number = 24
 ) {
-  const [chartData, setChartData] = useState<Array<{timestamp: number; price: number}> | null>(null);
+  const [chartData, setChartData] = useState<Array<{
+    timestamp: number;
+    price: number;
+  }> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -392,19 +427,25 @@ export function useDefiLlamaChart(
     let cancelled = false;
     async function fetchChart() {
       if (!tokenAddress || !chainId) return;
-      
+
       setLoading(true);
       setError(null);
       try {
-        const result = await fetchDefiLlamaChart(chainId, tokenAddress, period, span);
+        const result = await fetchDefiLlamaChart(
+          chainId,
+          tokenAddress,
+          period,
+          span
+        );
         if (!cancelled) setChartData(result);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : String(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-    
+
     fetchChart();
     return () => {
       cancelled = true;
@@ -412,7 +453,7 @@ export function useDefiLlamaChart(
   }, [chainId, tokenAddress, period, span]);
 
   return { chartData, loading, error };
-} 
+}
 
 /**
  * Fetches multiple historical price points from DefiLlama API
@@ -427,73 +468,85 @@ export async function fetchDefiLlamaHistoricalPrices(
   tokenAddress: string,
   dataPoints: number = 24,
   timeRange: number = 86400 // 24 hours in seconds
-): Promise<Array<{timestamp: number; price: number}> | null> {
+): Promise<Array<{ timestamp: number; price: number }> | null> {
   if (!tokenAddress || !chainId) return null;
-  
+
   // Convert numeric chainId to DefiLlama chain name
   const chainName = chainId === "8453" ? "base" : chainId;
-  
+
   // Format the coin parameter as {chain}:{address}
   const coinParam = `${chainName}:${tokenAddress}`;
-  
+
   // First get the current price to use as a reference
   try {
-    const currentPriceResponse = await fetch(`https://coins.llama.fi/prices/current/${coinParam}`);
+    const currentPriceResponse = await fetch(
+      `https://coins.llama.fi/prices/current/${coinParam}`
+    );
     if (!currentPriceResponse.ok) {
-      console.error(`[fetchDefiLlamaHistoricalPrices] Current price API error: ${currentPriceResponse.status}`);
+      console.error(
+        `[fetchDefiLlamaHistoricalPrices] Current price API error: ${currentPriceResponse.status}`
+      );
       return null;
     }
-    
-    const currentPriceData: DefiLlamaPriceResponse = await currentPriceResponse.json();
-    console.log('[fetchDefiLlamaHistoricalPrices] Current price data:', currentPriceData);
-    
+
+    const currentPriceData: DefiLlamaPriceResponse =
+      await currentPriceResponse.json();
+    console.log(
+      "[fetchDefiLlamaHistoricalPrices] Current price data:",
+      currentPriceData
+    );
+
     if (!currentPriceData.coins || !currentPriceData.coins[coinParam]) {
-      console.warn('[fetchDefiLlamaHistoricalPrices] No current price data found');
+      console.warn(
+        "[fetchDefiLlamaHistoricalPrices] No current price data found"
+      );
       return null;
     }
-    
+
     const currentPrice = currentPriceData.coins[coinParam].price || 0;
     const currentTimestamp = Math.floor(Date.now() / 1000);
-    
+
     // Generate synthetic historical data based on current price
-    const result: Array<{timestamp: number; price: number}> = [];
-    
+    const result: Array<{ timestamp: number; price: number }> = [];
+
     // Add current price as the latest point
     result.push({
       timestamp: currentTimestamp,
-      price: currentPrice
+      price: currentPrice,
     });
-    
+
     // Generate historical data points with small variations
     const intervalSeconds = timeRange / (dataPoints - 1);
     for (let i = 1; i < dataPoints; i++) {
       // Create a timestamp going back in time
       const timestamp = currentTimestamp - Math.floor(i * intervalSeconds);
-      
+
       // Create a more realistic price pattern with some randomness
       // The further back in time, the more potential for variation
       const trendFactor = (i / dataPoints) * 0.05; // Up to 5% trend over the full period
-      const randomFactor = (Math.random() * 0.01) - 0.005; // -0.5% to +0.5% random noise
-      
+      const randomFactor = Math.random() * 0.01 - 0.005; // -0.5% to +0.5% random noise
+
       // Combine trend and random factors for a more realistic price movement
       const price = currentPrice * (1 - trendFactor + randomFactor);
-      
+
       result.push({
         timestamp,
-        price
+        price,
       });
     }
-    
+
     // Sort by timestamp (oldest first)
     result.sort((a, b) => a.timestamp - b.timestamp);
-    
-    console.log(`[fetchDefiLlamaHistoricalPrices] Generated ${result.length} data points`);
+
+    console.log(
+      `[fetchDefiLlamaHistoricalPrices] Generated ${result.length} data points`
+    );
     return result;
   } catch (error) {
-    console.error('[fetchDefiLlamaHistoricalPrices] Error:', error);
+    console.error("[fetchDefiLlamaHistoricalPrices] Error:", error);
     return null;
   }
-} 
+}
 
 /**
  * React hook to fetch historical price data with multiple data points
@@ -504,12 +557,15 @@ export async function fetchDefiLlamaHistoricalPrices(
  * @returns { chartData, loading, error }
  */
 export function useDefiLlamaHistoricalPrices(
-  chainId: string, 
+  chainId: string,
   tokenAddress: string,
   dataPoints: number = 24,
   timeRange: number = 86400 // 24 hours in seconds
 ) {
-  const [chartData, setChartData] = useState<Array<{timestamp: number; price: number}> | null>(null);
+  const [chartData, setChartData] = useState<Array<{
+    timestamp: number;
+    price: number;
+  }> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -517,19 +573,25 @@ export function useDefiLlamaHistoricalPrices(
     let cancelled = false;
     async function fetchData() {
       if (!tokenAddress || !chainId) return;
-      
+
       setLoading(true);
       setError(null);
       try {
-        const result = await fetchDefiLlamaHistoricalPrices(chainId, tokenAddress, dataPoints, timeRange);
+        const result = await fetchDefiLlamaHistoricalPrices(
+          chainId,
+          tokenAddress,
+          dataPoints,
+          timeRange
+        );
         if (!cancelled) setChartData(result);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : String(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-    
+
     fetchData();
     return () => {
       cancelled = true;
@@ -537,4 +599,4 @@ export function useDefiLlamaHistoricalPrices(
   }, [chainId, tokenAddress, dataPoints, timeRange]);
 
   return { chartData, loading, error };
-} 
+}
