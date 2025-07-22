@@ -231,9 +231,9 @@ export function TokenTable() {
     <div className="flex flex-col items-center justify-center py-16 animate-pulse">
       <span className="text-6xl animate-bounce">🔥</span>
       <span className="mt-4 text-lg font-semibold text-primary animate-pulse">
-        Loading the hottest new picks...
+        Loading tokens...
       </span>
-      <span className="mt-2 text-sm text-muted-foreground">
+      <span className="mt-2 max-w-[300px] text-center text-sm text-muted-foreground">
         Fetching the latest tokens. This may take a moment if the network is
         busy.
       </span>
@@ -289,6 +289,10 @@ export function TokenTable() {
       {activeTopFilter === "New Picks" &&
         (newLoading || (!newCoins.length && !newError)) &&
         fireLoading}
+      {activeTopFilter !== "New Picks" &&
+        isLoading &&
+        (error || (safeErrorMsg && paginatedCoins.length === 0)) &&
+        fireLoading}
       {paginatedCoins.length > 0 && (
         <TokenDataTable
           coins={paginatedCoins}
@@ -305,7 +309,7 @@ export function TokenTable() {
       )}
 
       {/* Only show error if we have no data at all, except for New Picks which fails silently */}
-      {activeTopFilter !== "New Picks" &&
+      {/* {activeTopFilter !== "New Picks" &&
         safeErrorMsg &&
         paginatedCoins.length === 0 && (
           <div className="flex items-center justify-center p-8">
@@ -314,7 +318,7 @@ export function TokenTable() {
               <p className="text-sm">{safeErrorMsg}</p>
             </div>
           </div>
-        )}
+        )} */}
     </div>
   );
 }

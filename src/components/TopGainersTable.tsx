@@ -16,7 +16,7 @@ interface TopGainersTableProps {
 export const TopGainersTable: React.FC<TopGainersTableProps> = ({
   count = 10,
 }) => {
-  const { data, isLoading, error } = useGetCoinsTopGainers({ count });
+  const { data, isLoading, error, refetch } = useGetCoinsTopGainers({ count });
 
   if (isLoading) {
     return (
@@ -43,17 +43,18 @@ export const TopGainersTable: React.FC<TopGainersTableProps> = ({
   }
 
   if (error) {
+    refetch()
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Top Gainers (24h)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center text-red-500">
-            Error loading top gainers: {error.message}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center py-16 animate-pulse">
+        <span className="text-6xl animate-bounce">🔥</span>
+        <span className="mt-4 text-lg font-semibold text-primary animate-pulse">
+          Loading the hottest new picks...
+        </span>
+        <span className="mt-2 text-sm text-muted-foreground">
+          Fetching the latest tokens. This may take a moment if the network is
+          busy.
+        </span>
+      </div>
     );
   }
 

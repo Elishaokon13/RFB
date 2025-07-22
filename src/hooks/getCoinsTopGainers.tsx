@@ -36,7 +36,7 @@ interface QueryResponse {
 export const useGetCoinsTopGainers = (params: ExploreQueryOptions = {}) => {
   const { count = 20, after } = params;
   
-  return useQuery<QueryResponse>({
+  const query = useQuery<QueryResponse>({
     queryKey: ["coins", "top-gainers", "zora", { count, after }],
     queryFn: async () => {
       const response = await getCoinsTopGainers({ count, after });
@@ -62,6 +62,15 @@ export const useGetCoinsTopGainers = (params: ExploreQueryOptions = {}) => {
     refetchOnReconnect: true,
     refetchOnMount: true, // Always refetch on mount for fresh data
   });
+
+  // Return all query results plus a dedicated refetch function for easier access
+  return {
+    ...query,
+    refetch: async () => {
+      console.log('[getCoinsTopGainers] Manual refetch triggered');
+      return query.refetch();
+    },
+  };
 };
 
 // Optimized formatting functions with memoization-friendly design
@@ -135,4 +144,4 @@ export const getMomentumIndicator = (marketCapDelta24h?: string, volume24h?: str
   return "bg-gray-100 text-gray-800"; // Very low momentum
 };
 
-export type { TopGainerCoin, ExploreQueryOptions, QueryResponse }; 
+export type { TopGainerCoin, ExploreQueryOptions, QueryResponse };
