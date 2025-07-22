@@ -18,6 +18,9 @@ import {
   useDexScreenerTokens,
   DexScreenerPair,
   calculateFallbackPrice,
+  useDefiLlamaPrice,
+  useDefiLlamaChart,
+  useDefiLlamaHistoricalPrices,
 } from "@/hooks/useDexScreener";
 import { tradeCoin, TradeParameters } from "@zoralabs/coins-sdk";
 import { base } from "viem/chains";
@@ -92,13 +95,17 @@ const generateHistoricalData = (
 
 // Interactive Price Chart Component
 const PriceChart = ({ 
-  dexScreenerData, 
   period, 
   onPeriodChange,
+  token,
+  chainId,
+  tokenAddress,
 }: { 
-  dexScreenerData: DexScreenerPair | undefined;
   period: ChartPeriod;
   onPeriodChange: (period: ChartPeriod) => void;
+  token: { marketCap?: string; totalSupply?: string };
+  chainId: string;
+  tokenAddress: string;
 }) => {
   const [hoveredPoint, setHoveredPoint] = useState<{
     price: number;
@@ -109,16 +116,77 @@ const PriceChart = ({
     null
   );
 
-  // DexScreener data is no longer used; use mock or prop values if needed
-  const currentPrice = dexScreenerData?.priceUsd
-    ? parseFloat(dexScreenerData.priceUsd)
-    : 0;
-  const priceChange = dexScreenerData?.priceChange?.h24 || 0;
+  // Calculate time range based on period
+  const timeRange = useMemo(() => {
+    switch (period) {
+      case "1H": return 60 * 60;      // 1 hour in seconds
+      case "6H": return 6 * 60 * 60;  // 6 hours in seconds
+      case "24H": return 24 * 60 * 60; // 24 hours in seconds
+      case "7D": return 7 * 24 * 60 * 60; // 7 days in seconds
+      case "1M": return 30 * 24 * 60 * 60; // 30 days in seconds
+      default: return 24 * 60 * 60;
+    }
+  }, [period]);
 
+  // Calculate data points based on period
+  const dataPoints = useMemo(() => {
+    switch (period) {
+      case "1H": return 30;  // 30 data points for 1H (2-min intervals)
+      case "6H": return 36;  // 36 data points for 6H (10-min intervals)
+      case "24H": return 24; // 24 data points for 24H (1-hour intervals)
+      case "7D": return 28;  // 28 data points for 7D (6-hour intervals)
+      case "1M": return 30;  // 30 data points for 1M (1-day intervals)
+      default: return 24;
+    }
+  }, [period]);
+
+  // Fetch historical price data using our new hook
+  const { 
+    chartData: historicalPrices, 
+    loading: historyLoading, 
+    error: historyError 
+  } = useDefiLlamaHistoricalPrices(chainId, tokenAddress, dataPoints, timeRange);
+
+  // Fetch current price from DefiLlama
+  const { 
+    priceData: currentPriceData, 
+    loading: priceLoading 
+  } = useDefiLlamaPrice(chainId, tokenAddress);
+
+  // Use DefiLlama data for chart
   const chartData = useMemo(() => {
-    if (!currentPrice) return [];
-    return generateHistoricalData(period, currentPrice, priceChange);
-  }, [currentPrice, priceChange, period]);
+    if (!historicalPrices || historicalPrices.length === 0) {
+      console.log('[PriceChart] No historical price data available');
+      return [];
+    }
+
+    console.log('[PriceChart] Using historical price data:', historicalPrices);
+    
+    // Convert historical price data to our chart format
+    return historicalPrices.map(point => ({
+      timestamp: point.timestamp * 1000, // Convert to milliseconds
+      price: point.price,
+      volume: Math.random() * 1000000 + 100000, // Random volume (not provided by DefiLlama)
+    }));
+  }, [historicalPrices]);
+
+  // Get current price and price change
+  const currentPrice = currentPriceData?.price || 0;
+  
+  // Calculate price change from chart data
+  const priceChange = useMemo(() => {
+    if (chartData.length < 2) return 0;
+    const oldestPrice = chartData[0].price;
+    const latestPrice = chartData[chartData.length - 1].price;
+    return ((latestPrice - oldestPrice) / oldestPrice) * 100;
+  }, [chartData]);
+
+  // Debug log
+  useEffect(() => {
+    console.log('[PriceChart] Current price:', currentPrice);
+    console.log('[PriceChart] Price change:', priceChange);
+    console.log('[PriceChart] Chart data points:', chartData.length);
+  }, [currentPrice, priceChange, chartData]);
 
   const periods: ChartPeriod[] = ["1H", "6H", "24H", "7D", "1M"];
 
@@ -261,7 +329,22 @@ const PriceChart = ({
         className="relative bg-muted/10 rounded-lg border border-border p-6 w-full"
         style={{ minHeight: `${chartHeight + 40}px` }}
       >
-        {chartData.length > 0 ? (
+        {historyLoading || priceLoading ? (
+          <div className="flex items-center justify-center h-80">
+            <div className="text-center">
+              <RefreshCw className="w-12 h-12 text-primary mx-auto mb-2 animate-spin" />
+              <p className="text-muted-foreground">Loading price data...</p>
+            </div>
+          </div>
+        ) : historyError ? (
+          <div className="flex items-center justify-center h-80">
+            <div className="text-center">
+              <BarChart3 className="w-12 h-12 text-red-500 mx-auto mb-2" />
+              <p className="text-red-500">Error loading price data</p>
+              <p className="text-sm text-muted-foreground mt-2">{historyError}</p>
+            </div>
+          </div>
+        ) : chartData.length > 0 ? (
           <svg
             width="100%"
             height={chartHeight}
@@ -497,7 +580,13 @@ const PriceChart = ({
             <div>
               <span className="text-muted-foreground">Range: </span>
               <span className="font-medium text-foreground">
-                {formatPrice(minPrice)} - {formatPrice(maxPrice)}
+                {chartData.length > 0 ? (
+                  <>
+                    {formatPrice(Math.min(...chartData.map(d => d.price)))} - {formatPrice(Math.max(...chartData.map(d => d.price)))}
+                  </>
+                ) : (
+                  "N/A"
+                )}
               </span>
             </div>
           </div>
@@ -568,17 +657,17 @@ export default function TokenDetails() {
 
   // Debug logging for address changes
   const prevAddress = useRef(address);
-  useEffect(() => {
-    if (prevAddress.current !== address) {
-      console.log(
-        "[TokenDetails] Address changed from",
-        prevAddress.current,
-        "to",
-        address
-      );
-      prevAddress.current = address;
-    }
-  }, [address]);
+  //useEffect(() => {
+   // if (prevAddress.current !== address) {
+     // console.log(
+      //  "[TokenDetails] Address changed from",
+      //  prevAddress.current,
+      //  "to",
+     //    address
+      //);
+      //prevAddress.current = address;
+    //}
+  //}, [address]);
   
   // Fetch coin details using the proper hook
   const { coin: token, loading, error } = useCoinDetails(address);
@@ -595,6 +684,13 @@ export default function TokenDetails() {
   // Log the full raw API response for pricing/chart
   useEffect(() => {
     console.log('[TokenDetails] Dex Screener raw API response:', dexTokens);
+    
+    // Check if we have valid price data
+    if (dexTokens && dexTokens.length > 0) {
+      console.log('[TokenDetails] DexScreener price:', dexTokens[0].priceUsd);
+    } else {
+      console.log('[TokenDetails] No DexScreener data available, will use fallback price');
+    }
   }, [dexTokens]);
 
   const dexData: DexScreenerPair | undefined = useMemo(
@@ -602,7 +698,24 @@ export default function TokenDetails() {
     [dexTokens]
   );
 
-  console.log(dexData, rawAddress, "dexdata");
+ // console.log(dexData, rawAddress, "dexdata");
+
+  // Fetch current price from DefiLlama
+  const { 
+    priceData: defiLlamaPrice, 
+    loading: priceLoading,
+    error: priceError
+  } = useDefiLlamaPrice("8453", address);
+
+  // Use DefiLlama price if available, otherwise fall back to calculated price
+  const price = defiLlamaPrice?.price || 
+    (token?.marketCap && token?.totalSupply ? Number(token.marketCap) / Number(token.totalSupply) : null);
+
+  // Log the price data
+  useEffect(() => {
+    console.log('[TokenDetails] DefiLlama price data:', defiLlamaPrice);
+    console.log('[TokenDetails] Current price:', price);
+  }, [defiLlamaPrice, price]);
 
   const handleBack = useCallback(() => {
     navigate(-1);
@@ -635,8 +748,6 @@ export default function TokenDetails() {
   //   () => (dexData && dexData.priceUsd ? parseFloat(dexData.priceUsd) : null),
   //   [dexData]
   // );
-
-  const price = Number(token?.marketCap) / Number(token?.totalSupply);
 
   // Early return if no address (before hooks that depend on it)
   if (!address) {
@@ -760,21 +871,26 @@ export default function TokenDetails() {
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Current Price</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {price !== null
-                    ? `$${price.toFixed(4)}`
-                    : formattedToken.formattedPrice ||
-                      calculateFallbackPrice(
-                        token.marketCap,
-                        token.totalSupply
+                  {priceLoading ? (
+                    <span className="inline-block w-20 h-8 bg-muted animate-pulse rounded"></span>
+                  ) : price !== null ? (
+                    `$${price.toFixed(4)}`
+                  ) : (
+                    calculateFallbackPrice(token?.marketCap, token?.totalSupply)
                   )}
                 </p>
+                {defiLlamaPrice?.confidence && (
+                  <p className="text-xs text-muted-foreground">
+                    Confidence: {(defiLlamaPrice.confidence * 100).toFixed(0)}%
+                  </p>
+                )}
               </div>
 
               {/* Market Cap */}
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Market Cap</p>
                 <p className="text-2xl font-bold text-foreground">
-                  ${formatNumber(token.marketCap)}
+                  ${formatNumber(token?.marketCap || "0")}
                 </p>
                 {/* <p className="text-sm text-muted-foreground">N/A</p> */}
               </div>
@@ -783,7 +899,7 @@ export default function TokenDetails() {
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">24h Volume</p>
                 <p className="text-2xl font-bold text-foreground">
-                  ${formatNumber(token.volume24h)}
+                  ${formatNumber(token?.volume24h || "0")}
                 </p>
                 {/* <p className="text-sm text-muted-foreground">N/A</p> */}
               </div>
@@ -793,9 +909,11 @@ export default function TokenDetails() {
           {/* Interactive Price Chart */}
           <div className="bg-card border border-border rounded-lg p-6">
             <PriceChart 
-              dexScreenerData={dexData}
               period={chartPeriod}
               onPeriodChange={setChartPeriod}
+              token={token}
+              chainId="8453" // Assuming Base Chain ID for DefiLlama
+              tokenAddress={token?.address || ""}
             />
           </div>
 
@@ -811,7 +929,7 @@ export default function TokenDetails() {
                     Token Address
                   </span>
                   <span className="text-sm font-mono text-foreground">
-                    {truncateAddress(token.address)}
+                    {truncateAddress(token?.address || "")}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -819,19 +937,19 @@ export default function TokenDetails() {
                     Total Supply
                   </span>
                   <span className="text-sm text-foreground">
-                    {formattedToken.formattedTotalSupply}
+                    {formattedToken?.formattedTotalSupply || "N/A"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Holders</span>
                   <span className="text-sm text-foreground">
-                    {token.uniqueHolders || "N/A"}
+                    {token?.uniqueHolders || "N/A"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Created</span>
                   <span className="text-sm text-foreground">
-                    {token.createdAt
+                    {token?.createdAt
                       ? new Date(token.createdAt).toLocaleDateString()
                       : "N/A"}
                   </span>
@@ -852,7 +970,7 @@ export default function TokenDetails() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Creator</span>
                   <span className="text-sm text-foreground">
-                    {typeof token.creatorAddress === "string" ? (
+                    {typeof token?.creatorAddress === "string" ? (
                       <Identity address={token.creatorAddress as `0x${string}`}>
                         {null}
                       </Identity>
@@ -864,7 +982,7 @@ export default function TokenDetails() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Age</span>
                   <span className="text-sm text-foreground">
-                    {token.createdAt
+                    {token?.createdAt
                       ? getAgeFromTimestamp(token.createdAt)
                       : "N/A"}
                   </span>
@@ -967,7 +1085,7 @@ export default function TokenDetails() {
                   placeholder={
                     tradeType === "buy"
                       ? "ETH amount"
-                      : `${token.symbol} amount`
+                      : `${token?.symbol || "Token"} amount`
                   }
                   value={tradeAmount}
                   onChange={(e) => setTradeAmount(e.target.value)}
@@ -979,8 +1097,8 @@ export default function TokenDetails() {
                   onClick={() => alert("Trading logic not implemented.")}
                 >
                   {tradeType === "buy"
-                    ? `Buy ${token.symbol}`
-                    : `Sell ${token.symbol}`}
+                    ? `Buy ${token?.symbol || "Token"}`
+                    : `Sell ${token?.symbol || "Token"}`}
                 </button>
                   </div>
               </div>

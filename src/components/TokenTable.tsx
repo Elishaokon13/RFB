@@ -439,16 +439,6 @@ const CreatorRow = ({
           </span>
         </div>
       </td>
-      <td className="px-4 py-3 text-sm align-top">{count}</td>
-      <td className="px-4 py-3 text-sm align-top">
-        {totalValueUsd ? (
-          `$${totalValueUsd.toLocaleString(undefined, {
-            maximumFractionDigits: 2,
-          })}`
-        ) : (
-          <span className="text-xs text-muted-foreground">-</span>
-        )}
-      </td>
       <td className="px-4 py-3 text-sm align-top font-mono">
         {truncateAddress(address)}
       </td>
@@ -480,12 +470,6 @@ export function CreatorsTable({ coins }: { coins: Coin[] }) {
             </th>
             <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Creator
-            </th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Tokens Created
-            </th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Total Balance (USD)
             </th>
             <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Address
