@@ -83,6 +83,9 @@ export function TokenTableRowSkeleton() {
   return (
     <tr className="border-b border-border hover:bg-muted/50 transition-colors">
       <td className="px-4 py-3">
+        <Skeleton className="h-4 w-8" />
+      </td>
+      <td className="px-4 py-3">
         <div className="flex items-center space-x-3">
           <Skeleton className="h-8 w-8 rounded-full" />
           <div className="space-y-2">
@@ -99,9 +102,6 @@ export function TokenTableRowSkeleton() {
       </td>
       <td className="px-4 py-3">
         <Skeleton className="h-4 w-12" />
-      </td>
-      <td className="px-4 py-3">
-        <Skeleton className="h-4 w-16" />
       </td>
       <td className="px-4 py-3">
         <Skeleton className="h-4 w-16" />
@@ -135,9 +135,6 @@ export function TableHeaderSkeleton() {
         </th>
         <th className="px-4 py-3">
           <Skeleton className="h-4 w-12" />
-        </th>
-        <th className="px-4 py-3">
-          <Skeleton className="h-4 w-8" />
         </th>
         <th className="px-4 py-3">
           <Skeleton className="h-4 w-12" />

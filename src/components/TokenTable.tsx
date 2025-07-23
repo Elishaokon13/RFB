@@ -252,7 +252,7 @@ export function TokenTable() {
           </div> */}
         </div>
       </div>
-      <TableSkeleton rows={10} columns={8} />
+      <TableSkeleton rows={10} columns={7} />
     </div>
   );
 

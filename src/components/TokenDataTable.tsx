@@ -64,6 +64,18 @@ const areCoinsEqual = (prevCoin: CoinWithImage, nextCoin: CoinWithImage) => {
   );
 };
 
+// Helper function to format percentage with abbreviations
+const formatPercentage = (value: number): string => {
+  const absValue = Math.abs(value);
+  if (absValue >= 1000000) {
+    return `${(value / 1000000).toFixed(1)}m`;
+  } else if (absValue >= 1000) {
+    return `${(value / 1000).toFixed(1)}k`;
+  } else {
+    return value.toFixed(2);
+  }
+};
+
 // Memoized price cell component with aggressive memoization
 const PriceCell = memo(
   ({
@@ -74,26 +86,43 @@ const PriceCell = memo(
     dexScreenerData: Record<string, DexScreenerPair>;
   }) => {
     const priceData = dexScreenerData[coin.address.toLowerCase()];
-    if (priceData && priceData.priceUsd) {
-      return (
-        <div className="text-sm font-medium text-foreground">
-          ${parseFloat(priceData.priceUsd).toFixed(6)}
-        </div>
-      );
+    const price = priceData && priceData.priceUsd 
+      ? `$${parseFloat(priceData.priceUsd).toFixed(6)}`
+      : calculateFallbackPrice(coin.marketCap, coin.totalSupply);
+
+    // Calculate percentage change
+    const delta = Number(coin.marketCapDelta24h);
+    const cap = Number(coin.marketCap);
+    let percentageChange = null;
+    if (!isNaN(delta) && !isNaN(cap) && cap - delta !== 0) {
+      const percent = (delta / (cap - delta)) * 100;
+      percentageChange = {
+        value: percent,
+        isPositive: percent >= 0
+      };
     }
-    // Fallback: calculate price as market cap / total supply
-    const fallbackPrice = calculateFallbackPrice(
-      coin.marketCap,
-      coin.totalSupply
-    );
+
     return (
-      <div className="text-sm font-medium text-foreground">{fallbackPrice}</div>
+      <div className="space-y-1">
+        <div className="text-sm font-medium text-foreground">
+          {price}
+        </div>
+        {percentageChange ? (
+          <div className={cn("text-xs font-medium", percentageChange.isPositive ? "text-gain" : "text-loss")}>
+            {percentageChange.isPositive ? "+" : ""}
+            {formatPercentage(percentageChange.value)}%
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground">N/A</div>
+        )}
+      </div>
     );
   },
   (prevProps, nextProps) =>
     prevProps.coin.address === nextProps.coin.address &&
     prevProps.coin.marketCap === nextProps.coin.marketCap &&
-    prevProps.coin.totalSupply === nextProps.coin.totalSupply
+    prevProps.coin.totalSupply === nextProps.coin.totalSupply &&
+    prevProps.coin.marketCapDelta24h === nextProps.coin.marketCapDelta24h
 );
 PriceCell.displayName = "PriceCell";
 
@@ -135,7 +164,7 @@ const Change24hCell = memo(({ coin }: { coin: CoinWithImage }) => {
         className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}
       >
         {isPositive ? "+" : ""}
-        {percent.toFixed(2)}%
+        {formatPercentage(percent)}%
       </span>
     );
   }
@@ -155,7 +184,7 @@ const PercentageCell = memo(
         className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}
       >
         {isPositive ? "+" : ""}
-        {calcValue.toFixed(2)}%
+        {formatPercentage(calcValue)}%
       </span>
     );
   },
@@ -254,7 +283,7 @@ const TableRow = memo(
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-medium text-foreground">
-                  {coin.symbol}
+                  {coin.symbol?.length > 8 ? coin.symbol.slice(0, 8) + '...' : coin.symbol}
                 </span>
               </div>
             </div>
@@ -272,9 +301,6 @@ const TableRow = memo(
         </td>
         <td className="px-4 py-3">
           <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
-        </td>
-        <td className="px-4 py-3">
-          <Change24hCell coin={coin} />
         </td>
         <td className="px-4 py-3 text-sm text-muted-foreground">
           {formattedCoin.formattedMarketCap}
@@ -383,7 +409,7 @@ export function TokenDataTable({
   ]);
 
   if (loading && coins.length === 0) {
-    return <TableSkeleton rows={10} columns={8} />;
+    return <TableSkeleton rows={10} columns={7} />;
   }
 
   if (coins.length === 0) {
@@ -416,9 +442,6 @@ export function TokenDataTable({
             </th>
             <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               VOLUME
-            </th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              24H
             </th>
             <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               MCAP

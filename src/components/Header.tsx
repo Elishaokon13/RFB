@@ -331,11 +331,23 @@ export function Header() {
     return formatter.format(value);
   };
 
+  // Helper function to format percentage with abbreviations
+  const formatPercentage = (value: number): string => {
+    const absValue = Math.abs(value);
+    if (absValue >= 1000000) {
+      return `${(value / 1000000).toFixed(1)}m`;
+    } else if (absValue >= 1000) {
+      return `${(value / 1000).toFixed(1)}k`;
+    } else {
+      return value.toFixed(2);
+    }
+  };
+
   const formatPercentChange = (marketCapDelta24h?: string): string => {
     if (!marketCapDelta24h) return "N/A";
     const change = parseFloat(marketCapDelta24h);
     if (isNaN(change)) return "N/A";
-    return `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`;
+    return `${change >= 0 ? "+" : ""}${formatPercentage(change)}%`;
   };
 
   const getChangeColor = (marketCapDelta24h?: string): string => {
@@ -459,17 +471,19 @@ export function Header() {
                               <DollarSign className="w-4 h-4 text-muted-foreground" />
                             </div>
                           )}
-                          <div>
-                            <div className="font-medium flex items-center gap-2">
-                              {token.name}
-                              {index < 3 && (
-                                <Badge variant="outline" className="text-xs">
-                                  Top {index + 1}
-                                </Badge>
-                              )}
+                                                      <div>
+                              <div className="font-medium flex items-center gap-2">
+                                {token.name?.length > 12 ? token.name.slice(0, 12) + '...' : token.name}
+                                {index < 3 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Top {index + 1}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {token.symbol?.length > 8 ? token.symbol.slice(0, 8) + '...' : token.symbol}
+                              </div>
                             </div>
-                            <div className="text-sm text-muted-foreground">{token.symbol}</div>
-                          </div>
                         </div>
                         <div className="text-right">
                           <div className="text-sm font-medium">{formatMarketCap(token.marketCap)}</div>
