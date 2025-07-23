@@ -139,12 +139,11 @@ export function Sidebar({ onClose }: SidebarProps) {
       <div className="p-4 border-t border-border space-y-3">
         <div className="w-full">
           <RainbowButton
-            className="w-full justify-center py-5"
+            className="w-full justify-center py-5 text-black dark:text-black"
             onClick={handleDonate}
             disabled={donateLoading}
           >
-            {" "}
-            <Heart className="w-4 h-4" />
+            <Heart className="w-4 h-4 text-black dark:text-black" />
             {donateLoading ? "Processing..." : "Donate"}
           </RainbowButton>
         </div>
