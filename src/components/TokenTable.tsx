@@ -39,6 +39,17 @@ type CoinWithImage = Coin & {
     };
   };
   fineAge?: string;
+  creatorProfile?: {
+    handle?: string;
+    address?: string;
+    displayName?: string;
+    avatar?: {
+      previewImage?: {
+        small?: string;
+        medium?: string;
+      };
+    };
+  };
 };
 
 export function TokenTable() {
@@ -153,6 +164,7 @@ export function TokenTable() {
       imageUrl: c.imageUrl ?? "",
       mediaContent: c.mediaContent ?? {},
       fineAge: c.fineAge,
+      creatorProfile: c.creatorProfile,
     };
   };
 

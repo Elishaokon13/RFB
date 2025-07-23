@@ -177,11 +177,11 @@ const CreatorRow = ({ creator, index }: { creator: Creator; index: number }) => 
             )}
           </button>
           <a
-            href={`https://basescan.org/address/${creator.address}`}
+            href={`https://zora.co/${profile?.handle || creator.handle || creator.address}`}
             target="_blank"
             rel="noopener noreferrer"
             className="p-1 hover:bg-muted rounded transition-colors"
-            title="View on BaseScan"
+            title="View on Zora"
           >
             <ExternalLink className="w-4 h-4 text-muted-foreground" />
           </a>

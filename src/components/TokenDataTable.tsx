@@ -15,6 +15,7 @@ import { useWatchlist } from "@/hooks/useWatchlist";
 import { useBasename } from "@/hooks/useBasename";
 import React, { useState } from "react";
 import { TableSkeleton, TokenTableRowSkeleton, TableHeaderSkeleton } from "@/components/TableSkeleton";
+import { Copy } from "lucide-react";
 
 // Extend Coin type to include image property for table display
 type CoinWithImage = Coin & {
@@ -29,6 +30,17 @@ type CoinWithImage = Coin & {
     };
   };
   fineAge?: string; // Add this for New Picks fine-grained age
+  creatorProfile?: {
+    handle?: string;
+    address?: string;
+    displayName?: string;
+    avatar?: {
+      previewImage?: {
+        small?: string;
+        medium?: string;
+      };
+    };
+  };
 };
 
 // Helper function to calculate age from timestamp
@@ -223,6 +235,14 @@ const TableRow = memo(
 
     // console.log(coin);
 
+    const [copied, setCopied] = useState(false);
+    const handleCopy = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      await navigator.clipboard.writeText(coin.address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    };
+
     return (
       <tr
         key={rowKey}
@@ -286,6 +306,23 @@ const TableRow = memo(
                   {coin.symbol?.length > 8 ? coin.symbol.slice(0, 8) + '...' : coin.symbol}
                 </span>
               </div>
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-xs font-mono text-muted-foreground">
+                  {truncateAddress(coin.address)}
+                </span>
+                <button
+                  onClick={handleCopy}
+                  className="p-1 hover:bg-muted rounded transition-colors"
+                  title="Copy address"
+                  tabIndex={0}
+                >
+                  {copied ? (
+                    <span className="text-green-500 text-xs">Copied</span>
+                  ) : (
+                    <Copy className="w-3 h-3 text-muted-foreground" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </td>
@@ -306,7 +343,7 @@ const TableRow = memo(
           {formattedCoin.formattedMarketCap}
         </td>
         <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
-          <CreatorCell creatorAddress={coin.creatorAddress} />
+          <CreatorCell coin={coin} />
         </td>
       </tr>
     );
@@ -322,24 +359,36 @@ const TableRow = memo(
 
 TableRow.displayName = "TableRow";
 
-// Memoized creator cell component for Basename resolution
+// Memoized creator cell component for Zora profile name or Basename/address fallback
 const truncateMiddle = (address: string) => {
   if (!address) return "";
   return address.length > 10
     ? `${address.slice(0, 6)}...${address.slice(-4)}`
     : address;
 };
-const CreatorCell = memo(({ creatorAddress }: { creatorAddress?: string }) => {
+const CreatorCell = memo(({ coin }: { coin: CoinWithImage }) => {
   const { basename, loading, error } = useBasename(
-    creatorAddress as `0x${string}`
+    coin.creatorAddress as `0x${string}`
   );
-  // Log the full Basename object for debugging
-  // console.log('[TokenDataTable] Basename:', { address: creatorAddress, basename, loading, error });
-  if (!creatorAddress) return <span>N/A</span>;
+  const profileName = coin.creatorProfile?.handle || coin.creatorProfile?.displayName;
+  const zoraProfileUrl = `https://zora.co/${coin.creatorProfile?.handle || coin.creatorAddress}`;
+  if (profileName) return (
+    <a
+      href={zoraProfileUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+      title="View Zora Profile"
+    >
+      {profileName}
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 inline ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 13v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h6m5-3h3m0 0v3m0-3L10 14" /></svg>
+    </a>
+  );
+  if (!coin.creatorAddress) return <span>N/A</span>;
   if (loading) return <span>Resolving...</span>;
   if (basename) return <span>{basename}</span>;
-  if (error) return <span title={error}>{truncateMiddle(creatorAddress)}</span>;
-  return <span>{truncateMiddle(creatorAddress)}</span>;
+  if (error) return <span title={error}>{truncateMiddle(coin.creatorAddress)}</span>;
+  return <span>{truncateMiddle(coin.creatorAddress)}</span>;
 });
 CreatorCell.displayName = "CreatorCell";
 
