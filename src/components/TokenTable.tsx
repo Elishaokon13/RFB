@@ -15,6 +15,7 @@ import {
   getProfileImageSmall,
   useUserBalances,
 } from "@/hooks/useZoraProfile";
+import { TableSkeleton } from "@/components/TableSkeleton";
 
 // Filter options
 const topFilters = [
@@ -110,19 +111,24 @@ export function TokenTable() {
     if (currentPage !== 1) setCurrentPage(1);
   }, [activeTopFilter, currentPage]);
 
-  // Helper for fine-grained age (seconds/minutes/hours/days)
+  // Helper for fine-grained age (seconds/minutes/hours/days/weeks/years)
   function getFineAgeFromTimestamp(timestamp: string) {
     const now = new Date();
     const created = new Date(timestamp);
     const diffMs = now.getTime() - created.getTime();
     const diffSec = Math.floor(diffMs / 1000);
-    if (diffSec < 60) return `${diffSec}s old`;
-    const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin}m old`;
-    const diffHour = Math.floor(diffMin / 60);
-    if (diffHour < 24) return `${diffHour}h old`;
-    const days = Math.floor(diffHour / 24);
-    return `${days}d old`;
+    const diffMin = Math.floor(diffMs / (1000 * 60));
+    const diffHour = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffYears = Math.floor(diffDays / 365);
+
+    if (diffSec < 60) return `${diffSec}s`;
+    if (diffMin < 60) return `${diffMin}m`;
+    if (diffHour < 24) return `${diffHour}h`;
+    if (diffDays < 7) return `${diffDays}d`;
+    if (diffWeeks < 52) return `${diffWeeks}w`;
+    return `${diffYears}y`;
   }
 
   // Helper to ensure all required CoinWithImage properties are present
@@ -221,17 +227,32 @@ export function TokenTable() {
       ? errorMsg.message
       : "Unknown error";
 
-  // Animated fire loading state for New Picks
-  const fireLoading = (
-    <div className="flex flex-col items-center justify-center py-16 animate-pulse">
-      <span className="text-6xl animate-bounce">🔥</span>
-      <span className="mt-4 text-lg font-semibold text-primary animate-pulse">
-        Loading tokens...
-      </span>
-      <span className="mt-2 max-w-[300px] text-center text-sm text-muted-foreground">
-        Fetching the latest tokens. This may take a moment if the network is
-        busy.
-      </span>
+  // Skeleton loading state
+  const skeletonLoading = (
+    <div className="space-y-4">
+      <div className="bg-card border-b border-border p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex bg-muted rounded-lg p-1">
+              {topFilters.map((filter) => (
+                <div key={filter} className="px-3 py-1 rounded-md">
+                  <div className="h-4 w-16 bg-muted-foreground/20 rounded animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-xs text-green-600">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span>Live</span>
+            </div>
+            <div className="flex items-center gap-1 px-3 py-1 bg-muted rounded-lg">
+              <div className="h-4 w-16 bg-muted-foreground/20 rounded animate-pulse" />
+            </div>
+          </div> */}
+        </div>
+      </div>
+      <TableSkeleton rows={10} columns={8} />
     </div>
   );
 
@@ -283,11 +304,11 @@ export function TokenTable() {
       {/* Progressive Loading - Show data as soon as it's available */}
       {activeTopFilter === "New Picks" &&
         (newLoading || (!newCoins.length && !newError)) &&
-        fireLoading}
+        skeletonLoading}
       {activeTopFilter !== "New Picks" &&
         isLoading &&
         (error || (safeErrorMsg && paginatedCoins.length === 0)) &&
-        fireLoading}
+        skeletonLoading}
       {paginatedCoins.length > 0 && (
         <TokenDataTable
           coins={paginatedCoins}
@@ -415,7 +436,7 @@ const CreatorRow = ({
             <img
               src={imageUrl}
               alt="profile"
-              className="w-8 h-8 rounded-full object-cover"
+              className="w-8 h-8 rounded-md object-cover"
             />
           )}
           <span className="font-semibold">

@@ -69,14 +69,19 @@ export const formatCreationDate = (createdAt?: string): string => {
   try {
     const date = new Date(createdAt);
     const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+    const diffInWeeks = Math.floor(diffInDays / 7);
+    const diffInYears = Math.floor(diffInDays / 365);
     
-    if (diffInMinutes < 1) return "Just now";
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    
-    const days = Math.floor(diffInMinutes / 1440);
-    return `${days}d ago`;
+    if (diffInMinutes < 1) return "<1m";
+    if (diffInMinutes < 60) return `${diffInMinutes}m`;
+    if (diffInHours < 24) return `${diffInHours}h`;
+    if (diffInDays < 7) return `${diffInDays}d`;
+    if (diffInWeeks < 52) return `${diffInWeeks}w`;
+    return `${diffInYears}y`;
   } catch {
     return "Invalid Date";
   }

@@ -33,6 +33,9 @@
 - **Responsive UI:**  
   Built with shadcn/ui and Tailwind CSS for a beautiful, mobile-friendly experience.
 
+- **Theme Switching:**  
+  Toggle between light, dark, and system themes with a beautiful animated theme switcher in the header.
+
 - **Robust Error Handling:**  
   Graceful fallbacks and retry logic for API/network errors.
 

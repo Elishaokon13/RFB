@@ -7,14 +7,17 @@ import { useTrendingCoins, formatCoinData } from "@/hooks/useTopVolume24h";
 const getAgeFromTimestamp = (timestamp: string) => {
   const now = new Date();
   const created = new Date(timestamp);
-  const diffInHours = Math.floor(
-    (now.getTime() - created.getTime()) / (1000 * 60 * 60)
-  );
+  const diffInMs = now.getTime() - created.getTime();
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+  const diffInWeeks = Math.floor(diffInDays / 7);
+  const diffInYears = Math.floor(diffInDays / 365);
 
   if (diffInHours < 1) return "<1h";
   if (diffInHours < 24) return `${diffInHours}h`;
-  const days = Math.floor(diffInHours / 24);
-  return `${days}d`;
+  if (diffInDays < 7) return `${diffInDays}d`;
+  if (diffInWeeks < 52) return `${diffInWeeks}w`;
+  return `${diffInYears}y`;
 };
 
 const timeFilters = ["5M", "1H", "6H", "24H"];
@@ -26,9 +29,9 @@ const topFilters = [
   "Creator",
 ];
 
-function PercentageCell({ value, cap }: { value: number; cap: any }) {
+function PercentageCell({ value, cap }: { value: number; cap: string | number }) {
   const isPositive = value > 0;
-  const calcValue = (cap / value) * 100;
+  const calcValue = (Number(cap) / value) * 100;
 
   return (
     <span className={cn("font-medium", isPositive ? "text-gain" : "text-loss")}>

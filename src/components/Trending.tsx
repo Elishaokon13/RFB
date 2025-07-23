@@ -1,5 +1,6 @@
 import React from "react";
 import { useTrendingCoins } from "../hooks/useTrendingCoins";
+import { Skeleton } from "./ui/skeleton";
 
 export default function Trending() {
   const { coins, loading, error } = useTrendingCoins(20);
@@ -11,7 +12,17 @@ export default function Trending() {
 
   if (loading)
     return (
-      <div className="py-4 text-center text-xs">Loading trending coins...</div>
+      <div className="w-full max-w-full overflow-x-hidden py-2 bg-muted rounded mx-auto">
+        <div className="marquee whitespace-nowrap flex items-center gap-4 sm:gap-6 md:gap-8 px-4">
+          {Array.from({ length: 12 }, (_, i) => (
+            <div key={i} className="flex items-center gap-2 flex-shrink-0">
+              <Skeleton className="w-5 h-5 sm:w-6 sm:h-6 rounded-full" />
+              <Skeleton className="h-3 w-12 sm:w-16" />
+              <Skeleton className="h-3 w-16 sm:w-20 hidden sm:block" />
+            </div>
+          ))}
+        </div>
+      </div>
     );
   if (error)
     return (

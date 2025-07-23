@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface SearchResult {
   id: string;
@@ -410,10 +412,31 @@ export function Header() {
                   </div>
                 </div>
               ) : isSearching ? (
-                <div className="p-4 text-center text-muted-foreground">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
-                  <p>Searching for "{debouncedQuery}"...</p>
-                  <p className="text-xs mt-1">Indexing tokens and finding matches</p>
+                <div className="p-2">
+                  <div className="text-xs text-muted-foreground mb-2 px-2 flex justify-between">
+                    <span>Searching...</span>
+                  </div>
+                  {Array.from({ length: 5 }, (_, index) => (
+                    <Card key={index} className="p-3 mb-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="w-8 h-8 rounded-full" />
+                          <div>
+                            <Skeleton className="h-4 w-32 mb-1" />
+                            <Skeleton className="h-3 w-16" />
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Skeleton className="h-4 w-20 mb-1" />
+                          <Skeleton className="h-3 w-16" />
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-center gap-4">
+                        <Skeleton className="h-3 w-16" />
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                    </Card>
+                  ))}
                 </div>
               ) : searchResults && searchResults.length > 0 ? (
                 <div className="p-2">
@@ -491,6 +514,9 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
         {/* Notifications */}
         <button className="relative">
           <Bell className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />

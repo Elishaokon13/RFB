@@ -14,6 +14,7 @@ import { Star } from "lucide-react";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useBasename } from "@/hooks/useBasename";
 import React, { useState } from "react";
+import { TableSkeleton, TokenTableRowSkeleton, TableHeaderSkeleton } from "@/components/TableSkeleton";
 
 // Extend Coin type to include image property for table display
 type CoinWithImage = Coin & {
@@ -34,14 +35,17 @@ type CoinWithImage = Coin & {
 const getAgeFromTimestamp = (timestamp: string) => {
   const now = new Date();
   const created = new Date(timestamp);
-  const diffInHours = Math.floor(
-    (now.getTime() - created.getTime()) / (1000 * 60 * 60)
-  );
+  const diffInMs = now.getTime() - created.getTime();
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+  const diffInWeeks = Math.floor(diffInDays / 7);
+  const diffInYears = Math.floor(diffInDays / 365);
 
   if (diffInHours < 1) return "<1h";
   if (diffInHours < 24) return `${diffInHours}h`;
-  const days = Math.floor(diffInHours / 24);
-  return `${days}d`;
+  if (diffInDays < 7) return `${diffInDays}d`;
+  if (diffInWeeks < 52) return `${diffInWeeks}w`;
+  return `${diffInYears}y`;
 };
 
 // Deep comparison function for coin data
@@ -244,7 +248,7 @@ const TableRow = memo(
               <img
                 src={coin?.mediaContent?.previewImage?.medium}
                 alt=""
-                className="w-7 h-7 rounded-full overflow-hidden object-cover"
+                className="w-10 h-10 rounded-md overflow-hidden object-cover"
               />
             </div>
             <div>
@@ -263,7 +267,7 @@ const TableRow = memo(
           {coin.fineAge
             ? coin.fineAge
             : coin.createdAt
-              ?  moment(coin.createdAt).calendar() 
+              ? getAgeFromTimestamp(coin.createdAt)
             : "N/A"}
         </td>
         <td className="px-4 py-3">
@@ -378,12 +382,16 @@ export function TokenDataTable({
     removeFromWatchlist,
   ]);
 
+  if (loading && coins.length === 0) {
+    return <TableSkeleton rows={10} columns={8} />;
+  }
+
   if (coins.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 animate-spin" />
-          <span>Loading coins...</span>
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+          <span className="text-muted-foreground">No coins found</span>
         </div>
       </div>
     );
@@ -420,7 +428,16 @@ export function TokenDataTable({
             </th>
           </tr>
         </thead>
-        <tbody>{tableBody}</tbody>
+        <tbody>
+          {tableBody}
+          {loading && coins.length > 0 && (
+            <>
+              {Array.from({ length: 3 }, (_, i) => (
+                <TokenTableRowSkeleton key={`skeleton-${i}`} />
+              ))}
+            </>
+          )}
+        </tbody>
       </table>
 
       {/* Pagination Controls */}
