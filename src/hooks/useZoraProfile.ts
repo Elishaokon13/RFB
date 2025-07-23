@@ -81,7 +81,7 @@ export function useZoraProfile(identifier: string) {
             const { linkedWallets, ...restProfile } = profile;
             profile = {
               ...restProfile,
-              linkedWallets: linkedWalletsArr,
+              linkedWallets: linkedWalletsArr as { type?: string; url?: string }[],
             };
           } else if (Array.isArray(profile.linkedWallets)) {
             profile = {
@@ -160,10 +160,10 @@ export function getProfileImageSmall(
 
 
 export function useUserBalances(address?: string) {
-  const [balances, setBalances] = useState<any>(null); // use any here
+  const [balances, setBalances] = useState<CoinBalance[]>([]); // use any here
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [sorted, setSorted] = useState<any[]>([]);
+  const [sorted, setSorted] = useState<CoinBalance[]>([]);
   const [totalPosts, setTotalPosts] = useState(0);
   const [totalVolume, setTotalVolume] = useState(0);
   const [totalEarnings, setTotalEarnings] = useState(0);
