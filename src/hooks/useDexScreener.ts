@@ -199,7 +199,7 @@ export function useDexScreenerTokens(
     return () => {
       cancelled = true;
     };
-  }, [chainId, tokenAddresses]);
+  }, []);
 
   return { tokens, loading, error };
 }

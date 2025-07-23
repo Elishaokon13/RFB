@@ -21,7 +21,7 @@ export function useZoraTokenListener() {
 
   useEffect(() => {
     setLoading(true);
-    const provider = new ethers.WebSocketProvider("wss://zora-mainnet.chainstack.com/ws");
+    const provider = new ethers.providers.WebSocketProvider("wss://zora-mainnet.chainstack.com/ws");
     const contract = new ethers.Contract(contractAddress, abi, provider);
 
     const handler = (sender: string, tokenId: ethers.BigNumberish, tokenData: { uri: string; maxSupply: ethers.BigNumberish }, event) => {

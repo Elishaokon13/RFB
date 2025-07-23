@@ -16,6 +16,7 @@
 
 - **Token Table:**  
   Explore Zora tokens with powerful filters:
+
   - **Most Valuable:** Top Zora tokens by market cap.
   - **Top Gainers:** Zora tokens with the highest price increase.
   - **Top Volume 24h:** Zora tokens with the most trading volume in the last 24 hours.
@@ -26,6 +27,9 @@
 
 - **Creators Leaderboard:**  
   See which addresses are launching the most Zora tokens, with profile images, display names, and total USD balances.
+
+- **Whale Tracker:**  
+  Track whales address and details, also check token details.
 
 - **Live Data:**  
   All data is fetched live from APIs (DexScreener, Zora, Basescan, etc.) and updates automatically.
@@ -128,8 +132,6 @@ src/
 - `yarn build` – Build for production
 - `yarn preview` – Preview production build
 - `yarn lint` – Lint code with ESLint
-
-
 
 ## Acknowledgements
 

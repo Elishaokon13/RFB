@@ -19,7 +19,14 @@ type Profile = {
     medium?: string;
     small?: string;
   };
-  linkedWallets?: Array<{ type?: string; url?: string }>;
+  linkedWallets?: Array<{ type?: string; url?: string }> | { 
+    edges: Array<{ 
+      node: { 
+        walletType?: string; 
+        walletAddress?: string 
+      } 
+    }> 
+  };
 };
 
 type CoinBalance = {
@@ -69,6 +76,7 @@ export function useZoraProfile(identifier: string) {
             return (
               !!val &&
               typeof val === "object" &&
+              "edges" in (val as object) &&
               Array.isArray((val as { edges?: unknown }).edges)
             );
           };
@@ -81,7 +89,7 @@ export function useZoraProfile(identifier: string) {
             const { linkedWallets, ...restProfile } = profile;
             profile = {
               ...restProfile,
-              linkedWallets: linkedWalletsArr,
+              linkedWallets: linkedWalletsArr as unknown as typeof profile.linkedWallets,
             };
           } else if (Array.isArray(profile.linkedWallets)) {
             profile = {
@@ -95,7 +103,7 @@ export function useZoraProfile(identifier: string) {
             };
           }
         }
-        setProfile(profile);
+        setProfile(profile as unknown as Profile);
         // console.log("[useZoraProfile] Final profile:", profile);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
@@ -160,10 +168,10 @@ export function getProfileImageSmall(
 
 
 export function useUserBalances(address?: string) {
-  const [balances, setBalances] = useState<any>(null); // use any here
+  const [balances, setBalances] = useState<CoinBalance[]>([]); // use any here
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [sorted, setSorted] = useState<any[]>([]);
+  const [sorted, setSorted] = useState<CoinBalance[]>([]);
   const [totalPosts, setTotalPosts] = useState(0);
   const [totalVolume, setTotalVolume] = useState(0);
   const [totalEarnings, setTotalEarnings] = useState(0);
@@ -182,7 +190,7 @@ export function useUserBalances(address?: string) {
           count: 150,
         });
 
-        setBalances(result?.data?.profile);
+        setBalances(result?.data?.profile as unknown as CoinBalance[]);
         const mappedCoins = result?.data?.profile?.coinBalances?.edges;
 
         const filtered =
@@ -211,7 +219,7 @@ export function useUserBalances(address?: string) {
           return acc + parseFloat(String(earning) || "0");
         }, 0);
 
-        setSorted(sorted);
+        setSorted(sorted as unknown as CoinBalance[]);
         setTotalVolume(totalVolume);
         setTotalEarnings(totalEarnings);
         setTotalPosts(sorted?.length);

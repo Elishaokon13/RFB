@@ -15,7 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { pay } from '@base-org/account';
+import { pay } from "@base-org/account";
 
 const chains = [
   // { name: "Solana", icon: "◎", color: "text-purple-400" },
@@ -69,13 +69,22 @@ export function Sidebar({ onClose }: SidebarProps) {
         to: "0x1B958A48373109E9146A950a75F5bD25B845143b", // Replace with your address
         testnet: false,
       });
-      if ('error' in result) {
-        setDonateMessage('Payment failed: ' + result.error);
+      if ("error" in result) {
+        setDonateMessage("Payment failed: " + result.error);
       } else {
-        setDonateMessage('Thank you for your donation! Payment ID: ' + result.id);
+        setDonateMessage(
+          "Thank you for your donation! Payment ID: " + result.id
+        );
       }
     } catch (err: unknown) {
-      setDonateMessage('Payment error: ' + (typeof err === 'string' ? err : (err instanceof Error ? err.message : 'Unknown error')));
+      setDonateMessage(
+        "Payment error: " +
+          (typeof err === "string"
+            ? err
+            : err instanceof Error
+            ? err.message
+            : "Unknown error")
+      );
     } finally {
       setDonateLoading(false);
     }
@@ -134,20 +143,18 @@ export function Sidebar({ onClose }: SidebarProps) {
           disabled={donateLoading}
         >
           <Heart className="w-4 h-4" />
-          {donateLoading ? 'Processing...' : 'Donate'}
+          {donateLoading ? "Processing..." : "Donate"}
         </button>
-        
+
         {/* Donate Message */}
         {donateMessage && (
           <div className="text-xs text-muted-foreground text-center p-2 bg-muted rounded-md">
             {donateMessage}
           </div>
         )}
-        
+
         {/* Version */}
-        <div className="text-xs text-muted-foreground text-center">
-          v1.0.0
-        </div>
+        {/* <div className="text-xs text-muted-foreground text-center">v1.0.0</div> */}
       </div>
     </div>
   );
