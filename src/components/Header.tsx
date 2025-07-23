@@ -165,7 +165,11 @@ const searchTokens = (tokens: SearchResult[], query: string): SearchResult[] => 
     .slice(0, 15); // Return top 15 results
 };
 
-export function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+export function Header({ onMenuClick }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -366,28 +370,31 @@ export function Header() {
   };
 
   return (
-    <header className="h-16 bg-background border-b border-border flex items-center justify-between px-6">
-      <div className="flex items-center gap-4 flex-1">
+    <header className="h-16 bg-background border-b border-border flex items-center justify-between px-4 sm:px-6">
+      <div className="flex items-center gap-2 sm:gap-4 flex-1">
         {/* Mobile menu */}
-        <button className="lg:hidden">
+        <button 
+          className="lg:hidden p-2 rounded-md hover:bg-muted transition-colors"
+          onClick={onMenuClick}
+        >
           <Menu className="w-5 h-5 text-muted-foreground" />
         </button>
 
         {/* Search */}
-        <div className="relative flex-1 max-w-2xl" ref={searchRef}>
+        <div className="relative flex-1 max-w-lg lg:max-w-2xl" ref={searchRef}>
           <form onSubmit={handleSearchSubmit}>
             <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="text"
-                placeholder="Search tokens by name, symbol, or address..."
+                placeholder="Search tokens..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   setIsSearchOpen(true);
                 }}
                 onFocus={() => setIsSearchOpen(true)}
-                className="pl-10 bg-muted border-0 focus:ring-2 focus:ring-primary h-10"
+                className="pl-10 bg-muted border-0 focus:ring-2 focus:ring-primary h-10 text-sm"
               />
               {searchQuery && (
                 <button
@@ -409,7 +416,7 @@ export function Header() {
 
           {/* Search Results Dropdown */}
           {isSearchOpen && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-lg shadow-lg z-50 max-h-80 sm:max-h-96 overflow-y-auto">
               {debouncedQuery.length < 2 ? (
                 <div className="p-4 text-center text-muted-foreground">
                   <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -527,12 +534,12 @@ export function Header() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         {/* Theme Toggle */}
         <ThemeToggle />
 
-        {/* Notifications */}
-        <button className="relative">
+        {/* Notifications - Hidden on mobile */}
+        <button className="relative hidden sm:block">
           <Bell className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />
           <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full"></span>
         </button>

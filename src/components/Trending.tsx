@@ -61,17 +61,17 @@ export default function Trending() {
   if (loading)
     return (
       <div className="w-full max-w-full overflow-x-hidden py-2 bg-muted rounded mx-auto">
-        <div className="marquee whitespace-nowrap flex items-center gap-4 sm:gap-6 md:gap-8 px-4">
+        <div className="marquee whitespace-nowrap flex items-center gap-2 sm:gap-4 md:gap-6 lg:gap-8 px-2 sm:px-4">
           {Array.from({ length: 12 }, (_, i) => (
-            <div key={i} className="flex items-center gap-3 flex-shrink-0 bg-primary/30 dark:bg-purple-900/20 px-4 py-2 rounded-lg">
-              <Skeleton className="w-6 h-6 rounded-full" />
+            <div key={i} className="flex items-center gap-2 sm:gap-3 flex-shrink-0 bg-primary/30 dark:bg-purple-900/20 px-2 sm:px-4 py-2 rounded-lg">
+              <Skeleton className="w-6 h-6 sm:w-8 sm:h-8 rounded-full" />
               <div className="space-y-1">
-                <Skeleton className="h-3 w-16" />
-                <Skeleton className="h-2 w-12" />
+                <Skeleton className="h-3 w-12 sm:w-16" />
+                <Skeleton className="h-2 w-8 sm:w-12" />
               </div>
               <div className="text-right space-y-1">
-                <Skeleton className="h-3 w-16" />
-                <Skeleton className="h-2 w-12" />
+                <Skeleton className="h-3 w-12 sm:w-16" />
+                <Skeleton className="h-2 w-8 sm:w-12" />
               </div>
             </div>
           ))}
@@ -90,7 +90,7 @@ export default function Trending() {
   return (
     <div className="w-full max-w-full overflow-x-hidden py-2 bg-muted rounded mx-auto">
       <div
-        className="marquee whitespace-nowrap flex items-center gap-4 sm:gap-6 md:gap-8 px-4"
+        className="marquee whitespace-nowrap flex items-center gap-2 sm:gap-4 md:gap-6 lg:gap-8 px-2 sm:px-4"
         style={{
           animation: "marquee 30s linear infinite",
           willChange: "transform",
@@ -112,7 +112,7 @@ export default function Trending() {
         {displayedCoins.map((coin) => (
           <div
             key={coin.address}
-            className="flex items-center gap-3 flex-shrink-0 bg-primary/30 dark:bg-purple-900/20 px-4 py-2 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/30 transition-colors cursor-pointer"
+            className="flex items-center gap-2 sm:gap-3 flex-shrink-0 bg-primary/30 dark:bg-purple-900/20 px-2 sm:px-4 py-2 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/30 transition-colors cursor-pointer"
           >
             {/* Image */}
             <div className="flex-shrink-0">
@@ -120,16 +120,16 @@ export default function Trending() {
                 <img
                   src={coin.mediaContent.previewImage.medium}
                   alt={coin.symbol}
-                  className="w-10 h-10 rounded-md  dark:border-gray-700"
+                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-md dark:border-gray-700"
                 />
               ) : coin.image ? (
                 <img
                   src={coin.image}
                   alt={coin.symbol}
-                  className="w-10 h-10 rounded-md  dark:border-gray-700"
+                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-md dark:border-gray-700"
                 />
               ) : (
-                <div className="w-6 h-6 rounded-full bg-primary dark:bg-purple-800 flex items-center justify-center">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary dark:bg-purple-800 flex items-center justify-center">
                   <span className="text-xs font-bold text-purple-600 dark:text-purple-300">
                     {coin.symbol?.charAt(0) || "?"}
                   </span>
@@ -139,10 +139,10 @@ export default function Trending() {
 
             {/* Name and Symbol */}
             <div className="flex flex-col min-w-0">
-              <span className="font-semibold text-foreground text-xs truncate max-w-[60px] sm:max-w-[80px]">
+              <span className="font-semibold text-foreground text-xs truncate max-w-[50px] sm:max-w-[60px] md:max-w-[80px]">
                 {truncateText(coin.symbol, 6)}
               </span>
-              <span className="text-muted-foreground text-[10px] truncate max-w-[60px] sm:max-w-[80px]">
+              <span className="text-muted-foreground text-[10px] truncate max-w-[50px] sm:max-w-[60px] md:max-w-[80px]">
                 {truncateText(coin.name, 8)}
               </span>
             </div>
@@ -171,7 +171,7 @@ export default function Trending() {
         {displayedCoins.map((coin) => (
           <div
             key={coin.address + "-dup"}
-            className="flex items-center gap-3 flex-shrink-0 bg-primary/30 dark:bg-purple-900/20 px-4 py-2 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/30 transition-colors cursor-pointer"
+            className="flex items-center gap-2 sm:gap-3 flex-shrink-0 bg-primary/30 dark:bg-purple-900/20 px-2 sm:px-4 py-2 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/30 transition-colors cursor-pointer"
           >
             {/* Image */}
             <div className="flex-shrink-0">
@@ -179,16 +179,16 @@ export default function Trending() {
                 <img
                   src={coin.mediaContent.previewImage.medium}
                   alt={coin.symbol}
-                  className="w-10 h-10 rounded-md  dark:border-gray-700"
+                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-md dark:border-gray-700"
                 />
               ) : coin.image ? (
                 <img
                   src={coin.image}
                   alt={coin.symbol}
-                  className="w-10 h-10 rounded-md  dark:border-gray-700"
+                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-md dark:border-gray-700"
                 />
               ) : (
-                <div className="w-6 h-6 rounded-full bg-primary dark:bg-purple-800 flex items-center justify-center">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary dark:bg-purple-800 flex items-center justify-center">
                   <span className="text-xs font-bold text-purple-600 dark:text-purple-300">
                     {coin.symbol?.charAt(0) || "?"}
                   </span>
@@ -198,10 +198,10 @@ export default function Trending() {
 
             {/* Name and Symbol */}
             <div className="flex flex-col min-w-0">
-              <span className="font-semibold text-foreground text-xs truncate max-w-[60px] sm:max-w-[80px]">
+              <span className="font-semibold text-foreground text-xs truncate max-w-[50px] sm:max-w-[60px] md:max-w-[80px]">
                 {truncateText(coin.symbol, 6)}
               </span>
-              <span className="text-muted-foreground text-[10px] truncate max-w-[60px] sm:max-w-[80px]">
+              <span className="text-muted-foreground text-[10px] truncate max-w-[50px] sm:max-w-[60px] md:max-w-[80px]">
                 {truncateText(coin.name, 8)}
               </span>
             </div>

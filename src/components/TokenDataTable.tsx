@@ -234,10 +234,10 @@ const TableRow = memo(
           "animate-pulse-subtle"
         )}
       >
-        <td className="px-4 py-3 text-sm text-muted-foreground">
+        <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
           #{index + 1}
         </td>
-        <td className="px-4 py-3">
+        <td className="px-2 sm:px-4 py-3">
           <div className="flex items-center gap-3">
             <button
               onClick={(e) => {
@@ -289,23 +289,23 @@ const TableRow = memo(
             </div>
           </div>
         </td>
-        <td className="px-4 py-3">
+        <td className="px-2 sm:px-4 py-3">
           <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
         </td>
-        <td className="px-4 py-3 text-sm text-muted-foreground">
+        <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
           {coin.fineAge
             ? coin.fineAge
             : coin.createdAt
               ? getAgeFromTimestamp(coin.createdAt)
             : "N/A"}
         </td>
-        <td className="px-4 py-3">
+        <td className="px-2 sm:px-4 py-3">
           <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
         </td>
-        <td className="px-4 py-3 text-sm text-muted-foreground">
+        <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
           {formattedCoin.formattedMarketCap}
         </td>
-        <td className="px-4 py-3 text-sm text-muted-foreground">
+        <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
           <CreatorCell creatorAddress={coin.creatorAddress} />
         </td>
       </tr>
@@ -424,29 +424,29 @@ export function TokenDataTable({
   }
 
   return (
-    <div className="w-full max-w-full overflow-x-auto sm:overflow-x-visible">
-      <table className="min-w-full w-full max-w-full">
+    <div className="w-full overflow-x-auto bg-card rounded-lg border border-border">
+      <table className="min-w-[800px] w-full">
         <thead className="bg-muted border-b border-border">
           <tr className="text-left">
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               #
             </th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               TOKEN
             </th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               PRICE
             </th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               AGE
             </th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               VOLUME
             </th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               MCAP
             </th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Creator
             </th>
           </tr>
@@ -465,11 +465,11 @@ export function TokenDataTable({
 
       {/* Pagination Controls */}
       {showPagination && (
-        <div className="flex items-center justify-between p-4 border-t border-border">
-          <div className="text-sm text-muted-foreground">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-t border-border gap-4">
+          <div className="text-sm text-muted-foreground text-center sm:text-left">
             Page {currentPage} - Showing {coins.length} coins
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center sm:justify-end gap-2">
             {/* Previous Page */}
             {currentPage > 1 && (
               <button
@@ -477,7 +477,8 @@ export function TokenDataTable({
                 disabled={loading}
                 className="px-3 py-1 bg-muted text-muted-foreground rounded-md text-sm font-medium hover:bg-muted/80 disabled:opacity-50"
               >
-                Previous
+                <span className="hidden sm:inline">Previous</span>
+                <span className="sm:hidden">←</span>
               </button>
             )}
 
@@ -492,7 +493,7 @@ export function TokenDataTable({
                       onClick={() => onGoToPage(pageNum)}
                       disabled={loading}
                       className={cn(
-                        "px-3 py-1 rounded-md text-sm font-medium transition-colors",
+                        "px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors",
                         pageNum === currentPage
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -516,7 +517,7 @@ export function TokenDataTable({
                 {loading ? (
                   <div className="flex items-center gap-1">
                     <RefreshCw className="w-3 h-3 animate-spin" />
-                    Loading
+                    <span className="hidden sm:inline">Loading</span>
                   </div>
                 ) : (
                   "Next"

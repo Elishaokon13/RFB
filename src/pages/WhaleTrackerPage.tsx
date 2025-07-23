@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { WhaleTracker } from "../components/WhaleTracker";
-import { Footer } from "../components/Footer";
 import { sanitizeEthereumAddress } from "@/lib/utils";
 
 export default function WhaleTrackerPage() {
@@ -180,7 +179,6 @@ export default function WhaleTrackerPage() {
           </div>
         </main>
       </div>
-      <Footer />
     </div>
   );
 }

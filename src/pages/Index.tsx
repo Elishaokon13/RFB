@@ -1,13 +1,11 @@
 import { TokenTable } from "@/components/TokenTable";
 import Trending from "@/components/Trending";
-// import { Footer } from "@/components/Footer";
 
 const Index = () => {
   return (
-    <div className="w-full mx-auto">
+    <div className="w-full mx-auto space-y-4 sm:space-y-6">
       <Trending />
       <TokenTable />
-      {/* <Footer /> */}
     </div>
   );
 };

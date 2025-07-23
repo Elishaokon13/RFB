@@ -19,10 +19,10 @@ import { TableSkeleton } from "@/components/TableSkeleton";
 
 // Filter options
 const topFilters = [
-  "Most Valuable",
+  "Trending",
   "Top Gainers",
-  "Top Volume 24h",
-  "New Picks",
+  "Top Volume",
+  "New Coins",
 ];
 
 const ITEMS_PER_PAGE = 20;
@@ -257,47 +257,53 @@ export function TokenTable() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 px-4 sm:px-0">
       {/* Header with Live Indicator */}
       <div className="bg-card border-b border-border p-4">
         {/* Filters */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex bg-muted rounded-lg p-1">
-              {topFilters.map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => {
-                    setActiveTopFilter(filter);
-                    setCurrentPage(1);
-                  }}
-                  className={cn(
-                    "px-3 py-1 rounded-md text-sm font-medium transition-colors",
-                    activeTopFilter === filter
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {filter}
-                </button>
-              ))}
+        <div className="flex flex-col gap-4">
+          {/* Top row: Filters */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="flex bg-muted rounded-lg p-1 overflow-x-auto">
+                {topFilters.map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => {
+                      setActiveTopFilter(filter);
+                      setCurrentPage(1);
+                    }}
+                    className={cn(
+                      "px-2 sm:px-3 py-1 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap",
+                      activeTopFilter === filter
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-xs text-green-600">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span>Live</span>
-            </div>
-            <button
+            {/* Refresh button - always visible */}
+            {/* <button
               onClick={handleRefresh}
               disabled={loading}
               className="flex items-center gap-1 px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground"
             >
               <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-              Refresh
-            </button>
+              <span className="hidden sm:inline">Refresh</span>
+            </button> */}
           </div>
+
+          {/* Bottom row: Live indicator */}
+          {/* <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-xs text-green-600">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span>Live</span>
+            </div>
+          </div> */}
         </div>
       </div>
 
