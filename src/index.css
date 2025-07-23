@@ -40,15 +40,15 @@
     --gain-foreground: 0 0% 98%;
     --loss: 0 84% 60%;
     --loss-foreground: 0 0% 98%;
-    
+
     --sidebar-bg: 0 0% 100%;
     --table-header: 240 4% 96%;
     --table-row: 0 0% 100%;
     --table-row-hover: 240 4% 96%;
-    
+
     --gradient-primary: linear-gradient(135deg, hsl(263 70% 50%), hsl(280 70% 60%));
     --gradient-glow: 0 0 40px hsl(263 70% 50% / 0.3);
-    
+
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
@@ -66,6 +66,16 @@
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --color-1: oklch(66.2% 0.225 25.9);
+
+    --color-2: oklch(60.4% 0.26 302);
+
+    --color-3: oklch(69.6% 0.165 251);
+
+    --color-4: oklch(80.2% 0.134 225);
+
+    --color-5: oklch(90.7% 0.231 133);
   }
 
   .dark {
@@ -103,15 +113,15 @@
     --gain-foreground: 0 0% 98%;
     --loss: 0 84% 60%;
     --loss-foreground: 0 0% 98%;
-    
+
     --sidebar-bg: 240 10% 3.9%;
     --table-header: 240 6% 10%;
     --table-row: 240 5% 7%;
     --table-row-hover: 240 6% 12%;
-    
+
     --gradient-primary: linear-gradient(135deg, hsl(263 70% 50%), hsl(280 70% 60%));
     --gradient-glow: 0 0 40px hsl(263 70% 50% / 0.3);
-    
+
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
@@ -129,6 +139,19 @@
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --color-1: oklch(66.2% 0.225 25.9);
+
+    --color-2: oklch(60.4% 0.26 302);
+
+    --color-3: oklch(69.6% 0.165 251);
+
+    --color-4: oklch(80.2% 0.134 225);
+
+    --color-5: oklch(90.7% 0.231 133);
+  }
+  .theme {
+    --animate-rainbow: rainbow var(--speed, 2s) infinite linear;
   }
 }
 
@@ -263,4 +286,15 @@ input[type="number"]::-webkit-outer-spin-button {
 /* Hide number input spinners in Firefox */
 input[type="number"] {
   -moz-appearance: textfield;
+}
+
+@theme inline {
+  @keyframes rainbow {
+  0% {
+    background-position: 0%;
+    }
+  100% {
+    background-position: 200%;
+    }
+  }
 }
