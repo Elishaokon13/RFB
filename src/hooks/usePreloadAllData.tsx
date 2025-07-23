@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getCoinsMostValuable } from "@zoralabs/coins-sdk";
 import { getCoinsTopGainers } from "@zoralabs/coins-sdk";
 import { getCoinsTopVolume24h } from "@zoralabs/coins-sdk";
+import { getCoinsNew } from "@zoralabs/coins-sdk";
 
 // Core types for coin data
 interface Coin {
@@ -22,23 +23,23 @@ interface Coin {
   image?: string;
 }
 
+interface QueryResponse {
+  coins: Coin[];
+  pagination: {
+    cursor?: string;
+  };
+}
+
 interface QueryOptions {
   count?: number;
   after?: string;
-}
-
-interface QueryResponse {
-  coins: Coin[];
-  pagination?: {
-    cursor?: string;
-  };
 }
 
 // Hook to preload all data sources in parallel
 export const usePreloadAllData = (params: QueryOptions = {}) => {
   const { count = 20, after } = params;
 
-  // Fetch all three data sources in parallel with real-time updates
+  // Fetch all four data sources in parallel with real-time updates
   const mostValuableQuery = useQuery<QueryResponse>({
     queryKey: ["coins", "most-valuable", "zora", { count, after }],
     queryFn: async () => {
@@ -129,38 +130,55 @@ export const usePreloadAllData = (params: QueryOptions = {}) => {
     structuralSharing: true, // Enable structural sharing for better performance
   });
 
+  const newCoinsQuery = useQuery<QueryResponse>({
+    queryKey: ["coins", "new", "zora", { count, after }],
+    queryFn: async () => {
+      const response = await getCoinsNew({ count, after });
+      
+      const tokens = response.data?.exploreList?.edges?.map(
+        (edge: { node: unknown }) => edge.node
+      ) || [];
+      
+      return {
+        coins: tokens as Coin[],
+        pagination: {
+          cursor: response.data?.exploreList?.pageInfo?.endCursor,
+        },
+      };
+    },
+    staleTime: 0, // Always consider data stale for real-time updates
+    gcTime: 15 * 60 * 1000, // 15 minutes cache time to prevent blank states
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 6000),
+    refetchOnWindowFocus: false, // Prevent refetch on focus to avoid blank states
+    refetchOnReconnect: true,
+    refetchOnMount: false, // Prevent refetch on mount if we have cached data
+    refetchInterval: () => document.visibilityState === 'visible' ? 5000 : false, // Refetch every 5 seconds for new coins (faster updates)
+    refetchIntervalInBackground: true, // Continue refetching even when tab is not active
+    notifyOnChangeProps: ['data'], // Only notify when data changes
+    placeholderData: (previousData) => previousData, // Keep previous data while fetching
+    structuralSharing: true, // Enable structural sharing for better performance
+  });
+
   // Combined loading state
-  const isLoading = mostValuableQuery.isLoading || topGainersQuery.isLoading || topVolumeQuery.isLoading;
+  const isLoading = mostValuableQuery.isLoading || topGainersQuery.isLoading || topVolumeQuery.isLoading || newCoinsQuery.isLoading;
 
   // Combined error state
-  const error = mostValuableQuery.error || topGainersQuery.error || topVolumeQuery.error;
+  const error = mostValuableQuery.error || topGainersQuery.error || topVolumeQuery.error || newCoinsQuery.error;
 
   // Combined refetch function
   const refetchAll = () => {
     mostValuableQuery.refetch();
     topGainersQuery.refetch();
     topVolumeQuery.refetch();
+    newCoinsQuery.refetch();
   };
 
   return {
-    mostValuable: {
-      data: mostValuableQuery.data,
-      isLoading: mostValuableQuery.isLoading,
-      error: mostValuableQuery.error,
-      refetch: mostValuableQuery.refetch,
-    },
-    topGainers: {
-      data: topGainersQuery.data,
-      isLoading: topGainersQuery.isLoading,
-      error: topGainersQuery.error,
-      refetch: topGainersQuery.refetch,
-    },
-    topVolume: {
-      data: topVolumeQuery.data,
-      isLoading: topVolumeQuery.isLoading,
-      error: topVolumeQuery.error,
-      refetch: topVolumeQuery.refetch,
-    },
+    mostValuable: mostValuableQuery,
+    topGainers: topGainersQuery,
+    topVolume: topVolumeQuery,
+    newCoins: newCoinsQuery,
     isLoading,
     error,
     refetchAll,

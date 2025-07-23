@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from "@tanstack/react-query";
 import { getCoinsNew } from '@zoralabs/coins-sdk';
 
 export interface NewCoin {
@@ -17,38 +17,133 @@ export interface NewCoin {
   image?: string;
 }
 
-export interface PageInfo {
-  endCursor?: string;
-  hasNextPage?: boolean;
+interface QueryResponse {
+  coins: NewCoin[];
+  pagination: {
+    cursor?: string;
+  };
 }
 
-export function useGetCoinsNew(params: { count?: number; after?: string }) {
+interface ExploreQueryOptions {
+  count?: number;
+  after?: string;
+}
+
+// Optimized hook with correct Zora Protocol response structure
+export const useGetCoinsNew = (params: ExploreQueryOptions = {}) => {
   const { count = 20, after } = params;
-  const [coins, setCoins] = useState<NewCoin[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
-
-  const fetchCoins = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  
+  return useQuery<QueryResponse>({
+    queryKey: ["coins", "new", "zora", { count, after }],
+    queryFn: async () => {
       const response = await getCoinsNew({ count, after });
-      console.log('getCoinsNew raw response:', response);
-      const edges = response.data?.exploreList?.edges || [];
-      const tokens = edges.map((edge: { node: NewCoin }) => edge.node);
-      setCoins(tokens);
-      setPageInfo(response.data?.exploreList?.pageInfo || null);
-    } catch (err: unknown) {
-      setError(typeof err === 'string' ? err : (err instanceof Error ? err.message : 'Unknown error'));
-    } finally {
-      setLoading(false);
-    }
-  }, [count, after]);
+      console.log('[getCoinsNew] Full response:', response);
+      
+      // Extract coins from exploreList edges
+      const tokens = response.data?.exploreList?.edges?.map(
+        (edge: { node: unknown }) => edge.node
+      ) || [];
+      
+      return {
+        coins: tokens as NewCoin[],
+        pagination: {
+          cursor: response.data?.exploreList?.pageInfo?.endCursor,
+        },
+      };
+    },
+    staleTime: 5 * 1000, // 5 seconds - very fast refresh for new coins
+    gcTime: 2 * 60 * 1000, // 2 minutes
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 6000),
+    refetchOnWindowFocus: true, // Important for new coins data
+    refetchOnReconnect: true,
+    refetchOnMount: true, // Always refetch on mount for fresh data
+    refetchInterval: () => document.visibilityState === 'visible' ? 5000 : false, // Refetch every 5 seconds if tab is visible
+    refetchIntervalInBackground: true, // Continue refetching even when tab is not active
+  });
+};
 
-  useEffect(() => {
-    fetchCoins();
-  }, [fetchCoins]);
+// Optimized formatting functions with memoization-friendly design
+export const formatCreationTime = (createdAt?: string): string => {
+  if (!createdAt) return "N/A";
+  
+  const now = new Date();
+  const created = new Date(createdAt);
+  const diffMs = now.getTime() - created.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffMs / (1000 * 60));
+  const diffHour = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffSec < 60) return `${diffSec}s ago`;
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHour < 24) return `${diffHour}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return created.toLocaleDateString();
+};
 
-  return { coins, loading, error, pageInfo, refetch: fetchCoins };
-} 
+export const formatMarketCap = (marketCap?: string): string => {
+  if (!marketCap) return "N/A";
+  
+  const value = parseFloat(marketCap);
+  if (isNaN(value)) return "N/A";
+  
+  const formatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: value >= 1e9 ? "compact" : "standard",
+    maximumFractionDigits: 2,
+  });
+  
+  return formatter.format(value);
+};
+
+export const formatVolume = (volume24h?: string): string => {
+  if (!volume24h) return "N/A";
+  
+  const value = parseFloat(volume24h);
+  if (isNaN(value)) return "N/A";
+  
+  const formatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: value >= 1e6 ? "compact" : "standard",
+    maximumFractionDigits: 2,
+  });
+  
+  return formatter.format(value);
+};
+
+// Age indicator for new coins
+export const getAgeIndicator = (createdAt?: string): string => {
+  if (!createdAt) return "bg-gray-100 text-gray-800";
+  
+  const now = new Date();
+  const created = new Date(createdAt);
+  const diffMs = now.getTime() - created.getTime();
+  const diffMin = Math.floor(diffMs / (1000 * 60));
+  const diffHour = Math.floor(diffMs / (1000 * 60 * 60));
+  
+  if (diffMin < 5) return "bg-red-100 text-red-800"; // Very new (red)
+  if (diffMin < 30) return "bg-orange-100 text-orange-800"; // New (orange)
+  if (diffHour < 1) return "bg-yellow-100 text-yellow-800"; // Recent (yellow)
+  if (diffHour < 24) return "bg-blue-100 text-blue-800"; // Today (blue)
+  return "bg-gray-100 text-gray-800"; // Older (gray)
+};
+
+// Freshness indicator
+export const getFreshnessIndicator = (createdAt?: string): string => {
+  if (!createdAt) return "bg-gray-100 text-gray-800";
+  
+  const now = new Date();
+  const created = new Date(createdAt);
+  const diffMs = now.getTime() - created.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffMs / (1000 * 60));
+  
+  if (diffSec < 60) return "bg-green-100 text-green-800"; // Just created
+  if (diffMin < 5) return "bg-blue-100 text-blue-800"; // Very fresh
+  if (diffMin < 30) return "bg-yellow-100 text-yellow-800"; // Fresh
+  if (diffMin < 60) return "bg-orange-100 text-orange-800"; // Recent
+  return "bg-gray-100 text-gray-800"; // Older
+}; 

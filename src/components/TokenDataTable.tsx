@@ -7,13 +7,12 @@ import {
   DexScreenerPair,
   calculateFallbackPrice,
 } from "@/hooks/useDexScreener";
-import { memo, useMemo, useCallback, useRef, useEffect } from "react";
+import { memo, useMemo, useCallback, useRef, useEffect, useState } from "react";
 import { Identity } from "@coinbase/onchainkit/identity";
 import { Address } from "viem";
 import { Star } from "lucide-react";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useBasename } from "@/hooks/useBasename";
-import React, { useState } from "react";
 import { TableSkeleton, TokenTableRowSkeleton, TableHeaderSkeleton } from "@/components/TableSkeleton";
 import { Copy } from "lucide-react";
 
@@ -42,6 +41,51 @@ type CoinWithImage = Coin & {
     };
   };
 };
+
+// Real-time age component that updates every second
+const RealTimeAge = memo(({ createdAt }: { createdAt?: string }) => {
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  useEffect(() => {
+    if (!createdAt) return;
+    
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [createdAt]);
+
+  if (!createdAt) return <span>N/A</span>;
+
+  const created = new Date(createdAt);
+  const diffMs = currentTime - created.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffMs / (1000 * 60));
+  const diffHour = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffYears = Math.floor(diffDays / 365);
+
+  // Debug logging
+  console.log('RealTimeAge:', {
+    createdAt,
+    currentTime,
+    diffMs,
+    diffSec,
+    diffMin,
+    diffHour
+  });
+
+  if (diffSec < 60) return <span>{diffSec}s</span>;
+  if (diffMin < 60) return <span>{diffMin}m</span>;
+  if (diffHour < 24) return <span>{diffHour}h</span>;
+  if (diffDays < 7) return <span>{diffDays}d</span>;
+  if (diffWeeks < 52) return <span>{diffWeeks}w</span>;
+  return <span>{diffYears}y</span>;
+});
+
+RealTimeAge.displayName = "RealTimeAge";
 
 // Helper function to calculate age from timestamp
 const getAgeFromTimestamp = (timestamp: string) => {
@@ -218,6 +262,7 @@ const TableRow = memo(
     dexScreenerData,
     isWatched,
     onToggleWatch,
+    activeFilter,
   }: {
     coin: CoinWithImage;
     index: number;
@@ -225,6 +270,7 @@ const TableRow = memo(
     dexScreenerData: Record<string, DexScreenerPair>;
     isWatched: boolean;
     onToggleWatch: () => void;
+    activeFilter?: string;
   }) => {
     // Log the full coin object for debugging
     const formattedCoin = formatCoinData(coin);
@@ -330,11 +376,24 @@ const TableRow = memo(
           <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
         </td>
         <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
-          {coin.fineAge
-            ? coin.fineAge
-            : coin.createdAt
-              ? getAgeFromTimestamp(coin.createdAt)
-            : "N/A"}
+          {(() => {
+            console.log('Age column debug:', {
+              activeFilter,
+              coinCreatedAt: coin.createdAt,
+              coinFineAge: coin.fineAge,
+              willUseRealTime: activeFilter === "New Coins"
+            });
+            
+            if (activeFilter === "New Coins") {
+              return <RealTimeAge createdAt={coin.createdAt} />;
+            } else {
+              return coin.fineAge
+                ? coin.fineAge
+                : coin.createdAt
+                  ? getAgeFromTimestamp(coin.createdAt)
+                : "N/A";
+            }
+          })()}
         </td>
         <td className="px-2 sm:px-4 py-3">
           <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
@@ -407,6 +466,7 @@ interface TokenDataTableProps {
   showPagination?: boolean;
   itemsPerPage?: number;
   walletAddress?: string;
+  activeFilter?: string;
 }
 
 export function TokenDataTable({
@@ -421,6 +481,7 @@ export function TokenDataTable({
   showPagination = true,
   itemsPerPage = 20,
   walletAddress,
+  activeFilter,
 }: TokenDataTableProps) {
   const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } =
     useWatchlist(walletAddress);
@@ -446,6 +507,7 @@ export function TokenDataTable({
           if (isInWatchlist(coin.address)) removeFromWatchlist(coin.address);
           else addToWatchlist(coin.address);
         }}
+        activeFilter={activeFilter}
       />
     ));
   }, [
@@ -455,6 +517,7 @@ export function TokenDataTable({
     isInWatchlist,
     addToWatchlist,
     removeFromWatchlist,
+    activeFilter,
   ]);
 
   if (loading && coins.length === 0) {
