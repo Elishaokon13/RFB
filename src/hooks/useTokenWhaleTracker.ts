@@ -97,12 +97,12 @@ export function useTokenWhaleTracker({
       ];
 
       // Try each provider in order until one works
-      let provider: ethers.Provider | null = null;
+      let provider: ethers.providers.JsonRpcProvider | null = null;
       let providerIndex = 0;
 
       while (!provider && providerIndex < RPC_URLS.length) {
         try {
-          provider = new ethers.JsonRpcProvider(RPC_URLS[providerIndex]);
+          provider = new ethers.providers.JsonRpcProvider(RPC_URLS[providerIndex]);
           await provider.getBlockNumber(); // Test connection
         } catch (error) {
           console.warn(
@@ -270,7 +270,7 @@ export function useTokenWhaleTracker({
         );
 
         // We'll collect all events from all chunks
-        let allEvents: ethers.Log[] = [];
+        let allEvents: ethers.Log[] = []; // TODO: Fix this type
 
         // Split into chunks of MAX_BLOCK_RANGE
         const chunks = [];

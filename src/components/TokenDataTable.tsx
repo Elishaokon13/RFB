@@ -15,6 +15,8 @@ import { useWatchlist } from "@/hooks/useWatchlist";
 import { useBasename } from "@/hooks/useBasename";
 import React, { useState } from "react";
 import { TableSkeleton, TokenTableRowSkeleton, TableHeaderSkeleton } from "@/components/TableSkeleton";
+import { FollowerPointerCard } from "@/components/ui/following-pointer";
+import { useZoraProfile, getProfileImageSmall } from "@/hooks/useZoraProfile";
 
 // Extend Coin type to include image property for table display
 type CoinWithImage = Coin & {
@@ -221,94 +223,108 @@ const TableRow = memo(
       return `${coin.id}-${coin.marketCap}-${coin.volume24h}`;
     }, [coin.id, coin.marketCap, coin.volume24h]);
 
-    // console.log(coin);
+    // Get creator profile for the pointer
+    const { profile } = useZoraProfile(coin.creatorAddress || "");
+    const imageUrl = profile?.avatar?.previewImage?.small || getProfileImageSmall(profile);
+
+    // Creator info for the pointer
+    const creatorInfo = (
+      <div className="flex items-center gap-2">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt="profile"
+            className="w-6 h-6 rounded-full object-cover border border-white/10"
+          />
+        ) : coin.creatorAddress ? (
+          <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-xs">
+            {coin.creatorAddress.slice(2, 4).toUpperCase()}
+          </div>
+        ) : (
+          <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-xs">
+            ?
+          </div>
+        )}
+        <span className="font-medium">
+          {profile?.displayName || (coin.creatorAddress ? truncateAddress(coin.creatorAddress) : "Unknown")}
+        </span>
+      </div>
+    );
 
     return (
-      <tr
-        key={rowKey}
-        onClick={() => onCoinClick(coin.address)}
-        className={cn(
-          "border-b border-border hover:bg-muted/50 transition-colors cursor-pointer",
-          index % 2 === 0 ? "bg-card" : "bg-background",
-          // Add subtle animation for real-time updates
-          "animate-pulse-subtle"
-        )}
+      <FollowerPointerCard
+        title={creatorInfo}
+        className="contents"
       >
-        <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
-          #{index + 1}
-        </td>
-        <td className="px-2 sm:px-4 py-3">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleWatch();
-              }}
-              className={cn(
-                "mr-2 p-1 rounded-full hover:bg-muted transition-colors",
-                isWatched ? "text-yellow-500" : "text-muted-foreground"
-              )}
-              title={isWatched ? "Remove from Watchlist" : "Add to Watchlist"}
-            >
-              <Star
-                fill={isWatched ? "currentColor" : "none"}
-                strokeWidth={2}
-                className="w-5 h-5"
-              />
-            </button>
-            {/* {coin.mediaContent?.previewImage?.medium ? (
-              <CachedImage
-                src={coin.mediaContent.previewImage.medium}
-                alt={coin.symbol || 'token'}
-                className="w-7 h-7 rounded-full border bg-white object-cover"
-              />
-            ) : coin.image ? (
-              <CachedImage
-                src={coin.image}
-                alt={coin.symbol || 'token'}
-                className="w-7 h-7 rounded-full border bg-white object-cover"
-              />
-            ) : (
-              <span className="w-7 h-7 rounded-full bg-gray-200 border flex items-center justify-center text-xs text-gray-400">
-                ◎
-              </span>
-            )} */}
-            <div className="">
-              <img
-                src={coin?.mediaContent?.previewImage?.medium}
-                alt=""
-                className="w-10 h-10 rounded-md overflow-hidden object-cover"
-              />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-foreground">
-                  {coin.symbol?.length > 8 ? coin.symbol.slice(0, 8) + '...' : coin.symbol}
-                </span>
+        <tr
+          key={rowKey}
+          onClick={() => onCoinClick(coin.address)}
+          className={cn(
+            "border-b border-border hover:bg-muted/50 transition-colors cursor-pointer",
+            index % 2 === 0 ? "bg-card" : "bg-background",
+            // Add subtle animation for real-time updates
+            "animate-pulse-subtle"
+          )}
+        >
+          <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
+            #{index + 1}
+          </td>
+          <td className="px-2 sm:px-4 py-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleWatch();
+                }}
+                className={cn(
+                  "mr-2 p-1 rounded-full hover:bg-muted transition-colors",
+                  isWatched ? "text-yellow-500" : "text-muted-foreground"
+                )}
+                title={isWatched ? "Remove from Watchlist" : "Add to Watchlist"}
+              >
+                <Star
+                  fill={isWatched ? "currentColor" : "none"}
+                  strokeWidth={2}
+                  className="w-5 h-5"
+                />
+              </button>
+              <div className="">
+                <img
+                  src={coin?.mediaContent?.previewImage?.medium}
+                  alt=""
+                  className="w-10 h-10 rounded-md overflow-hidden object-cover"
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">
+                    {coin.symbol?.length > 8 ? coin.symbol.slice(0, 8) + '...' : coin.symbol}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        </td>
-        <td className="px-2 sm:px-4 py-3">
-          <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
-        </td>
-        <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
-          {coin.fineAge
-            ? coin.fineAge
-            : coin.createdAt
-              ? getAgeFromTimestamp(coin.createdAt)
-            : "N/A"}
-        </td>
-        <td className="px-2 sm:px-4 py-3">
-          <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
-        </td>
-        <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
-          {formattedCoin.formattedMarketCap}
-        </td>
-        <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
-          <CreatorCell creatorAddress={coin.creatorAddress} />
-        </td>
-      </tr>
+          </td>
+          <td className="px-2 sm:px-4 py-3">
+            <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
+          </td>
+          <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
+            {coin.fineAge
+              ? coin.fineAge
+              : coin.createdAt
+                ? getAgeFromTimestamp(coin.createdAt)
+              : "N/A"}
+          </td>
+          <td className="px-2 sm:px-4 py-3">
+            <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
+          </td>
+          <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
+            {formattedCoin.formattedMarketCap}
+          </td>
+          <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
+            <CreatorCell creatorAddress={coin.creatorAddress} />
+          </td>
+        </tr>
+      </FollowerPointerCard>
     );
   },
   (prevProps, nextProps) => {

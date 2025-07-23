@@ -112,7 +112,7 @@ export default function Trending() {
         {displayedCoins.map((coin) => (
           <div
             key={coin.address}
-            className="flex items-center gap-2 sm:gap-3 flex-shrink-0 bg-primary/30 dark:bg-purple-900/20 px-2 sm:px-4 py-2 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/30 transition-colors cursor-pointer"
+            className="flex items-center gap-2 sm:gap-3 flex-shrink-0 bg-primary/10 dark:bg-purple-900/20 px-2 sm:px-4 py-2 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/30 transition-colors cursor-pointer"
           >
             {/* Image */}
             <div className="flex-shrink-0">

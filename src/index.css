@@ -141,3 +141,53 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom colors for gains and losses */
+:root {
+  --gain: 142.1 70.6% 45.3%;
+  --loss: 0 84.2% 60.2%;
+}
+
+@layer utilities {
+  .text-gain {
+    color: hsl(var(--gain));
+  }
+  .text-loss {
+    color: hsl(var(--loss));
+  }
+}
+
+/* Custom animations */
+@keyframes pulse-subtle {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.97;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s ease-in-out infinite;
+  }
+}
+
+/* Fade in animation */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+}
