@@ -213,6 +213,67 @@
   .animate-fade-in {
     animation: fade-in 0.3s ease-out;
   }
+
+  /* Sleek Search Animations */
+  @keyframes slide-in-from-top-2 {
+    from {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% {
+      box-shadow: 0 0 20px hsl(263 70% 50% / 0.2);
+    }
+    50% {
+      box-shadow: 0 0 30px hsl(263 70% 50% / 0.4);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200px 0;
+    }
+    100% {
+      background-position: calc(200px + 100%) 0;
+    }
+  }
+
+  .animate-in {
+    animation: slide-in-from-top-2 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-glow {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(263 70% 50% / 0.1),
+      transparent
+    );
+    background-size: 200px 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* Glassmorphism effects */
+  .glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .dark .glass {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
 }
 
 /* Hide number input spinners in Chrome, Safari, Edge */
