@@ -190,6 +190,8 @@
   .animate-fade-in {
     animation: fade-in 0.3s ease-out;
   }
+}
+
 /* Hide number input spinners in Chrome, Safari, Edge */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {

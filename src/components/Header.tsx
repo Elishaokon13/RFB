@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WalletConnect } from "@/components/WalletConnect";
 
 interface SearchResult {
   id: string;
@@ -544,10 +545,10 @@ export function Header({ onMenuClick }: HeaderProps) {
           <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full"></span>
         </button>
 
-        {/* Profile */}
-        {/* <button className="w-8 h-8 bg-muted rounded-full flex items-center justify-center hover:bg-muted/80 transition-colors">
-          <User className="w-4 h-4 text-muted-foreground" />
-        </button> */}
+        {/* Wallet Connect */}
+        <div className="hidden sm:block">
+          <WalletConnect />
+        </div>
       </div>
     </header>
   );
