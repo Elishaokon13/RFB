@@ -83,7 +83,7 @@ export default function CreatorsPage() {
               <Users className="w-6 h-6 text-primary" />
             </div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
-              Top Creators by Earnings
+              Top Creators
             </h1>
           </div>
           <p className="text-muted-foreground text-sm sm:text-base">
@@ -99,11 +99,9 @@ export default function CreatorsPage() {
               <div>
                 <h2 className="text-xl font-semibold flex items-center gap-2">
                   <DollarSign className="w-5 h-5 text-green-500" />
-                  Top Earning Creators
+                  Top Earnings Creators
                 </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Showing {startIndex + 1}-{Math.min(endIndex, creators.length)} of {creators.length} creators
-                </p>
+                
               </div>
               <button
                 onClick={refetch}
