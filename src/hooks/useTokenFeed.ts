@@ -54,6 +54,7 @@ export function useTokenFeed(activeFilter: string) {
     mostValuable,
     topGainers,
     topVolume,
+    newCoins,
     isLoading: preloadLoading,
   } = usePreloadAllData();
 
@@ -63,13 +64,51 @@ export function useTokenFeed(activeFilter: string) {
       case "Most Valuable":
         return mostValuable.data;
       case "Top Gainers":
+        // Ensure Top Gainers are sorted by market cap change in 24h (descending)
+        if (topGainers.data?.coins) {
+          const sortedCoins = [...topGainers.data.coins].sort((a, b) => {
+            const deltaA = parseFloat(a.marketCapDelta24h || "0");
+            const deltaB = parseFloat(b.marketCapDelta24h || "0");
+            return deltaB - deltaA; // Descending order (highest gain first)
+          });
+          return {
+            ...topGainers.data,
+            coins: sortedCoins
+          };
+        }
         return topGainers.data;
       case "Top Volume 24h":
+        // Ensure Top Volume are sorted by 24h volume (descending)
+        if (topVolume.data?.coins) {
+          const sortedCoins = [...topVolume.data.coins].sort((a, b) => {
+            const volumeA = parseFloat(a.volume24h || "0");
+            const volumeB = parseFloat(b.volume24h || "0");
+            return volumeB - volumeA; // Descending order (highest volume first)
+          });
+          return {
+            ...topVolume.data,
+            coins: sortedCoins
+          };
+        }
         return topVolume.data;
+      case "New Coins":
+        // Ensure New Coins are sorted by creation time (newest first)
+        if (newCoins.data?.coins) {
+          const sortedCoins = [...newCoins.data.coins].sort((a, b) => {
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return timeB - timeA; // Descending order (newest first)
+          });
+          return {
+            ...newCoins.data,
+            coins: sortedCoins
+          };
+        }
+        return newCoins.data;
       default:
         return mostValuable.data;
     }
-  }, [activeFilter, mostValuable.data, topGainers.data, topVolume.data]);
+  }, [activeFilter, mostValuable.data, topGainers.data, topVolume.data, newCoins.data]);
 
   const activeData = getActiveData();
   const currentCoins = activeData?.coins || [];

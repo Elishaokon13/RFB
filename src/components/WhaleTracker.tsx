@@ -1,8 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { useTokenWhaleTracker } from "../hooks/useTokenWhaleTracker";
 import { truncateAddress } from "@/lib/utils";
+import { 
+  Copy, 
+  ExternalLink, 
+  TrendingUp, 
+  Users, 
+  Activity, 
+  Eye, 
+  EyeOff,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  BarChart3,
+  Clock,
+  Hash,
+  ArrowUpRight
+} from "lucide-react";
 
-// Format bigint to readable string with decimals
 // Format bigint to readable string with decimals
 function formatTokenAmount(
   amount: bigint,
@@ -10,31 +25,21 @@ function formatTokenAmount(
 ): string {
   if (amount === 0n) return "0";
 
-  // Ensure decimals is a number
-  const decimalCount =
-    typeof decimals === "bigint" ? Number(decimals) : decimals;
+  const decimalCount = typeof decimals === "bigint" ? Number(decimals) : decimals;
 
-  // Validate decimals is a reasonable number
-  if (
-    decimalCount < 0 ||
-    decimalCount > 77 ||
-    !Number.isInteger(decimalCount)
-  ) {
+  if (decimalCount < 0 || decimalCount > 77 || !Number.isInteger(decimalCount)) {
     console.warn(`Invalid decimals value: ${decimals}, using 18 as fallback`);
     return formatTokenAmount(amount, 18);
   }
 
-  // Convert BigInt to string first
   const amountStr = amount.toString();
 
-  // Handle cases where the amount has fewer digits than decimals
   if (amountStr.length <= decimalCount) {
     const paddedStr = amountStr.padStart(decimalCount, "0");
     const decimalPart = paddedStr.replace(/0+$/, "");
     return decimalPart ? `0.${decimalPart}` : "0";
   }
 
-  // Split into integer and decimal parts
   const integerPart = amountStr.slice(0, -decimalCount);
   const decimalPart = amountStr.slice(-decimalCount).replace(/0+$/, "");
 
@@ -46,11 +51,25 @@ function formatTimestamp(timestamp?: number): string {
   if (!timestamp) return "N/A";
 
   const date = new Date(timestamp * 1000);
-  return date.toLocaleString();
+  const now = new Date();
+  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+  
+  if (diffInHours < 1) return "Just now";
+  if (diffInHours < 24) return `${diffInHours}h ago`;
+  
+  return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// Format large numbers
+function formatNumber(num: number): string {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  return num.toString();
 }
 
 export function WhaleTracker({ tokenAddress }: { tokenAddress: string }) {
   const [input, setInput] = useState("");
+  const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const {
     holders,
     transfers,
@@ -64,187 +83,248 @@ export function WhaleTracker({ tokenAddress }: { tokenAddress: string }) {
     tokenMetadata,
   } = useTokenWhaleTracker({ tokenAddress });
 
+  const handleCopyAddress = async (address: string) => {
+    await navigator.clipboard.writeText(address);
+    setCopiedAddress(address);
+    setTimeout(() => setCopiedAddress(null), 2000);
+  };
+
   return (
-    <div className="w-full mx-auto">
+    <div className="space-y-6">
+      {/* Token Info Card */}
       {tokenMetadata ? (
-        <div className="mb-6 flex items-center gap-4 p-4 border rounded-lg bg-card">
-          <div className="flex-shrink-0">
-            <img
-              src={tokenMetadata?.logo}
-              alt={tokenMetadata.name}
-              className="w-16 h-16 bg-white/20 rounded-full object-cover border-2 border-border"
-            />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              {tokenMetadata.name}
-              <span className="text-sm font-normal px-2 py-0.5 bg-muted rounded-full">
-                {tokenMetadata.symbol}
-              </span>
-            </h2>
-            <div className="text-sm text-muted-foreground mt-1">
-              <div className="flex items-center gap-2">
-                <span className="font-mono">
-                  {truncateAddress(tokenAddress)}
-                </span>
-                <button
-                  onClick={() => navigator.clipboard.writeText(tokenAddress)}
-                  className="text-xs underline hover:text-primary"
-                >
-                  Copy
-                </button>
-                <a
-                  href={`https://basescan.org/token/${tokenAddress}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs underline hover:text-primary"
-                >
-                  View on BaseScan
-                </a>
-              </div>
-              {totalSupply && (
-                <div className="mt-1">
-                  Total Supply:{" "}
-                  {formatTokenAmount(totalSupply, tokenMetadata.decimals)}{" "}
-                  {tokenMetadata.symbol}
+        <div className="bg-card border border-border rounded-xl shadow-sm p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-shrink-0">
+              <img
+                src={tokenMetadata?.logo}
+                alt={tokenMetadata.name}
+                className="w-16 h-16 bg-white/20 rounded-xl object-cover border-2 border-border shadow-sm"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                    {tokenMetadata.name}
+                    <span className="text-sm font-normal px-2 py-1 bg-primary/10 text-primary rounded-full">
+                      {tokenMetadata.symbol}
+                    </span>
+                  </h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="font-mono text-sm text-muted-foreground">
+                      {truncateAddress(tokenAddress)}
+                    </span>
+                    <button
+                      onClick={() => handleCopyAddress(tokenAddress)}
+                      className="p-1 hover:bg-muted rounded transition-colors"
+                      title="Copy address"
+                    >
+                      {copiedAddress === tokenAddress ? (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <Copy className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </button>
+                    <a
+                      href={`https://basescan.org/token/${tokenAddress}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 hover:bg-muted rounded transition-colors"
+                      title="View on BaseScan"
+                    >
+                      <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                    </a>
+                  </div>
                 </div>
-              )}
+                {totalSupply && (
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground">Total Supply</div>
+                    <div className="font-semibold">
+                      {formatTokenAmount(totalSupply, tokenMetadata.decimals)} {tokenMetadata.symbol}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       ) : (
-        <h2 className="text-2xl font-bold mb-4">Top Holders / Whale Tracker</h2>
+        <div className="bg-card border border-border rounded-xl shadow-sm p-6">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-primary" />
+            Top Holders / Whale Tracker
+          </h2>
+        </div>
       )}
 
-      <div className="mb-2 text-sm text-muted-foreground">
-        Tracking on Base Mainnet (Chain ID: 8453) via Infura
-        <span className="ml-2 inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-          Powered by MetaMask Services
-        </span>
-      </div>
 
-      <div className="mb-6">
-        <input
-          className="border rounded px-2 py-1 mr-2"
-          placeholder="Follow whale address..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        />
-        <button
-          className="bg-primary text-white px-3 py-1 rounded"
-          onClick={() => followWhale(input)}
-          disabled={!input}
-        >
-          Follow
-        </button>
+      
+
+      {/* Whale Follow Section */}
+      <div className="bg-card border border-border rounded-xl shadow-sm p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Eye className="w-5 h-5 text-primary" />
+          Follow Whale Address
+        </h3>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <input
+              className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+              placeholder="Enter whale address to follow..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+            />
+            <Eye className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          </div>
+          <button
+            className="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-lg disabled:opacity-50 transition-all font-medium flex items-center gap-2"
+            onClick={() => followWhale(input)}
+            disabled={!input}
+          >
+            <Eye className="w-4 h-4" />
+            Follow
+          </button>
+        </div>
         {followed && (
-          <span className="ml-4 text-sm">
-            Following:{" "}
-            <span className="font-mono">{truncateAddress(followed)}</span>
-          </span>
+          <div className="mt-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+            <div className="flex items-center gap-2 text-sm">
+              <Eye className="w-4 h-4 text-primary" />
+              <span className="text-muted-foreground">Following:</span>
+              <span className="font-mono font-medium">{truncateAddress(followed)}</span>
+            </div>
+          </div>
         )}
       </div>
 
+      {/* Loading State */}
       {loading && (
-        <>
-          <div className="py-4 text-center">
-            <div className="mb-2">Loading whale data... {progress}%</div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div
-                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-in-out"
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              This may take a while due to API rate limits. Please be patient.
-            </p>
+        <div className="bg-card border border-border rounded-xl shadow-sm p-8 text-center">
+          <div className="flex items-center justify-center mb-4">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        </>
-      )}
-
-      {error && (
-        <>
-          <div className="py-4 px-6 rounded bg-red-50 border border-red-200 text-red-800">
-            <p className="font-semibold mb-2">Error loading data</p>
-            <p className="text-sm mb-3">
-              {error.includes("exceed maximum block range")
-                ? "RPC provider limits exceeded. Try again with a more recent token or different RPC."
-                : error.includes("call revert exception")
-                ? "This contract does not appear to be a valid ERC20 token."
-                : error}
-            </p>
-            <details className="text-xs mt-2">
-              <summary>Technical details</summary>
-              <pre className="mt-2 p-2 bg-gray-100 rounded overflow-auto max-h-40">
-                {error}
-              </pre>
-            </details>
+          <h3 className="text-lg font-semibold mb-2">Loading whale data...</h3>
+          <div className="w-full bg-muted rounded-full h-2 mb-4">
+            <div
+              className="bg-primary h-2 rounded-full transition-all duration-300 ease-in-out"
+              style={{ width: `${progress}%` }}
+            ></div>
           </div>
-        </>
-      )}
-
-      {!loading && !error && holders.length === 0 && (
-        <div className="py-8 text-center text-muted-foreground">
-          No holder data found. This could be a new token or the contract
-          doesn't implement the ERC20 standard.
+          <p className="text-sm text-muted-foreground">
+            This may take a while due to API rate limits. Please be patient.
+          </p>
         </div>
       )}
 
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-red-800 mb-2">Error loading data</h3>
+              <p className="text-sm text-red-700 mb-3">
+                {error.includes("exceed maximum block range")
+                  ? "RPC provider limits exceeded. Try again with a more recent token or different RPC."
+                  : error.includes("call revert exception")
+                  ? "This contract does not appear to be a valid ERC20 token."
+                  : error}
+              </p>
+              <details className="text-xs">
+                <summary className="cursor-pointer text-red-600 hover:text-red-800">Technical details</summary>
+                <pre className="mt-2 p-3 bg-red-100 rounded-lg overflow-auto max-h-40 text-red-800">
+                  {error}
+                </pre>
+              </details>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No Data State */}
+      {!loading && !error && holders.length === 0 && (
+        <div className="bg-card border border-border rounded-xl shadow-sm p-8 text-center">
+          <div className="p-4 bg-muted/50 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">No holder data found</h3>
+          <p className="text-muted-foreground">
+            This could be a new token or the contract doesn't implement the ERC20 standard.
+          </p>
+        </div>
+      )}
+
+      {/* Top Holders */}
       {holders.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold mb-2">Top Holders</h3>
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-border">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Top Holders
+            </h3>
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full border rounded mb-4">
-              <thead>
-                <tr className="bg-muted">
-                  <th className="px-2 py-1 text-left">#</th>
-                  <th className="px-2 py-1 text-left">Address</th>
-                  <th className="px-2 py-1 text-left">Balance</th>
+            <table className="w-full">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">#</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Address</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Balance</th>
                   {totalSupply && (
-                    <th className="px-2 py-1 text-left">% of Supply</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">% of Supply</th>
                   )}
-                  <th className="px-2 py-1 text-left">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border">
                 {holders.map((h, i) => (
-                  <tr key={h.address} className="border-b hover:bg-muted/50">
-                    <td className="px-2 py-1">{i + 1}</td>
-                    <td className="px-2 py-1 font-mono">
-                      {truncateAddress(h.address)}
+                  <tr key={h.address} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      {i + 1}
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="font-mono text-sm">{truncateAddress(h.address)}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {tokenMetadata
-                        ? `${formatTokenAmount(
-                            h.balance,
-                            tokenMetadata.decimals
-                          )} ${tokenMetadata.symbol}`
+                        ? `${formatTokenAmount(h.balance, tokenMetadata.decimals)} ${tokenMetadata.symbol}`
                         : h.balance.toString()}
                     </td>
                     {totalSupply && (
-                      <td className="px-2 py-1">{h.percentage?.toFixed(2)}%</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className="font-medium">{h.percentage?.toFixed(2)}%</span>
+                      </td>
                     )}
-                    <td className="px-2 py-1">
-                      <button
-                        className="text-xs underline mr-2"
-                        onClick={() => navigator.clipboard.writeText(h.address)}
-                      >
-                        Copy
-                      </button>
-                      <a
-                        className="text-xs underline mr-2"
-                        href={`https://basescan.org/address/${h.address}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Explorer
-                      </a>
-                      <button
-                        className="text-xs underline"
-                        onClick={() => followWhale(h.address)}
-                      >
-                        Follow
-                      </button>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="p-1 hover:bg-muted rounded transition-colors"
+                          onClick={() => handleCopyAddress(h.address)}
+                          title="Copy address"
+                        >
+                          {copiedAddress === h.address ? (
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </button>
+                        <a
+                          className="p-1 hover:bg-muted rounded transition-colors"
+                          href={`https://basescan.org/address/${h.address}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="View on BaseScan"
+                        >
+                          <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                        </a>
+                        <button
+                          className="p-1 hover:bg-muted rounded transition-colors"
+                          onClick={() => followWhale(h.address)}
+                          title="Follow whale"
+                        >
+                          <Eye className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -254,50 +334,53 @@ export function WhaleTracker({ tokenAddress }: { tokenAddress: string }) {
         </div>
       )}
 
+      {/* Recent Transfers */}
       {transfers.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold mb-2">Recent Transfers</h3>
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-border">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Activity className="w-5 h-5 text-primary" />
+              Recent Transfers
+            </h3>
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full border rounded">
-              <thead>
-                <tr className="bg-muted">
-                  <th className="px-2 py-1 text-left">From</th>
-                  <th className="px-2 py-1 text-left">To</th>
-                  <th className="px-2 py-1 text-left">Value</th>
-                  <th className="px-2 py-1 text-left">Block</th>
-                  <th className="px-2 py-1 text-left">Time</th>
-                  <th className="px-2 py-1 text-left">Tx</th>
+            <table className="w-full">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">From</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">To</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Value</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Time</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Tx</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border">
                 {transfers.slice(0, 50).map((t, i) => (
-                  <tr key={t.txHash + i} className="border-b hover:bg-muted/50">
-                    <td className="px-2 py-1 font-mono">
-                      {truncateAddress(t.from)}
+                  <tr key={t.txHash + i} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="font-mono text-sm">{truncateAddress(t.from)}</span>
                     </td>
-                    <td className="px-2 py-1 font-mono">
-                      {truncateAddress(t.to)}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="font-mono text-sm">{truncateAddress(t.to)}</span>
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       {tokenMetadata
-                        ? `${formatTokenAmount(
-                            t.value,
-                            tokenMetadata.decimals
-                          )} ${tokenMetadata.symbol}`
+                        ? `${formatTokenAmount(t.value, tokenMetadata.decimals)} ${tokenMetadata.symbol}`
                         : t.value.toString()}
                     </td>
-                    <td className="px-2 py-1">{t.blockNumber}</td>
-                    <td className="px-2 py-1">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {formatTimestamp(t.timestamp)}
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <a
-                        className="text-xs underline"
+                        className="p-1 hover:bg-muted rounded transition-colors inline-flex items-center gap-1"
                         href={`https://basescan.org/tx/${t.txHash}`}
                         target="_blank"
                         rel="noopener noreferrer"
+                        title="View transaction"
                       >
-                        View
+                        <Hash className="w-4 h-4 text-muted-foreground" />
+                        <ArrowUpRight className="w-3 h-3 text-muted-foreground" />
                       </a>
                     </td>
                   </tr>
@@ -308,52 +391,56 @@ export function WhaleTracker({ tokenAddress }: { tokenAddress: string }) {
         </div>
       )}
 
+      {/* Followed Whale Trades */}
       {followed && followedTrades.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold mb-2">
-            Recent Trades for Whale
-          </h3>
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-border">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Eye className="w-5 h-5 text-primary" />
+              Recent Trades for Followed Whale
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              {truncateAddress(followed)}
+            </p>
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full border rounded">
-              <thead>
-                <tr className="bg-muted">
-                  <th className="px-2 py-1 text-left">From</th>
-                  <th className="px-2 py-1 text-left">To</th>
-                  <th className="px-2 py-1 text-left">Value</th>
-                  <th className="px-2 py-1 text-left">Block</th>
-                  <th className="px-2 py-1 text-left">Time</th>
-                  <th className="px-2 py-1 text-left">Tx</th>
+            <table className="w-full">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">From</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">To</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Value</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Time</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Tx</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border">
                 {followedTrades.map((t, i) => (
-                  <tr key={t.txHash + i} className="border-b hover:bg-muted/50">
-                    <td className="px-2 py-1 font-mono">
-                      {truncateAddress(t.from)}
+                  <tr key={t.txHash + i} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="font-mono text-sm">{truncateAddress(t.from)}</span>
                     </td>
-                    <td className="px-2 py-1 font-mono">
-                      {truncateAddress(t.to)}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="font-mono text-sm">{truncateAddress(t.to)}</span>
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       {tokenMetadata
-                        ? `${formatTokenAmount(
-                            t.value,
-                            tokenMetadata.decimals
-                          )} ${tokenMetadata.symbol}`
+                        ? `${formatTokenAmount(t.value, tokenMetadata.decimals)} ${tokenMetadata.symbol}`
                         : t.value.toString()}
                     </td>
-                    <td className="px-2 py-1">{t.blockNumber}</td>
-                    <td className="px-2 py-1">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {formatTimestamp(t.timestamp)}
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <a
-                        className="text-xs underline"
+                        className="p-1 hover:bg-muted rounded transition-colors inline-flex items-center gap-1"
                         href={`https://basescan.org/tx/${t.txHash}`}
                         target="_blank"
                         rel="noopener noreferrer"
+                        title="View transaction"
                       >
-                        View
+                        <Hash className="w-4 h-4 text-muted-foreground" />
+                        <ArrowUpRight className="w-3 h-3 text-muted-foreground" />
                       </a>
                     </td>
                   </tr>
@@ -364,14 +451,16 @@ export function WhaleTracker({ tokenAddress }: { tokenAddress: string }) {
         </div>
       )}
 
+      {/* No Followed Trades */}
       {followed && followedTrades.length === 0 && (
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold mb-2">
-            Recent Trades for Whale
-          </h3>
-          <div className="py-4 text-center text-muted-foreground">
-            No transactions found for this address.
+        <div className="bg-card border border-border rounded-xl shadow-sm p-8 text-center">
+          <div className="p-4 bg-muted/50 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+            <EyeOff className="w-8 h-8 text-muted-foreground" />
           </div>
+          <h3 className="text-lg font-semibold mb-2">No transactions found</h3>
+          <p className="text-muted-foreground">
+            No transactions found for the followed whale address.
+          </p>
         </div>
       )}
     </div>

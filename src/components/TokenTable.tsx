@@ -8,7 +8,6 @@ import { useBasename } from "@/hooks/useBasename";
 import { Address } from "viem";
 import { Coin } from "@/hooks/useTopVolume24h";
 import { useDexScreenerTokens, DexScreenerPair } from "@/hooks/useDexScreener";
-import { useGetCoinsTopVolume24h } from "@/hooks/getCoinsTopVolume24h";
 import {
   useZoraProfile,
   useZoraProfileBalances,
@@ -21,7 +20,7 @@ import { TableSkeleton } from "@/components/TableSkeleton";
 const topFilters = [
   "Trending",
   "Top Gainers",
-  "Top Volume",
+  "Top Volume 24h",
   "New Coins",
 ];
 
@@ -39,6 +38,17 @@ type CoinWithImage = Coin & {
     };
   };
   fineAge?: string;
+  creatorProfile?: {
+    handle?: string;
+    address?: string;
+    displayName?: string;
+    avatar?: {
+      previewImage?: {
+        small?: string;
+        medium?: string;
+      };
+    };
+  };
 };
 
 export function TokenTable() {
@@ -47,7 +57,6 @@ export function TokenTable() {
     return localStorage.getItem("activeTopFilter") || "Most Valuable";
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const retryTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Use dedicated hook for smart state handling
   const {
@@ -59,51 +68,6 @@ export function TokenTable() {
     refetchActive,
     hasData,
   } = useTokenFeed(activeTopFilter);
-
-  // New Picks integration: use top volume 24h as a proxy for new coins
-  const {
-    data: newPicksData,
-    isLoading: newLoading,
-    error: newError,
-    refetch: refetchNewPicks,
-  } = useGetCoinsTopVolume24h({ count: ITEMS_PER_PAGE });
-  const newCoins = newPicksData?.coins || [];
-
-  // Log the full API response for New Picks every time it changes
-  // useEffect(() => {
-  //   if (newPicksData) {
-  //     console.log('[New Picks API Raw Response]', newPicksData);
-  //     if (Array.isArray(newPicksData.coins)) {
-  //       newPicksData.coins.forEach((coin, index) => {
-  //         console.log(`New Coin ${index + 1}:`);
-  //         console.log(`- Name: ${coin.name}`);
-  //         console.log(`- Created At: ${coin.createdAt}`);
-  //       });
-  //     }
-  //   }
-  // }, [newPicksData]);
-
-  // Auto-retry logic for New Picks on internal server error
-  useEffect(() => {
-    if (
-      activeTopFilter === "New Picks" &&
-      (newError?.toString().includes("500") ||
-        (!newCoins.length && !newLoading))
-    ) {
-      if (!retryTimeout.current) {
-        retryTimeout.current = setTimeout(() => {
-          refetchNewPicks();
-          retryTimeout.current = null;
-        }, 2000); // retry every 2s
-      }
-    }
-    return () => {
-      if (retryTimeout.current) {
-        clearTimeout(retryTimeout.current);
-        retryTimeout.current = null;
-      }
-    };
-  }, [activeTopFilter, newError, newCoins.length, newLoading, refetchNewPicks]);
 
   // Save active filter to localStorage whenever it changes
   useEffect(() => {
@@ -150,25 +114,17 @@ export function TokenTable() {
       chainId: c.chainId ?? 8453,
       uniqueHolders: c.uniqueHolders ?? 0,
       uniswapV3PoolAddress: c.uniswapV3PoolAddress ?? "",
-      imageUrl: c.imageUrl ?? "",
-      mediaContent: c.mediaContent ?? {},
-      fineAge: c.fineAge,
+      mediaContent: c.mediaContent,
+      fineAge: c.createdAt ? getFineAgeFromTimestamp(c.createdAt) : undefined,
+      creatorProfile: c.creatorProfile,
     };
   };
 
   // Pagination logic for 20 per page
   const paginatedCoins = useMemo(() => {
-    if (activeTopFilter === "New Picks") {
-      const sorted = [...newCoins].sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      });
-      return sorted.map(ensureCoinWithImage);
-    }
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return coins.slice(start, start + ITEMS_PER_PAGE).map(ensureCoinWithImage);
-  }, [coins, newCoins, currentPage, activeTopFilter]);
+  }, [coins, currentPage]);
 
   // Get token addresses for the current page
   const tokenAddresses = useMemo(
@@ -215,46 +171,19 @@ export function TokenTable() {
     refetchAll();
   }, [refetchAll]);
 
-  const loading = activeTopFilter === "New Picks" ? newLoading : isLoading;
-  const errorMsg =
-    activeTopFilter === "New Picks" ? newError : error || dexError;
-  const pageInfoToUse = pageInfo; // Not used for New Picks
+  const loading = isLoading;
+  const errorMsg = error || dexError;
+  const pageInfoToUse = pageInfo;
 
-  const safeErrorMsg =
-    typeof errorMsg === "string"
-      ? errorMsg
-      : errorMsg instanceof Error
-      ? errorMsg.message
-      : "Unknown error";
-
-  // Skeleton loading state
+  // Skeleton loading component
   const skeletonLoading = (
     <div className="space-y-4">
-      <div className="bg-card border-b border-border p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex bg-muted rounded-lg p-1">
-              {topFilters.map((filter) => (
-                <div key={filter} className="px-3 py-1 rounded-md">
-                  <div className="h-4 w-16 bg-muted-foreground/20 rounded animate-pulse" />
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-xs text-green-600">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span>Live</span>
-            </div>
-            <div className="flex items-center gap-1 px-3 py-1 bg-muted rounded-lg">
-              <div className="h-4 w-16 bg-muted-foreground/20 rounded animate-pulse" />
-            </div>
-          </div> */}
-        </div>
-      </div>
-      <TableSkeleton rows={10} columns={7} />
+      <TableSkeleton />
     </div>
   );
+
+  // Safe error message
+  const safeErrorMsg = errorMsg?.toString();
 
   return (
     <div className="space-y-4 px-4 sm:px-0">
@@ -285,36 +214,12 @@ export function TokenTable() {
                 ))}
               </div>
             </div>
-
-            {/* Refresh button - always visible */}
-            {/* <button
-              onClick={handleRefresh}
-              disabled={loading}
-              className="flex items-center gap-1 px-3 py-1 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground"
-            >
-              <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-              <span className="hidden sm:inline">Refresh</span>
-            </button> */}
           </div>
-
-          {/* Bottom row: Live indicator */}
-          {/* <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-xs text-green-600">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span>Live</span>
-            </div>
-          </div> */}
         </div>
       </div>
 
       {/* Progressive Loading - Show data as soon as it's available */}
-      {activeTopFilter === "New Picks" &&
-        (newLoading || (!newCoins.length && !newError)) &&
-        skeletonLoading}
-      {activeTopFilter !== "New Picks" &&
-        isLoading &&
-        (error || (safeErrorMsg && paginatedCoins.length === 0)) &&
-        skeletonLoading}
+      {isLoading && skeletonLoading}
       {paginatedCoins.length > 0 && (
         <TokenDataTable
           coins={paginatedCoins}
@@ -327,20 +232,9 @@ export function TokenTable() {
           onGoToPage={handleGoToPage}
           showPagination={true}
           itemsPerPage={ITEMS_PER_PAGE}
+          activeFilter={activeTopFilter}
         />
       )}
-
-      {/* Only show error if we have no data at all, except for New Picks which fails silently */}
-      {/* {activeTopFilter !== "New Picks" &&
-        safeErrorMsg &&
-        paginatedCoins.length === 0 && (
-          <div className="flex items-center justify-center p-8">
-            <div className="text-center text-red-500">
-              <p>Error loading {activeTopFilter.toLowerCase()} coins:</p>
-              <p className="text-sm">{safeErrorMsg}</p>
-            </div>
-          </div>
-        )} */}
     </div>
   );
 }

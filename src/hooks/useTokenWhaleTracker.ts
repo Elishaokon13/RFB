@@ -270,7 +270,7 @@ export function useTokenWhaleTracker({
         );
 
         // We'll collect all events from all chunks
-        let allEvents: ethers.Log[] = []; // TODO: Fix this type
+        let allEvents: any[] = []; // Using any[] as a temporary fix for ethers.Log[]
 
         // Split into chunks of MAX_BLOCK_RANGE
         const chunks = [];

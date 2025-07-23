@@ -7,16 +7,16 @@ import {
   DexScreenerPair,
   calculateFallbackPrice,
 } from "@/hooks/useDexScreener";
-import { memo, useMemo, useCallback, useRef, useEffect } from "react";
+import { memo, useMemo, useCallback, useRef, useEffect, useState } from "react";
 import { Identity } from "@coinbase/onchainkit/identity";
 import { Address } from "viem";
 import { Star } from "lucide-react";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useBasename } from "@/hooks/useBasename";
-import React, { useState } from "react";
 import { TableSkeleton, TokenTableRowSkeleton, TableHeaderSkeleton } from "@/components/TableSkeleton";
 import { FollowerPointerCard } from "@/components/ui/following-pointer";
 import { useZoraProfile, getProfileImageSmall } from "@/hooks/useZoraProfile";
+import { Copy } from "lucide-react";
 
 // Extend Coin type to include image property for table display
 type CoinWithImage = Coin & {
@@ -31,7 +31,63 @@ type CoinWithImage = Coin & {
     };
   };
   fineAge?: string; // Add this for New Picks fine-grained age
+  creatorProfile?: {
+    handle?: string;
+    address?: string;
+    displayName?: string;
+    avatar?: {
+      previewImage?: {
+        small?: string;
+        medium?: string;
+      };
+    };
+  };
 };
+
+// Real-time age component that updates every second
+const RealTimeAge = memo(({ createdAt }: { createdAt?: string }) => {
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  useEffect(() => {
+    if (!createdAt) return;
+    
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [createdAt]);
+
+  if (!createdAt) return <span>N/A</span>;
+
+  const created = new Date(createdAt);
+  const diffMs = currentTime - created.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffMs / (1000 * 60));
+  const diffHour = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffYears = Math.floor(diffDays / 365);
+
+  // Debug logging
+  console.log('RealTimeAge:', {
+    createdAt,
+    currentTime,
+    diffMs,
+    diffSec,
+    diffMin,
+    diffHour
+  });
+
+  if (diffSec < 60) return <span>{diffSec}s</span>;
+  if (diffMin < 60) return <span>{diffMin}m</span>;
+  if (diffHour < 24) return <span>{diffHour}h</span>;
+  if (diffDays < 7) return <span>{diffDays}d</span>;
+  if (diffWeeks < 52) return <span>{diffWeeks}w</span>;
+  return <span>{diffYears}y</span>;
+});
+
+RealTimeAge.displayName = "RealTimeAge";
 
 // Helper function to calculate age from timestamp
 const getAgeFromTimestamp = (timestamp: string) => {
@@ -208,6 +264,7 @@ const TableRow = memo(
     dexScreenerData,
     isWatched,
     onToggleWatch,
+    activeFilter,
   }: {
     coin: CoinWithImage;
     index: number;
@@ -215,6 +272,7 @@ const TableRow = memo(
     dexScreenerData: Record<string, DexScreenerPair>;
     isWatched: boolean;
     onToggleWatch: () => void;
+    activeFilter?: string;
   }) => {
     // Log the full coin object for debugging
     const formattedCoin = formatCoinData(coin);
@@ -251,7 +309,130 @@ const TableRow = memo(
       </div>
     );
 
+    const [copied, setCopied] = useState(false);
+    const handleCopy = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      await navigator.clipboard.writeText(coin.address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    };
+
     return (
+      <tr
+        key={rowKey}
+        onClick={() => onCoinClick(coin.address)}
+        className={cn(
+          "border-b border-border hover:bg-muted/50 transition-colors cursor-pointer",
+          index % 2 === 0 ? "bg-card" : "bg-background",
+          // Add subtle animation for real-time updates
+          "animate-pulse-subtle"
+        )}
+      >
+        <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
+          #{index + 1}
+        </td>
+        <td className="px-2 sm:px-4 py-3">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleWatch();
+              }}
+              className={cn(
+                "mr-2 p-1 rounded-full hover:bg-muted transition-colors",
+                isWatched ? "text-yellow-500" : "text-muted-foreground"
+              )}
+              title={isWatched ? "Remove from Watchlist" : "Add to Watchlist"}
+            >
+              <Star
+                fill={isWatched ? "currentColor" : "none"}
+                strokeWidth={2}
+                className="w-5 h-5"
+              />
+            </button>
+            {/* {coin.mediaContent?.previewImage?.medium ? (
+              <CachedImage
+                src={coin.mediaContent.previewImage.medium}
+                alt={coin.symbol || 'token'}
+                className="w-7 h-7 rounded-full border bg-white object-cover"
+              />
+            ) : coin.image ? (
+              <CachedImage
+                src={coin.image}
+                alt={coin.symbol || 'token'}
+                className="w-7 h-7 rounded-full border bg-white object-cover"
+              />
+            ) : (
+              <span className="w-7 h-7 rounded-full bg-gray-200 border flex items-center justify-center text-xs text-gray-400">
+                ◎
+              </span>
+            )} */}
+            <div className="">
+              <img
+                src={coin?.mediaContent?.previewImage?.medium}
+                alt=""
+                className="w-10 h-10 rounded-md overflow-hidden object-cover"
+              />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-foreground">
+                  {coin.symbol?.length > 8 ? coin.symbol.slice(0, 8) + '...' : coin.symbol}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-xs font-mono text-muted-foreground">
+                  {truncateAddress(coin.address)}
+                </span>
+                <button
+                  onClick={handleCopy}
+                  className="p-1 hover:bg-muted rounded transition-colors"
+                  title="Copy address"
+                  tabIndex={0}
+                >
+                  {copied ? (
+                    <span className="text-green-500 text-xs">Copied</span>
+                  ) : (
+                    <Copy className="w-3 h-3 text-muted-foreground" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </td>
+        <td className="px-2 sm:px-4 py-3">
+          <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
+        </td>
+        <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
+          {(() => {
+            console.log('Age column debug:', {
+              activeFilter,
+              coinCreatedAt: coin.createdAt,
+              coinFineAge: coin.fineAge,
+              willUseRealTime: activeFilter === "New Coins"
+            });
+            
+            if (activeFilter === "New Coins") {
+              return <RealTimeAge createdAt={coin.createdAt} />;
+            } else {
+              return coin.fineAge
+                ? coin.fineAge
+                : coin.createdAt
+                  ? getAgeFromTimestamp(coin.createdAt)
+                : "N/A";
+            }
+          })()}
+        </td>
+        <td className="px-2 sm:px-4 py-3">
+          <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
+        </td>
+        <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
+          {formattedCoin.formattedMarketCap}
+        </td>
+        <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
+          <CreatorCell coin={coin} />
+        </td>
+      </tr>
       <FollowerPointerCard
         title={creatorInfo}
         className="contents"
@@ -338,24 +519,36 @@ const TableRow = memo(
 
 TableRow.displayName = "TableRow";
 
-// Memoized creator cell component for Basename resolution
+// Memoized creator cell component for Zora profile name or Basename/address fallback
 const truncateMiddle = (address: string) => {
   if (!address) return "";
   return address.length > 10
     ? `${address.slice(0, 6)}...${address.slice(-4)}`
     : address;
 };
-const CreatorCell = memo(({ creatorAddress }: { creatorAddress?: string }) => {
+const CreatorCell = memo(({ coin }: { coin: CoinWithImage }) => {
   const { basename, loading, error } = useBasename(
-    creatorAddress as `0x${string}`
+    coin.creatorAddress as `0x${string}`
   );
-  // Log the full Basename object for debugging
-  // console.log('[TokenDataTable] Basename:', { address: creatorAddress, basename, loading, error });
-  if (!creatorAddress) return <span>N/A</span>;
+  const profileName = coin.creatorProfile?.handle || coin.creatorProfile?.displayName;
+  const zoraProfileUrl = `https://zora.co/${coin.creatorProfile?.handle || coin.creatorAddress}`;
+  if (profileName) return (
+    <a
+      href={zoraProfileUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+      title="View Zora Profile"
+    >
+      {profileName}
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 inline ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 13v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h6m5-3h3m0 0v3m0-3L10 14" /></svg>
+    </a>
+  );
+  if (!coin.creatorAddress) return <span>N/A</span>;
   if (loading) return <span>Resolving...</span>;
   if (basename) return <span>{basename}</span>;
-  if (error) return <span title={error}>{truncateMiddle(creatorAddress)}</span>;
-  return <span>{truncateMiddle(creatorAddress)}</span>;
+  if (error) return <span title={error}>{truncateMiddle(coin.creatorAddress)}</span>;
+  return <span>{truncateMiddle(coin.creatorAddress)}</span>;
 });
 CreatorCell.displayName = "CreatorCell";
 
@@ -374,6 +567,7 @@ interface TokenDataTableProps {
   showPagination?: boolean;
   itemsPerPage?: number;
   walletAddress?: string;
+  activeFilter?: string;
 }
 
 export function TokenDataTable({
@@ -388,6 +582,7 @@ export function TokenDataTable({
   showPagination = true,
   itemsPerPage = 20,
   walletAddress,
+  activeFilter,
 }: TokenDataTableProps) {
   const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } =
     useWatchlist(walletAddress);
@@ -413,6 +608,7 @@ export function TokenDataTable({
           if (isInWatchlist(coin.address)) removeFromWatchlist(coin.address);
           else addToWatchlist(coin.address);
         }}
+        activeFilter={activeFilter}
       />
     ));
   }, [
@@ -422,6 +618,7 @@ export function TokenDataTable({
     isInWatchlist,
     addToWatchlist,
     removeFromWatchlist,
+    activeFilter,
   ]);
 
   if (loading && coins.length === 0) {
