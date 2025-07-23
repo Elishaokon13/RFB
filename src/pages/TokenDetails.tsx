@@ -13,6 +13,8 @@ import {
   Calendar,
   Globe,
   Shield,
+  Circle,
+  HelpCircle,
 } from "lucide-react";
 import PriceChart from "@/components/PriceCharts";
 import { cn, truncateAddress } from "@/lib/utils";
@@ -30,11 +32,15 @@ import {
   useDefiLlamaHistoricalPrices,
 } from "@/hooks/useDexScreener";
 import { tradeCoin, TradeParameters } from "@zoralabs/coins-sdk";
+import { parseEther, parseUnits, erc20Abi } from "viem";
+import { useWalletClient } from "wagmi";
+import { wagmiConfig } from "@/wagmi";
 import { base } from "viem/chains";
 import { getCoin } from "@zoralabs/coins-sdk";
 import type { WalletClient, PublicClient } from "viem";
 import type { Account } from "viem/accounts";
 import { Identity } from "@coinbase/onchainkit/identity";
+import { useAccount, useBalance } from "wagmi";
 import {
   SignInWithBaseButton,
   BasePayButton,
@@ -42,17 +48,30 @@ import {
 import { createBaseAccountSDK, pay, getPaymentStatus } from "@base-org/account";
 import { useNumberFormatter } from "@/lib/formatNumber";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WalletConnect } from "@/components/WalletConnect";
+import { SiEthereum } from "react-icons/si";
+import { baseClient } from "@/utils/basenames";
 
 // Chart period types
 type ChartPeriod = "1H" | "6H" | "24H" | "7D" | "1M" | "All";
 
 // Helper function to calculate market cap from price and total supply
-const calculateMarketCap = (price: number, totalSupply: string | number): number => {
-  const supply = typeof totalSupply === 'string' ? parseFloat(totalSupply) : totalSupply;
+const calculateMarketCap = (
+  price: number,
+  totalSupply: string | number
+): number => {
+  const supply =
+    typeof totalSupply === "string" ? parseFloat(totalSupply) : totalSupply;
   return price * supply;
 };
 
@@ -62,24 +81,40 @@ const transformPriceToMarketCap = (
   totalSupply: string | number
 ): Array<{ timestamp: number; value: number; price: number }> => {
   if (!priceData || priceData.length === 0) return [];
-  
-  return priceData.map(point => ({
+
+  return priceData.map((point) => ({
     timestamp: point.timestamp,
     value: calculateMarketCap(point.price, totalSupply),
-    price: point.price
+    price: point.price,
   }));
 };
 
 // Helper function to calculate percentage change
-const calculatePercentageChange = (data: Array<{ timestamp: number; value: number; price: number }>): number => {
+const calculatePercentageChange = (
+  data: Array<{ timestamp: number; value: number; price: number }>
+): number => {
   if (data.length < 2) return 0;
-  
+
   const latest = data[data.length - 1].value;
   const earliest = data[0].value;
-  
+
   if (earliest === 0) return 0;
-  
+
   return ((latest - earliest) / earliest) * 100;
+};
+
+// Place this helper function before TokenDetails component
+const getAgeFromTimestamp = (timestamp: string) => {
+  const now = new Date();
+  const created = new Date(timestamp);
+  const diffInHours = Math.floor(
+    (now.getTime() - created.getTime()) / (1000 * 60 * 60)
+  );
+
+  if (diffInHours < 1) return "<1h";
+  if (diffInHours < 24) return `${diffInHours}h`;
+  const days = Math.floor(diffInHours / 24);
+  return `${days}d`;
 };
 
 // --- Trade Hook ---
@@ -122,9 +157,13 @@ function useTradeCoin({
   return { trade, loading, error, receipt };
 }
 
-function hasMediaContent(token: unknown): token is { mediaContent: { previewImage?: { medium?: string } } } {
-  return typeof token === 'object' && token !== null && 'mediaContent' in token;
+function hasMediaContent(
+  token: unknown
+): token is { mediaContent: { previewImage?: { medium?: string } } } {
+  return typeof token === "object" && token !== null && "mediaContent" in token;
 }
+
+const TRADE_ROUTER_ADDRESS = "0x6ff5693b99212da76ad316178a184ab56d299b43";
 
 export default function TokenDetails() {
   const { address: rawAddress } = useParams<{ address: string }>();
@@ -179,71 +218,89 @@ export default function TokenDetails() {
   const {
     priceData: defiLlamaPrice,
     loading: priceLoading,
-    error: priceError
+    error: priceError,
   } = useDefiLlamaPrice("8453", address);
 
   // Use DefiLlama price if available, otherwise fall back to calculated price
-  const price = defiLlamaPrice?.price ||
-    (token?.marketCap && token?.totalSupply ? Number(token.marketCap) / Number(token.totalSupply) : null);
+  const price =
+    defiLlamaPrice?.price ||
+    (token?.marketCap && token?.totalSupply
+      ? Number(token.marketCap) / Number(token.totalSupply)
+      : null);
 
   // Fetch historical price data for chart
   const {
     chartData: historicalPriceData,
     loading: chartLoading,
-    error: chartError
-  } = useDefiLlamaHistoricalPrices("8453", address, chartParams.span, chartParams.timeRange);
+    error: chartError,
+  } = useDefiLlamaHistoricalPrices(
+    "8453",
+    address,
+    chartParams.span,
+    chartParams.timeRange
+  );
 
   // Transform price data to market cap data
   const marketCapChartData = useMemo(() => {
     // If we have historical data and total supply, use real data
-    if (historicalPriceData && historicalPriceData.length > 0 && token?.totalSupply) {
-      const transformed = transformPriceToMarketCap(historicalPriceData, token.totalSupply);
+    if (
+      historicalPriceData &&
+      historicalPriceData.length > 0 &&
+      token?.totalSupply
+    ) {
+      const transformed = transformPriceToMarketCap(
+        historicalPriceData,
+        token.totalSupply
+      );
       return transformed;
     }
-    
+
     // Fallback: create synthetic data based on current price and market cap
     if (price && token?.marketCap) {
       const currentTimestamp = Math.floor(Date.now() / 1000);
       const syntheticData = [];
-      
+
       // Create 24 data points over the last 24 hours
       for (let i = 23; i >= 0; i--) {
-        const timestamp = currentTimestamp - (i * 3600); // 1 hour intervals
+        const timestamp = currentTimestamp - i * 3600; // 1 hour intervals
         // Add some realistic variation (±5%)
         const variation = 1 + (Math.random() - 0.5) * 0.1;
         const syntheticPrice = price * variation;
-        const syntheticMarketCap = calculateMarketCap(syntheticPrice, token.totalSupply || 0);
-        
+        const syntheticMarketCap = calculateMarketCap(
+          syntheticPrice,
+          token.totalSupply || 0
+        );
+
         syntheticData.push({
           timestamp,
           value: syntheticMarketCap,
-          price: syntheticPrice
+          price: syntheticPrice,
         });
       }
-      
+
       return syntheticData;
     }
-    
+
     // Final fallback: use current market cap as a single data point
     if (token?.marketCap) {
       const currentTimestamp = Math.floor(Date.now() / 1000);
       const currentMarketCap = parseFloat(token.marketCap);
-      
+
       // Create a simple line with the current market cap
       return [
         {
           timestamp: currentTimestamp - 3600, // 1 hour ago
           value: currentMarketCap * 0.98, // Slightly lower
-          price: price || 0
+          price: price || 0,
         },
         {
           timestamp: currentTimestamp,
           value: currentMarketCap,
-          price: price || 0
-        }
+          price: price || 0,
+        },
       ];
     }
-    
+
     return [];
   }, [historicalPriceData, token?.totalSupply, price, token?.marketCap]);
 
@@ -263,20 +320,228 @@ export default function TokenDetails() {
     [navigate]
   );
 
-  // Base Account SDK state
-  const [isSignedIn, setIsSignedIn] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState("");
-  const [paymentId, setPaymentId] = useState("");
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  const toggleTheme = useCallback(
-    () => setTheme((prev) => (prev === "light" ? "dark" : "light")),
-    []
-  );
+  // Add wagmi wallet connection state
+  const { address: walletAddress, isConnected } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const [txStatus, setTxStatus] = useState<
+    null | "pending" | "success" | "error"
+  >(null);
+  const [txError, setTxError] = useState<string | null>(null);
+  const [txReceipt, setTxReceipt] = useState<any>(null);
+
+  const { data: ethBalance, isLoading: isBalanceLoading } = useBalance({
+    address: walletAddress,
+    chainId: 8453, // Base mainnet
+    token: undefined, // native ETH
+  });
 
   // Trading UI state
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
   const [tradeAmount, setTradeAmount] = useState("");
   const [slippage, setSlippage] = useState(0.5); // Default slippage
+  const [inputMode, setInputMode] = useState<"ETH" | "USD">("ETH");
+  const [sellInputMode, setSellInputMode] = useState<"TOKEN" | "USD">("TOKEN");
+
+  // ERC-20 token balance for Sell
+  const { data: tokenBalance, isLoading: isTokenBalanceLoading } = useBalance({
+    address: walletAddress,
+    token:
+      tradeType === "sell"
+        ? (token?.address as `0x${string}` | undefined)
+        : undefined,
+    chainId: 8453,
+  });
+
+  const { priceData: ethPriceData, loading: ethPriceLoading } =
+    useDefiLlamaPrice("base", "0x4200000000000000000000000000000000000006");
+
+  // Helper to get ETH value from input
+  const getEthAmount = () => {
+    if (inputMode === "ETH") {
+      return tradeAmount;
+    } else {
+      // USD mode: convert USD to ETH using price
+      const price = ethPriceData?.price || 0;
+      if (!price) return "";
+      const usd = Number(tradeAmount);
+      if (isNaN(usd) || usd <= 0) return "";
+      return (usd / price).toString();
+    }
+  };
+
+  // Helper to get USD value from input
+  const getUsdAmount = () => {
+    if (inputMode === "USD") {
+      return tradeAmount;
+    } else {
+      // ETH mode: convert ETH to USD using price
+      const price = ethPriceData?.price || 0;
+      const eth = Number(tradeAmount);
+      if (!price || isNaN(eth) || eth <= 0) return "";
+      return (eth * price).toString();
+    }
+  };
+
+  // Helper to get token amount from input for Sell
+  const getSellTokenAmount = () => {
+    if (sellInputMode === "TOKEN") {
+      return tradeAmount;
+    } else {
+      // USD mode: convert USD to token using price
+      let pricePerToken = 0;
+      if (typeof price === "number" && !isNaN(price)) {
+        pricePerToken = price;
+      } else if (dexData?.priceUsd) {
+        pricePerToken = parseFloat(dexData.priceUsd);
+      }
+      if (!pricePerToken) return "";
+      const usd = Number(tradeAmount);
+      if (isNaN(usd) || usd <= 0) return "";
+      return (usd / pricePerToken).toString();
+    }
+  };
+
+  // Helper to get USD value from input for Sell
+  const getSellUsdAmount = () => {
+    if (sellInputMode === "USD") {
+      return tradeAmount;
+    } else {
+      let pricePerToken = 0;
+      if (typeof price === "number" && !isNaN(price)) {
+        pricePerToken = price;
+      } else if (dexData?.priceUsd) {
+        pricePerToken = parseFloat(dexData.priceUsd);
+      }
+      const tokenAmt = Number(tradeAmount);
+      if (!pricePerToken || isNaN(tokenAmt) || tokenAmt <= 0) return "";
+      return (tokenAmt * pricePerToken).toString();
+    }
+  };
+
+  const handleBuy = async () => {
+    setTxStatus("pending");
+    setTxError(null);
+    setTxReceipt(null);
+    try {
+      const ethAmount = getEthAmount();
+      if (
+        !token?.address ||
+        !walletClient ||
+        !walletClient.account ||
+        !ethAmount
+      ) {
+        setTxStatus("error");
+        setTxError("Missing required data.");
+        return;
+      }
+      const tradeParameters = {
+        sell: { type: "eth" as const },
+        buy: {
+          type: "erc20" as const,
+          address: token.address as `0x${string}`,
+        },
+        amountIn: parseEther(ethAmount),
+        slippage: slippage / 100, // slippage is percent (e.g. 0.5 for 0.5%)
+        sender: walletClient.account.address,
+      };
+      const receipt = await tradeCoin({
+        tradeParameters,
+        walletClient,
+        account: walletClient.account,
+        publicClient: baseClient,
+      });
+      setTxStatus("success");
+      setTxReceipt(receipt);
+    } catch (err: any) {
+      setTxStatus("error");
+      setTxError(err?.message || "Transaction failed");
+    }
+  };
+
+  // Add handleSell function after handleBuy
+  const handleSell = async () => {
+    setTxStatus("pending");
+    setTxError(null);
+    setTxReceipt(null);
+    try {
+      const tokenAmount = getSellTokenAmount();
+      const decimals = 18; // Default to 18 decimals
+      if (
+        !token?.address ||
+        !walletClient ||
+        !walletClient.account ||
+        !tokenAmount
+      ) {
+        setTxStatus("error");
+        setTxError("Missing required data.");
+        return;
+      }
+      // 1. Approve the router to spend the amount being sold
+      const amountToApprove = parseUnits(tokenAmount, decimals);
+      await walletClient.writeContract({
+        address: token.address as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [TRADE_ROUTER_ADDRESS, amountToApprove],
+        account: walletClient.account,
+        chain: base,
+      });
+      // 2. Call tradeCoin
+      const tradeParameters = {
+        sell: {
+          type: "erc20" as const,
+          address: token.address as `0x${string}`,
+        },
+        buy: { type: "eth" as const },
+        amountIn: amountToApprove,
+        slippage: slippage / 100,
+        sender: walletClient.account.address,
+      };
+      const receipt = await tradeCoin({
+        tradeParameters,
+        walletClient,
+        account: walletClient.account,
+        publicClient: baseClient,
+      });
+      setTxStatus("success");
+      setTxReceipt(receipt);
+    } catch (err: any) {
+      setTxStatus("error");
+      setTxError(err?.message || "Transaction failed");
+    }
+  };
+
+  // Add max button logic
+  const handleMaxBuy = () => {
+    if (inputMode === "ETH") {
+      if (ethBalance?.formatted) setTradeAmount(ethBalance.formatted);
+    } else {
+      // USD mode
+      if (ethBalance?.formatted && ethPriceData?.price) {
+        setTradeAmount(
+          (Number(ethBalance.formatted) * ethPriceData.price).toString()
+        );
+      }
+    }
+  };
+  const handleMaxSell = () => {
+    if (sellInputMode === "TOKEN") {
+      if (tokenBalance?.formatted) setTradeAmount(tokenBalance.formatted);
+    } else {
+      // USD mode
+      if (tokenBalance?.formatted) {
+        let pricePerToken = 0;
+        if (typeof price === "number" && !isNaN(price)) {
+          pricePerToken = price;
+        } else if (dexData?.priceUsd) {
+          pricePerToken = parseFloat(dexData.priceUsd);
+        }
+        setTradeAmount(
+          (Number(tokenBalance.formatted) * pricePerToken).toString()
+        );
+      }
+    }
+  };
 
   // Early return if no address (before hooks that depend on it)
   if (!address) {
@@ -317,7 +582,7 @@ export default function TokenDetails() {
               <Skeleton className="w-24 h-4" />
             </div>
           </div>
-          
+
           {/* Stats Cards Skeleton */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {Array.from({ length: 3 }, (_, i) => (
@@ -331,7 +596,7 @@ export default function TokenDetails() {
               </Card>
             ))}
           </div>
-          
+
           {/* Chart Skeleton */}
           <Card>
             <CardContent className="pt-6">
@@ -388,10 +653,11 @@ export default function TokenDetails() {
 
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-primary/10 rounded-xl overflow-hidden flex items-center justify-center">
-              {hasMediaContent(token) && token.mediaContent.previewImage?.medium ? (
-                <img 
-                  src={token.mediaContent.previewImage.medium} 
-                  alt="" 
+              {hasMediaContent(token) &&
+              token.mediaContent.previewImage?.medium ? (
+                <img
+                  src={token.mediaContent.previewImage.medium}
+                  alt=""
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -417,10 +683,7 @@ export default function TokenDetails() {
           className="flex items-center gap-2"
         >
           <RefreshCw
-            className={cn(
-              "w-4 h-4",
-              (loading || dexLoading) && "animate-spin"
-            )}
+            className={cn("w-4 h-4", (loading || dexLoading) && "animate-spin")}
           />
           Refresh
         </Button>
@@ -521,7 +784,9 @@ export default function TokenDetails() {
                   </div>
                   <Separator />
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Total Supply</span>
+                    <span className="text-sm text-muted-foreground">
+                      Total Supply
+                    </span>
                     <span className="text-sm text-foreground">
                       {formattedToken?.formattedTotalSupply || "N/A"}
                     </span>
@@ -557,15 +822,21 @@ export default function TokenDetails() {
                   </div>
                   <Separator />
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Contract Type</span>
+                    <span className="text-sm text-muted-foreground">
+                      Contract Type
+                    </span>
                     <Badge variant="secondary">ERC-20</Badge>
                   </div>
                   <Separator />
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Creator</span>
+                    <span className="text-sm text-muted-foreground">
+                      Creator
+                    </span>
                     <span className="text-sm text-foreground">
                       {typeof token?.creatorAddress === "string" ? (
-                        <Identity address={token.creatorAddress as `0x${string}`}>
+                        <Identity
+                          address={token.creatorAddress as `0x${string}`}
+                        >
                           {null}
                         </Identity>
                       ) : (
@@ -590,71 +861,13 @@ export default function TokenDetails() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Base Account UI SDK Demo */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Base Account</CardTitle>
-              <CardDescription>
-                Experience seamless crypto payments
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-end">
-                <Button variant="ghost" size="sm" onClick={toggleTheme}>
-                  {theme === "light" ? "🌙" : "☀️"}
-                </Button>
-              </div>
-              <div className="flex flex-col gap-4">
-                <SignInWithBaseButton
-                  align="center"
-                  variant="solid"
-                  colorScheme={theme}
-                  onClick={() => setIsSignedIn(true)}
-                />
-                {isSignedIn && (
-                  <div className="text-green-600 text-sm text-center">
-                    ✅ Connected to Base Account
-                  </div>
-                )}
-                <BasePayButton
-                  colorScheme={theme}
-                  onClick={() => {
-                    setPaymentId("mock-payment-id");
-                    setPaymentStatus(
-                      'Payment initiated! Click "Check Status" to see the result.'
-                    );
-                  }}
-                />
-                {paymentId && (
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      setPaymentStatus(
-                        `Payment status: Mock Payment ${paymentId}`
-                      )
-                    }
-                    className="w-full"
-                  >
-                    Check Payment Status
-                  </Button>
-                )}
-              </div>
-              {paymentStatus && (
-                <div className="p-3 rounded-lg bg-muted text-foreground text-xs text-center">
-                  {paymentStatus}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Trading Coins - only show if Base Account is connected */}
-          {isSignedIn && (
+          {/* Wallet Connect UI */}
+          <WalletConnect />
+          {/* Trading Coins - only show if wallet is connected */}
+          {isConnected && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Trading Coins</CardTitle>
-                <CardDescription>
-                  Connected: <span className="font-mono">Base Account</span>
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-2">
@@ -675,28 +888,187 @@ export default function TokenDetails() {
                     Sell
                   </Button>
                 </div>
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  placeholder={
-                    tradeType === "buy"
-                      ? "ETH amount"
-                      : `${token?.symbol || "Token"} amount`
-                  }
-                  value={tradeAmount}
-                  onChange={(e) => setTradeAmount(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background"
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder={
+                      tradeType === "buy"
+                        ? inputMode === "ETH"
+                          ? "ETH amount to buy"
+                          : "USD amount to spend"
+                        : sellInputMode === "TOKEN"
+                        ? `${token?.symbol || "Token"} amount to sell`
+                        : "USD amount to sell"
+                    }
+                    value={tradeAmount}
+                    onChange={(e) => setTradeAmount(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg bg-background pr-20"
+                  />
+                  {(tradeType === "buy" || tradeType === "sell") && (
+                    <button
+                      type="button"
+                      className="absolute right-14 top-1/2 -translate-y-1/2 text-xs text-primary font-semibold px-1 py-0.5 rounded hover:underline"
+                      style={{ background: "transparent", border: "none" }}
+                      onClick={
+                        tradeType === "buy" ? handleMaxBuy : handleMaxSell
+                      }
+                      tabIndex={-1}
+                    >
+                      Max
+                    </button>
+                  )}
+                  {tradeType === "buy" && (
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      onClick={() =>
+                        setInputMode(inputMode === "ETH" ? "USD" : "ETH")
+                      }
+                      tabIndex={-1}
+                      aria-label="Toggle input mode"
+                    >
+                      {inputMode === "ETH" ? (
+                        <DollarSign size={18} />
+                      ) : (
+                        <SiEthereum size={18} />
+                      )}
+                    </button>
+                  )}
+                  {tradeType === "sell" && (
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      onClick={() =>
+                        setSellInputMode(
+                          sellInputMode === "TOKEN" ? "USD" : "TOKEN"
+                        )
+                      }
+                      tabIndex={-1}
+                      aria-label="Toggle sell input mode"
+                    >
+                      {sellInputMode === "TOKEN" ? (
+                        token?.imageUrl ? (
+                          <img
+                            src={token.imageUrl}
+                            alt={token.symbol || "Token"}
+                            style={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: "50%",
+                            }}
+                          />
+                        ) : (
+                          <HelpCircle size={18} />
+                        )
+                      ) : (
+                        <DollarSign size={18} />
+                      )}
+                    </button>
+                  )}
+                </div>
+                {tradeType === "buy" && (
+                  <div className="text-xs text-muted-foreground text-right">
+                    {isBalanceLoading || ethPriceLoading
+                      ? "Loading ETH balance..."
+                      : (() => {
+                          const eth = ethBalance?.formatted
+                            ? Number(ethBalance.formatted)
+                            : 0;
+                          const price = ethPriceData?.price || 0;
+                          const usd = eth * price;
+                          const ethDisplay = eth
+                            ? eth >= 1
+                              ? eth.toFixed(2)
+                              : eth.toPrecision(2)
+                            : "0";
+                          const usdDisplay = usd
+                            ? `$${
+                                usd >= 1 ? usd.toFixed(2) : usd.toPrecision(2)
+                              }`
+                            : "$0";
+                          return `${ethDisplay} ETH (${usdDisplay})`;
+                        })()}
+                  </div>
+                )}
+                {tradeType === "sell" && (
+                  <div className="text-xs text-muted-foreground text-right">
+                    {isTokenBalanceLoading || priceLoading
+                      ? `Loading ${token?.symbol || "Token"} balance...`
+                      : (() => {
+                          const tokenBal = tokenBalance?.formatted
+                            ? Number(tokenBalance.formatted)
+                            : 0;
+                          // Prefer price from price, then dexData.priceUsd, else 0
+                          let pricePerToken = 0;
+                          if (typeof price === "number" && !isNaN(price)) {
+                            pricePerToken = price;
+                          } else if (dexData?.priceUsd) {
+                            pricePerToken = parseFloat(dexData.priceUsd);
+                          }
+                          const usd = tokenBal * pricePerToken;
+                          const tokenDisplay = tokenBal
+                            ? tokenBal >= 1
+                              ? tokenBal.toFixed(2)
+                              : tokenBal.toPrecision(2)
+                            : "0";
+                          const usdDisplay = usd
+                            ? `$${
+                                usd >= 1 ? usd.toFixed(2) : usd.toPrecision(2)
+                              }`
+                            : "$0";
+                          return `${tokenDisplay} ${
+                            tokenBalance?.symbol || token?.symbol || "Token"
+                          } (${usdDisplay})`;
+                        })()}
+                  </div>
+                )}
                 <Button
                   className="w-full"
-                  disabled={!tradeAmount || Number(tradeAmount) <= 0}
-                  onClick={() => alert("Trading logic not implemented.")}
+                  disabled={
+                    !tradeAmount ||
+                    Number(getEthAmount()) <= 0 ||
+                    (tradeType === "buy" &&
+                      (!ethBalance?.formatted ||
+                        isNaN(Number(ethBalance.formatted)) ||
+                        Number(getEthAmount()) >
+                          Number(ethBalance.formatted))) ||
+                    (tradeType === "sell" &&
+                      (!tokenBalance?.formatted ||
+                        isNaN(Number(tokenBalance.formatted)) ||
+                        Number(getSellTokenAmount()) >
+                          Number(tokenBalance.formatted)))
+                  }
+                  onClick={tradeType === "buy" ? handleBuy : handleSell}
                 >
                   {tradeType === "buy"
                     ? `Buy ${token?.symbol || "Token"}`
                     : `Sell ${token?.symbol || "Token"}`}
                 </Button>
+                {txStatus === "pending" && (
+                  <div className="text-xs text-blue-500 mt-2">
+                    Transaction pending...
+                  </div>
+                )}
+                {txStatus === "success" && (
+                  <div className="text-xs text-green-600 mt-2 text-right">
+                    Success!{" "}
+                    <a
+                      href={`https://basescan.org/tx/${txReceipt?.transactionHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                    >
+                      Check Tx
+                    </a>
+                  </div>
+                )}
+                {txStatus === "error" && (
+                  <div className="text-xs text-red-500 mt-2">
+                    Error: {txError}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -705,17 +1077,3 @@ export default function TokenDetails() {
     </div>
   );
 }
-
-// Helper function to calculate age from timestamp
-const getAgeFromTimestamp = (timestamp: string) => {
-  const now = new Date();
-  const created = new Date(timestamp);
-  const diffInHours = Math.floor(
-    (now.getTime() - created.getTime()) / (1000 * 60 * 60)
-  );
-
-  if (diffInHours < 1) return "<1h";
-  if (diffInHours < 24) return `${diffInHours}h`;
-  const days = Math.floor(diffInHours / 24);
-  return `${days}d`;
-}; 

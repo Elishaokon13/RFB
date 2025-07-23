@@ -1,14 +1,17 @@
-import { http, cookieStorage, createConfig, createStorage } from 'wagmi';
-import { base, baseSepolia } from 'wagmi/chains';
-import { coinbaseWallet, injected } from 'wagmi/connectors';
+import { http, cookieStorage, createConfig, createStorage } from "wagmi";
+import { base } from "wagmi/chains";
+import { coinbaseWallet, metaMask, walletConnect } from "wagmi/connectors";
 
 export const wagmiConfig = createConfig({
-  chains: [base, baseSepolia],
+  chains: [base],
   connectors: [
-    injected(),
+    metaMask(),
+    walletConnect({
+      projectId: "",
+    }),
     coinbaseWallet({
-      appName: 'Base Screener',
-      preference: 'smartWalletOnly',
+      appName: "Base Screener",
+      preference: "eoaOnly",
     }),
   ],
   storage: createStorage({
@@ -17,6 +20,5 @@ export const wagmiConfig = createConfig({
   ssr: true,
   transports: {
     [base.id]: http(),
-    [baseSepolia.id]: http(),
   },
-}); 
+});
