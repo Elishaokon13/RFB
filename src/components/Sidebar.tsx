@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { pay } from "@base-org/account";
+import { RainbowButton } from "./magicui/rainbow-button";
 
 const chains = [
   // { name: "Solana", icon: "◎", color: "text-purple-400" },
@@ -136,15 +137,17 @@ export function Sidebar({ onClose }: SidebarProps) {
 
       {/* Footer with Donate Button */}
       <div className="p-4 border-t border-border space-y-3">
-        {/* Donate Button */}
-        <button
-          className="w-full bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2"
-          onClick={handleDonate}
-          disabled={donateLoading}
-        >
-          <Heart className="w-4 h-4" />
-          {donateLoading ? "Processing..." : "Donate"}
-        </button>
+        <div className="w-full">
+          <RainbowButton
+            className="w-full justify-center py-5"
+            onClick={handleDonate}
+            disabled={donateLoading}
+          >
+            {" "}
+            <Heart className="w-4 h-4" />
+            {donateLoading ? "Processing..." : "Donate"}
+          </RainbowButton>
+        </div>
 
         {/* Donate Message */}
         {donateMessage && (
