@@ -223,9 +223,6 @@ export function CreatorsTable({ creators, isLoading }: CreatorsTableProps) {
         <thead className="bg-muted/50 border-b border-border">
           <tr className="text-left">
             <th className="px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              #
-            </th>
-            <th className="px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Creator
             </th>
             <th className="px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">

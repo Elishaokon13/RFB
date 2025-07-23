@@ -199,6 +199,8 @@
 - [x] NEW: Integrated getCoinsMostValuable hook for trending tab functionality
 - [x] ENHANCED: TokenTable with dynamic data switching between trending and most valuable coins
 - [x] NEW: Integrated getCoinsTopGainers hook for Top Gainers tab functionality
+- [x] REMOVED: '#' column from all relevant tables (MostValuableTable, TokenDataTable, WhaleTracker, CreatorsTable, TokenTable)
+- [x] REMOVED: Refresh button from TokenDetails page
 
 ## Current Status / Progress Tracking
 **COMPLETED**: Comprehensive codebase review completed successfully with significant new discoveries and feature implementation.
@@ -222,28 +224,13 @@
 16. **NEW: Dynamic Data Switching**: TokenTable now switches between trending and most valuable coins based on tab selection
 17. **NEW: Most Valuable Coins Integration**: Integrated getCoinsMostValuable hook for market cap sorted data
 18. **NEW: Top Gainers Integration**: Integrated getCoinsTopGainers hook for 24h gainers data
-
-### Technical Stack Summary:
-- **Frontend**: React 18 + TypeScript + Vite
-- **Styling**: Tailwind CSS + shadcn/ui (50+ components)
-- **State Management**: TanStack Query (React Query)
-- **Routing**: React Router DOM with dynamic routes
-- **Data**: Zora Coins SDK + DexScreener API (comprehensive data sources)
-- **Build**: Vite with SWC
-- **Linting**: ESLint with React plugins
-- **Package Manager**: Yarn with Bun lockfile
-
-### Component Architecture:
-- **Main Layout**: Header + Sidebar + TokenTable
-- **Data Views**: 6 specialized table components (all clickable)
-- **UI Components**: 50+ shadcn/ui components
-- **Custom Hooks**: 8 specialized data fetching hooks + DexScreener integration
-- **Utilities**: Formatting and activity indicator functions
-- **Pages**: TokenDetails page with professional trading interface
-- **API Integration**: Dual data sources for comprehensive market data
+19. **REMOVED: '#' column from all relevant tables**
+20. **REMOVED: Refresh button from TokenDetails page**
 
 ## Executor's Feedback or Assistance Requests
-*Ready for next phase - awaiting user instructions for specific implementation tasks*
+*Removed the refresh button from the TokenDetails page as requested. The header layout has been simplified to only show the back button and token information. There are some linter warnings about 'any' types in the TokenDetails.tsx file, but these are unrelated to the refresh button removal and were pre-existing.*
+
+*Please review the UI and confirm if this meets your requirements or if further adjustments are needed.*
 
 **Recommendations for Next Steps:**
 1. **Security Fix**: Update Vite to resolve esbuild vulnerability

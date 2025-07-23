@@ -267,7 +267,6 @@ export function WhaleTracker({ tokenAddress }: { tokenAddress: string }) {
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">#</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Address</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Balance</th>
                   {totalSupply && (
@@ -279,9 +278,6 @@ export function WhaleTracker({ tokenAddress }: { tokenAddress: string }) {
               <tbody className="divide-y divide-border">
                 {holders.map((h, i) => (
                   <tr key={h.address} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {i + 1}
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="font-mono text-sm">{truncateAddress(h.address)}</span>
                     </td>

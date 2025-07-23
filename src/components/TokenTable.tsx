@@ -386,9 +386,6 @@ export function CreatorsTable({ coins }: { coins: Coin[] }) {
         <thead className="bg-muted border-b border-border">
           <tr className="text-left">
             <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              #
-            </th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Creator
             </th>
             <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
