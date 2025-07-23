@@ -33,8 +33,8 @@ export function Sidebar() {
   const menuItems = [
     // { icon: Star, label: "Collections", active: false },
     // { icon: AlertCircle, label: "New Mints", active: false },
+    // { icon: Zap, label: "Trending", path: "/trending" },
     { icon: TrendingUp, label: "Live Activity", path: "/" },
-    { icon: Zap, label: "Trending", path: "/trending" },
     { icon: Users, label: "Creators", path: "/creators" },
     { icon: BarChart3, label: "Whale Tracker", path: "/whale-tracker" },
     // { icon: BarChart3, label: "Top Creators", active: false },
