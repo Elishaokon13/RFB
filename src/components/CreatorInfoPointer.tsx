@@ -1,11 +1,13 @@
 import { useZoraProfile, getProfileImageSmall } from "@/hooks/useZoraProfile";
 import { truncateAddress } from "@/lib/utils";
+import { ExternalLink } from "lucide-react";
 
 interface CreatorInfoProps {
   creatorAddress?: string;
+  showLink?: boolean;
 }
 
-export function CreatorInfoPointer({ creatorAddress }: CreatorInfoProps) {
+export function CreatorInfoPointer({ creatorAddress, showLink = false }: CreatorInfoProps) {
   const { profile, loading, error } = useZoraProfile(creatorAddress || "");
 
   if (!creatorAddress) {
@@ -35,6 +37,14 @@ export function CreatorInfoPointer({ creatorAddress }: CreatorInfoProps) {
     }
   };
 
+  const displayName = profile?.displayName
+    ? isUrl(profile.displayName)
+      ? truncateAddress(profile.displayName)
+      : profile.displayName
+    : truncateAddress(creatorAddress);
+
+  const zoraUrl = `https://zora.co/${profile?.handle || creatorAddress}`;
+
   return (
     <div className="flex items-center gap-2">
       {imageUrl ? (
@@ -48,13 +58,20 @@ export function CreatorInfoPointer({ creatorAddress }: CreatorInfoProps) {
           {creatorAddress.slice(2, 4).toUpperCase()}
         </div>
       )}
-      <span className="font-medium">
-        {profile?.displayName
-          ? isUrl(profile.displayName)
-            ? truncateAddress(profile.displayName)
-            : profile.displayName
-          : truncateAddress(creatorAddress)}
-      </span>
+      <div className="flex items-center gap-1">
+        <span className="font-medium">{displayName}</span>
+        {showLink && (
+          <a
+            href={zoraUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1 hover:bg-muted rounded transition-colors"
+            title="View on Zora"
+          >
+            <ExternalLink className="w-3 h-3 text-muted-foreground" />
+          </a>
+        )}
+      </div>
     </div>
   );
 } 

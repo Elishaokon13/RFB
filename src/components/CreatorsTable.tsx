@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { useZoraProfile } from '@/hooks/useZoraProfile';
-import { truncateAddress } from '@/lib/utils';
 import { Copy, ExternalLink, CheckCircle, Users, TrendingUp, DollarSign, BarChart3 } from 'lucide-react';
+import { CreatorInfoPointer } from './CreatorInfoPointer';
+import { FollowerPointerCard } from './ui/following-pointer';
+import { useZoraProfile, getProfileImageSmall } from '@/hooks/useZoraProfile';
+import { truncateAddress } from '@/lib/utils';
 
 // Import Coin type from useCreators hook
 interface Coin {
@@ -78,116 +80,101 @@ const CreatorRow = ({ creator, index }: { creator: Creator; index: number }) => 
     setTimeout(() => setCopiedAddress(false), 2000);
   };
 
-  const imageUrl = profile?.avatar?.previewImage?.small || creator.avatar;
+  // Get creator profile for the pointer
+  const imageUrl = profile?.avatar?.previewImage?.small || getProfileImageSmall(profile);
 
-  // Helper to check if displayName is a URL
-  const isUrl = (str?: string) => {
-    if (!str) return false;
-    try {
-      new URL(str);
-      return true;
-    } catch {
-      return false;
-    }
-  };
+  // Creator info for the pointer
+  const creatorInfo = (
+    <div className="flex items-center gap-2">
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt="profile"
+          className="w-6 h-6 rounded-full object-cover border border-white/10"
+        />
+      ) : creator.address ? (
+        <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-xs">
+          {creator.address.slice(2, 4).toUpperCase()}
+        </div>
+      ) : (
+        <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-xs">
+          ?
+        </div>
+      )}
+      <span className="font-medium">
+        {profile?.displayName || (creator.address ? truncateAddress(creator.address) : "Unknown")}
+      </span>
+    </div>
+  );
 
   return (
-    <tr className="border-b border-border transition-colors duration-200 hover:bg-muted/50">
-      <td className="px-6 py-4 text-sm text-muted-foreground align-top">
-        {index + 1}
-      </td>
-      <td className="px-6 py-4 text-sm align-top">
-        <div className="flex items-center gap-3">
-          {imageUrl && (
-            <img
-              src={imageUrl}
-              alt="profile"
-              className="w-10 h-10 rounded-lg object-cover border border-border"
-            />
-          )}
-          <div className="flex flex-col">
-            <span className="font-semibold">
-              {profile?.displayName || creator.displayName ? (
-                isUrl(profile?.displayName || creator.displayName) ? (
-                  <a
-                    href={profile?.displayName || creator.displayName}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 underline"
-                  >
-                    {profile?.displayName || creator.displayName}
-                  </a>
-                ) : (
-                  profile?.displayName || creator.displayName
-                )
-              ) : (
-                truncateAddress(creator.address)
-              )}
-            </span>
-            <span className="text-xs text-muted-foreground font-mono">
-              {truncateAddress(creator.address)}
+    <FollowerPointerCard
+      title={creatorInfo}
+      className="contents"
+    >
+      <tr className="border-b border-border transition-colors duration-200 hover:bg-muted/50">
+        <td className="px-6 py-4 text-sm align-top">
+          <CreatorInfoPointer creatorAddress={creator.address} showLink={true} />
+        </td>
+        <td className="px-6 py-4 text-sm align-top">
+          <div className="flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-green-500" />
+            <span className="font-semibold text-green-600">
+              {formatNumber(creator.totalEarnings)}
             </span>
           </div>
-        </div>
-      </td>
-      <td className="px-6 py-4 text-sm align-top">
-        <div className="flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-green-500" />
-          <span className="font-semibold text-green-600">
-            {formatNumber(creator.totalEarnings)}
-          </span>
-        </div>
-      </td>
-      <td className="px-6 py-4 text-sm align-top">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-blue-500" />
-          <span className="font-semibold text-blue-600">
-            {formatVolume(creator.totalVolume)}
-          </span>
-        </div>
-      </td>
-      <td className="px-6 py-4 text-sm align-top">
-        <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-purple-500" />
-          <span className="font-semibold text-purple-600">
-            {creator.totalHolders.toLocaleString()}
-          </span>
-        </div>
-      </td>
-      <td className="px-6 py-4 text-sm align-top">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-primary" />
-          <span className="font-semibold text-primary">
-            {creator.tokenCount}
-          </span>
-          <span className="text-muted-foreground">tokens</span>
-        </div>
-      </td>
-      <td className="px-6 py-4 text-sm align-top">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopyAddress}
-            className="p-1 hover:bg-muted rounded transition-colors"
-            title="Copy address"
-          >
-            {copiedAddress ? (
-              <CheckCircle className="w-4 h-4 text-green-500" />
-            ) : (
-              <Copy className="w-4 h-4 text-muted-foreground" />
-            )}
-          </button>
-          <a
-            href={`https://zora.co/${profile?.handle || creator.handle || creator.address}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-1 hover:bg-muted rounded transition-colors"
-            title="View on Zora"
-          >
-            <ExternalLink className="w-4 h-4 text-muted-foreground" />
-          </a>
-        </div>
-      </td>
-    </tr>
+        </td>
+        <td className="px-6 py-4 text-sm align-top">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-blue-500" />
+            <span className="font-semibold text-blue-600">
+              {formatVolume(creator.totalVolume)}
+            </span>
+          </div>
+        </td>
+        <td className="px-6 py-4 text-sm align-top">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-purple-500" />
+            <span className="font-semibold text-purple-600">
+              {creator.totalHolders.toLocaleString()}
+            </span>
+          </div>
+        </td>
+        <td className="px-6 py-4 text-sm align-top">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <span className="font-semibold text-primary">
+              {creator.tokenCount}
+            </span>
+            <span className="text-muted-foreground">tokens</span>
+          </div>
+        </td>
+        <td className="px-6 py-4 text-sm align-top">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopyAddress}
+              className="p-1 hover:bg-muted rounded transition-colors"
+              title="Copy address"
+            >
+              {copiedAddress ? (
+                <CheckCircle className="w-4 h-4 text-green-500" />
+              ) : (
+                <Copy className="w-4 h-4 text-muted-foreground" />
+              )}
+            </button>
+            <a
+              href={`https://zora.co/${creator.handle || creator.address}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1 hover:bg-muted rounded transition-colors"
+              title="View on Zora"
+            >
+              <ExternalLink className="w-4 h-4 text-muted-foreground" />
+            </a>
+          </div>
+        </td>
+      </tr>
+    </FollowerPointerCard>
   );
 };
 
