@@ -63,7 +63,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useZoraProfile, getProfileImageSmall } from "@/hooks/useZoraProfile";
 import { formatLastTradedTime } from "@/hooks/getCoinsLastTraded";
 import { formatUniqueHolders } from "@/hooks/getCoinsLastTradedUnique";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // Chart period types
 type ChartPeriod = "1H" | "6H" | "24H" | "7D" | "1M" | "All";
@@ -203,14 +210,17 @@ interface Holder {
 }
 
 // Mock data generator functions
-const generateMockTransactions = (tokenSymbol: string = "TOKEN", count: number = 10): Transaction[] => {
+const generateMockTransactions = (
+  tokenSymbol: string = "TOKEN",
+  count: number = 10
+): Transaction[] => {
   return Array.from({ length: count }, (_, i) => {
     const now = Date.now();
     const type = Math.random() > 0.5 ? "Buy" : "Sell";
     const amount = (Math.random() * 2 + 0.1).toFixed(4);
     const tokenAmount = (Math.random() * 10000 + 100).toFixed(2);
     const price = parseFloat((Math.random() * 0.001 + 0.0001).toFixed(6));
-    
+
     return {
       id: `tx-${i}`,
       type,
@@ -222,7 +232,7 @@ const generateMockTransactions = (tokenSymbol: string = "TOKEN", count: number =
         address: `0x${Math.random().toString(16).substring(2, 42)}`,
         profileName: Math.random() > 0.7 ? `trader${i}` : undefined,
       },
-      txHash: `0x${Math.random().toString(16).substring(2, 66)}`
+      txHash: `0x${Math.random().toString(16).substring(2, 66)}`,
     };
   });
 };
@@ -240,19 +250,26 @@ const generateMockTraders = (count: number = 10): Trader[] => {
   }).sort((a, b) => b.totalVolume - a.totalVolume);
 };
 
-const generateMockHolders = (totalSupply: string, count: number = 10): Holder[] => {
+const generateMockHolders = (
+  totalSupply: string,
+  count: number = 10
+): Holder[] => {
   const total = parseFloat(totalSupply || "1000000");
   let remainingPercentage = 100;
-  
+
   return Array.from({ length: count }, (_, i) => {
-    const percentage = i === count - 1 
-      ? remainingPercentage 
-      : Math.min(remainingPercentage, (Math.random() * 20 + (i === 0 ? 10 : 1)));
-    
+    const percentage =
+      i === count - 1
+        ? remainingPercentage
+        : Math.min(
+            remainingPercentage,
+            Math.random() * 20 + (i === 0 ? 10 : 1)
+          );
+
     remainingPercentage -= percentage;
-    const balance = (total * percentage / 100).toFixed(2);
+    const balance = ((total * percentage) / 100).toFixed(2);
     const value = Math.random() * 10000 * percentage;
-    
+
     return {
       address: `0x${Math.random().toString(16).substring(2, 42)}`,
       profileName: Math.random() > 0.7 ? `holder${i}` : undefined,
@@ -759,9 +776,9 @@ export default function TokenDetails() {
   const formattedToken = formatCoinData(token);
 
   return (
-    <div className="container mx-auto px-4 py-6 space-y-6">
+    <div className="w-full mx-auto px-4 py-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="w-full flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
@@ -811,11 +828,11 @@ export default function TokenDetails() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="w-full lg:col-span-2 space-y-6">
           {/* Price Overview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-2 mb-2">
@@ -865,14 +882,19 @@ export default function TokenDetails() {
           </div>
 
           {/* Tabs for different content sections */}
-          <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs
+            defaultValue="overview"
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
             <TabsList className="grid grid-cols-4 mb-4">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="transactions">Transactions</TabsTrigger>
               <TabsTrigger value="traders">Top Traders</TabsTrigger>
               <TabsTrigger value="holders">Holders</TabsTrigger>
             </TabsList>
-            
+
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
               {/* Interactive Price Chart */}
@@ -882,7 +904,9 @@ export default function TokenDetails() {
                     data={marketCapChartData}
                     changePercent={chartPercentageChange}
                     selectedRange={chartPeriod}
-                    onRangeChange={(range) => setChartPeriod(range as ChartPeriod)}
+                    onRangeChange={(range) =>
+                      setChartPeriod(range as ChartPeriod)
+                    }
                     loading={chartLoading || loading || !token}
                     error={chartError || error}
                     totalSupply={token?.totalSupply}
@@ -910,7 +934,11 @@ export default function TokenDetails() {
                           <span className="text-sm font-mono text-foreground">
                             {truncateAddress(token?.address || "")}
                           </span>
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                          >
                             <Copy className="w-3 h-3" />
                           </Button>
                         </div>
@@ -950,7 +978,9 @@ export default function TokenDetails() {
 
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Chain</span>
+                        <span className="text-sm text-muted-foreground">
+                          Chain
+                        </span>
                         <Badge variant="outline">Base</Badge>
                       </div>
                       <Separator />
@@ -979,7 +1009,9 @@ export default function TokenDetails() {
                       </div>
                       <Separator />
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Age</span>
+                        <span className="text-sm text-muted-foreground">
+                          Age
+                        </span>
                         <span className="text-sm text-foreground">
                           {token?.createdAt
                             ? getAgeFromTimestamp(token.createdAt)
@@ -991,7 +1023,7 @@ export default function TokenDetails() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             {/* Transactions Tab */}
             <TabsContent value="transactions">
               <Card>
@@ -1027,10 +1059,14 @@ export default function TokenDetails() {
                         transactions.map((tx) => (
                           <TableRow key={tx.id}>
                             <TableCell>
-                              <span className={cn(
-                                "px-2 py-1 rounded-md text-xs font-medium",
-                                tx.type === "Buy" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                              )}>
+                              <span
+                                className={cn(
+                                  "px-2 py-1 rounded-md text-xs font-medium",
+                                  tx.type === "Buy"
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                )}
+                              >
                                 {tx.type}
                               </span>
                             </TableCell>
@@ -1042,27 +1078,34 @@ export default function TokenDetails() {
                                   {tx.maker.address.slice(2, 4).toUpperCase()}
                                 </div>
                                 <span className="text-sm">
-                                  {tx.maker.profileName || truncateAddress(tx.maker.address)}
+                                  {tx.maker.profileName ||
+                                    truncateAddress(tx.maker.address)}
                                 </span>
                               </div>
                             </TableCell>
                             <TableCell>
                               {(() => {
                                 try {
-                                  return formatLastTradedTime(new Date(tx.timestamp).toISOString());
+                                  return formatLastTradedTime(
+                                    new Date(tx.timestamp).toISOString()
+                                  );
                                 } catch (e) {
-                                  return `${Math.floor((Date.now() - tx.timestamp) / 60000)}m ago`;
+                                  return `${Math.floor(
+                                    (Date.now() - tx.timestamp) / 60000
+                                  )}m ago`;
                                 }
                               })()}
                             </TableCell>
                             <TableCell className="text-right">
-                              <a 
-                                href={`https://basescan.org/tx/${tx.txHash}`} 
-                                target="_blank" 
+                              <a
+                                href={`https://basescan.org/tx/${tx.txHash}`}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-600 hover:underline flex items-center justify-end gap-1"
                               >
-                                <span className="text-xs">{truncateAddress(tx.txHash)}</span>
+                                <span className="text-xs">
+                                  {truncateAddress(tx.txHash)}
+                                </span>
                                 <ExternalLink className="w-3 h-3" />
                               </a>
                             </TableCell>
@@ -1074,7 +1117,7 @@ export default function TokenDetails() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             {/* Top Traders Tab */}
             <TabsContent value="traders">
               <Card>
@@ -1115,18 +1158,25 @@ export default function TokenDetails() {
                                   {trader.address.slice(2, 4).toUpperCase()}
                                 </div>
                                 <span className="text-sm">
-                                  {trader.profileName || truncateAddress(trader.address)}
+                                  {trader.profileName ||
+                                    truncateAddress(trader.address)}
                                 </span>
                               </div>
                             </TableCell>
-                            <TableCell>${trader.totalVolume.toLocaleString()}</TableCell>
+                            <TableCell>
+                              ${trader.totalVolume.toLocaleString()}
+                            </TableCell>
                             <TableCell>{trader.trades}</TableCell>
                             <TableCell>
                               {(() => {
                                 try {
-                                  return formatLastTradedTime(new Date(trader.lastTraded).toISOString());
+                                  return formatLastTradedTime(
+                                    new Date(trader.lastTraded).toISOString()
+                                  );
                                 } catch (e) {
-                                  return `${Math.floor((Date.now() - trader.lastTraded) / 60000)}m ago`;
+                                  return `${Math.floor(
+                                    (Date.now() - trader.lastTraded) / 60000
+                                  )}m ago`;
                                 }
                               })()}
                             </TableCell>
@@ -1138,7 +1188,7 @@ export default function TokenDetails() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             {/* Holders Tab */}
             <TabsContent value="holders">
               <Card>
@@ -1179,13 +1229,18 @@ export default function TokenDetails() {
                                   {holder.address.slice(2, 4).toUpperCase()}
                                 </div>
                                 <span className="text-sm">
-                                  {holder.profileName || truncateAddress(holder.address)}
+                                  {holder.profileName ||
+                                    truncateAddress(holder.address)}
                                 </span>
                               </div>
                             </TableCell>
                             <TableCell>{holder.balance}</TableCell>
-                            <TableCell>{holder.percentage.toFixed(2)}%</TableCell>
-                            <TableCell className="text-right">${holder.value.toLocaleString()}</TableCell>
+                            <TableCell>
+                              {holder.percentage.toFixed(2)}%
+                            </TableCell>
+                            <TableCell className="text-right">
+                              ${holder.value.toLocaleString()}
+                            </TableCell>
                           </TableRow>
                         ))
                       )}
@@ -1198,9 +1253,8 @@ export default function TokenDetails() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Trading Coins - only show if wallet is connected */}
-          {isConnected && (
+        {isConnected ? (
+          <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Trading Coins</CardTitle>
@@ -1391,7 +1445,13 @@ export default function TokenDetails() {
                   <div className="text-xs text-green-600 mt-2 text-right">
                     Success!{" "}
                     <a
-                      href={`https://basescan.org/tx/${typeof txReceipt === 'object' && txReceipt !== null && 'transactionHash' in txReceipt ? txReceipt.transactionHash : ''}`}
+                      href={`https://basescan.org/tx/${
+                        typeof txReceipt === "object" &&
+                        txReceipt !== null &&
+                        "transactionHash" in txReceipt
+                          ? txReceipt.transactionHash
+                          : ""
+                      }`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline"
@@ -1407,8 +1467,8 @@ export default function TokenDetails() {
                 )}
               </CardContent>
             </Card>
-          )}
-        </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
