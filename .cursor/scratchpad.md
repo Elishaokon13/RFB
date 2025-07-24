@@ -108,6 +108,7 @@
 3. ✅ **index.html**: Updated all metadata including title, descriptions, Open Graph, and Twitter cards
 4. ✅ **Package Cleanup**: Completely removed lovable-tagger package from the codebase
 5. ✅ **Theme Configuration**: Changed default theme from dark to light mode
+6. ✅ **Tab Configuration**: Changed default active tab from "Most Valuable" to "Trending"
 
 ### Package Removal Details:
 - **Removed from vite.config.ts**: Removed import and plugin usage
@@ -119,6 +120,11 @@
 - **Default Theme**: Changed from "dark" to "light" in ThemeProvider
 - **Theme Color**: Updated meta tag from #000000 to #ffffff for light theme
 - **User Experience**: Users will now see light mode by default, with option to switch to dark
+
+### Tab Configuration Changes:
+- **Default Active Tab**: Changed from "Most Valuable" to "Trending" in TokenTable
+- **User Preference**: Still respects user's saved preference from localStorage
+- **First Time Users**: Will see trending coins by default
 
 ### Testing Status:
 - **Development Server**: Started successfully (running in background)

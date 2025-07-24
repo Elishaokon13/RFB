@@ -54,7 +54,7 @@ type CoinWithImage = Coin & {
 export function TokenTable() {
   const navigate = useNavigate();
   const [activeTopFilter, setActiveTopFilter] = useState<string>(() => {
-    return localStorage.getItem("activeTopFilter") || "Most Valuable";
+    return localStorage.getItem("activeTopFilter") || "Trending";
   });
   const [currentPage, setCurrentPage] = useState(1);
 
