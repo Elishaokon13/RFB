@@ -1,7 +1,10 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "zoracle",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Professional analytics tool like DexScreener built to track Zora coins on Base blockchain",
+  "keywords": ["zora", "analytics", "cryptocurrency", "defi", "base", "blockchain", "tokens", "dex", "trading"],
+  "author": "Zoracle Team",
   "type": "module",
   "scripts": {
     "dev": "vite",
