@@ -96,12 +96,8 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Header with Logo and Close Button */}
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center">
-            <Search className="w-4 h-4 text-white" />
-          </div>
-          <span className="text-lg sm:text-xl font-bold text-foreground">
-            BASE SCREENER
-          </span>
+          <img src="/zoracle.svg" alt="Logo" className="w-6" />
+          <p className="font-medium text-black dark:text-white">ZORACLE</p>
         </div>
         {isMobile && onClose && (
           <button
@@ -139,11 +135,11 @@ export function Sidebar({ onClose }: SidebarProps) {
       <div className="p-4 border-t border-border space-y-3">
         <div className="w-full">
           <RainbowButton
-            className="w-full justify-center py-5 text-black dark:text-black"
+            className="w-full justify-center py-5 text-white dark:text-black"
             onClick={handleDonate}
             disabled={donateLoading}
           >
-            <Heart className="w-4 h-4 text-black dark:text-black" />
+            <Heart className="w-4 h-4 text-white dark:text-black" />
             {donateLoading ? "Processing..." : "Donate"}
           </RainbowButton>
         </div>
