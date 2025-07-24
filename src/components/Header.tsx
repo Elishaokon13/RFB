@@ -641,9 +641,9 @@ export function Header({ onMenuClick }: HeaderProps) {
         </button>
 
         {/* Wallet Connect */}
-        <div className="hidden sm:block">
+        {/* <div className="hidden sm:block">
           <WalletConnect />
-        </div>
+        </div> */}
       </div>
     </header>
   );

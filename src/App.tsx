@@ -20,7 +20,7 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <OnchainKitProvider chain={base}>
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <WagmiProvider config={wagmiConfig}>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
