@@ -1,4 +1,4 @@
-import '@coinbase/onchainkit/styles.css';
+import "@coinbase/onchainkit/styles.css";
 import { OnchainKitProvider } from "@coinbase/onchainkit";
 import { base } from "viem/chains";
 import { Toaster } from "@/components/ui/toaster";
@@ -15,6 +15,7 @@ import Layout from "./components/Layout";
 import { WagmiProvider } from "wagmi";
 import { wagmiConfig } from "./wagmi";
 import WhaleTrackerPage from "./pages/WhaleTrackerPage";
+import TbaCoins from "./pages/TbaCoins";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
                   <Route path="/token/:address" element={<TokenDetails />} />
                   <Route path="/creators" element={<Creators />} />
                   <Route path="/whale-tracker" element={<WhaleTrackerPage />} />
+                  <Route path="/tba" element={<TbaCoins />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Route>
