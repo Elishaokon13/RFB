@@ -64,6 +64,161 @@ import { useZoraProfile, getProfileImageSmall } from "@/hooks/useZoraProfile";
 import { formatLastTradedTime } from "@/hooks/getCoinsLastTraded";
 import { formatUniqueHolders } from "@/hooks/getCoinsLastTradedUnique";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useTokenWhaleTracker, WhaleTransferEvent, WhaleHolder } from "@/hooks/useTokenWhaleTracker";
+
+// DefiLlama API helper functions
+interface DefiLlamaTransaction {
+  id: string;
+  type: "Buy" | "Sell";
+  amount: string;
+  tokenAmount: string;
+  price: number;
+  timestamp: number;
+  maker: {
+    address: string;
+    profileName?: string;
+    profileImage?: string;
+  };
+  txHash: string;
+}
+
+interface DefiLlamaTrader {
+  address: string;
+  profileName?: string;
+  profileImage?: string;
+  totalVolume: number;
+  trades: number;
+  lastTraded: number;
+}
+
+// Helper function to fetch token transactions from DefiLlama
+const fetchTokenTransactions = async (
+  tokenAddress: string,
+  chain: string = "base"
+): Promise<DefiLlamaTransaction[]> => {
+  try {
+    // Use DefiLlama API to fetch transactions
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
+    let response;
+    try {
+      response = await fetch(
+        `https://api.llama.fi/token/${chain}:${tokenAddress}/transactions?limit=50`,
+        { signal: controller.signal }
+      );
+    } catch (err) {
+      console.error("Fetch error:", err);
+      clearTimeout(timeoutId);
+      return [];
+    }
+    
+    clearTimeout(timeoutId);
+    
+    if (!response || !response.ok) {
+      console.warn(`Failed to fetch transactions: ${response?.statusText || 'Null response'}`);
+      return [];
+    }
+    
+    let data;
+    try {
+      data = await response.text();
+      // Only try to parse as JSON if we have content
+      data = data ? JSON.parse(data) : { transactions: [] };
+    } catch (err) {
+      console.error("JSON parse error:", err);
+      return [];
+    }
+    
+    // Transform the data to our transaction format
+    return Array.isArray(data.transactions) ? data.transactions.map((tx: Record<string, unknown>) => ({
+      id: tx.hash?.toString() || `tx-${Math.random().toString(16).slice(2)}`,
+      type: tx.type === "sell" ? "Sell" : "Buy",
+      amount: `${parseFloat(tx.amountUSD?.toString() || "0").toFixed(4)} USD`,
+      tokenAmount: `${parseFloat(tx.amount?.toString() || "0").toFixed(2)} ${tx.symbol?.toString() || "tokens"}`,
+      price: parseFloat(tx.priceUSD?.toString() || "0"),
+      timestamp: (tx.timestamp ? Number(tx.timestamp) * 1000 : Date.now()),
+      maker: {
+        address: tx.from?.toString() || "0x0000000000000000000000000000000000000000",
+        profileName: undefined,
+      },
+      txHash: tx.hash?.toString() || "",
+    })) : [];
+  } catch (error) {
+    console.error("Error fetching token transactions:", error);
+    return [];
+  }
+};
+
+// Helper function to fetch top traders from DefiLlama
+const fetchTopTraders = async (
+  tokenAddress: string,
+  chain: string = "base"
+): Promise<DefiLlamaTrader[]> => {
+  try {
+    // Use DefiLlama API to fetch top traders
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
+    let response;
+    try {
+      response = await fetch(
+        `https://api.llama.fi/token/${chain}:${tokenAddress}/traders?limit=10`,
+        { signal: controller.signal }
+      );
+    } catch (err) {
+      console.error("Fetch error:", err);
+      clearTimeout(timeoutId);
+      return [];
+    }
+    
+    clearTimeout(timeoutId);
+    
+    if (!response || !response.ok) {
+      console.warn(`Failed to fetch top traders: ${response?.statusText || 'Null response'}`);
+      return [];
+    }
+    
+    let data;
+    try {
+      data = await response.text();
+      // Only try to parse as JSON if we have content
+      data = data ? JSON.parse(data) : { traders: [] };
+    } catch (err) {
+      console.error("JSON parse error:", err);
+      return [];
+    }
+    
+    // Transform the data to our trader format
+    return Array.isArray(data.traders) ? data.traders.map((trader: Record<string, unknown>) => ({
+      address: trader.address?.toString() || `0x${Math.random().toString(16).slice(2, 42)}`,
+      profileName: undefined,
+      totalVolume: parseFloat(trader.volumeUSD?.toString() || "0"),
+      trades: Number(trader.txCount || 0),
+      lastTraded: (trader.lastTimestamp ? Number(trader.lastTimestamp) * 1000 : Date.now()),
+    })).sort((a: DefiLlamaTrader, b: DefiLlamaTrader) => b.totalVolume - a.totalVolume) : [];
+  } catch (error) {
+    console.error("Error fetching top traders:", error);
+    return [];
+  }
+};
+
+// Function to transform WhaleHolder data to our format
+const transformHolders = (holders: WhaleHolder[], tokenPrice: number): Holder[] => {
+  return holders.map((holder, index) => {
+    const balance = Number(holder.balance.toString()) / 10**18; // Convert from wei to token units
+    const percentage = holder.percentage || 0;
+    const value = balance * tokenPrice;
+    
+    return {
+      address: holder.address,
+      profileName: undefined,
+      balance: balance.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+      percentage,
+      value,
+    };
+  }).sort((a, b) => b.percentage - a.percentage);
+};
 
 // Chart period types
 type ChartPeriod = "1H" | "6H" | "24H" | "7D" | "1M" | "All";
@@ -270,6 +425,11 @@ export default function TokenDetails() {
   const navigate = useNavigate();
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("24H");
   const [activeTab, setActiveTab] = useState<string>("overview");
+  const [isLoading, setIsLoading] = useState<Record<string, boolean>>({
+    transactions: false,
+    traders: false,
+    holders: false,
+  });
 
   const { formatNumber } = useNumberFormatter();
 
@@ -303,21 +463,6 @@ export default function TokenDetails() {
   // Fetch coin details using the proper hook
   const { coin: token, loading, error } = useCoinDetails(address);
 
-  // Generate mock data for transactions, top traders, and holders
-  const transactions = useMemo(() => {
-    if (!token?.symbol) return [];
-    return generateMockTransactions(token.symbol, 20);
-  }, [token?.symbol]);
-
-  const topTraders = useMemo(() => {
-    return generateMockTraders(10);
-  }, []);
-
-  const holders = useMemo(() => {
-    if (!token?.totalSupply) return [];
-    return generateMockHolders(token.totalSupply, 10);
-  }, [token?.totalSupply]);
-
   // Fetch DexScreener data for this token
   const {
     tokens: dexTokens,
@@ -344,7 +489,70 @@ export default function TokenDetails() {
       ? Number(token.marketCap) / Number(token.totalSupply)
       : null);
 
-  // Fetch historical price data for chart
+  // Use TokenWhaleTracker for real holder data
+  const {
+    holders: whaleHolders,
+    loading: holdersLoading,
+    error: holdersError,
+    totalSupply,
+  } = useTokenWhaleTracker({
+    tokenAddress: address || "",
+    startBlock: 0,
+  });
+
+  // State for real data
+  const [transactions, setTransactions] = useState<DefiLlamaTransaction[]>([]);
+  const [topTraders, setTopTraders] = useState<DefiLlamaTrader[]>([]);
+  const [holders, setHolders] = useState<Holder[]>([]);
+
+  // Transform whale holders data when available
+  useEffect(() => {
+    if (whaleHolders.length > 0 && typeof price === 'number' && price > 0) {
+      const transformedHolders = transformHolders(whaleHolders, price);
+      setHolders(transformedHolders.length > 0 ? transformedHolders : generateMockHolders(token?.totalSupply || "1000000", 10));
+    } else if (token?.totalSupply && !holdersLoading) {
+      setHolders(generateMockHolders(token.totalSupply, 10));
+    }
+  }, [whaleHolders, price, holdersLoading, token?.totalSupply]);
+
+  // Fetch real data when address changes or tab is selected
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!address) return;
+
+      // Fetch transactions when transactions tab is selected
+      if (activeTab === "transactions" && !transactions.length) {
+        setIsLoading((prev) => ({ ...prev, transactions: true }));
+        try {
+          const txData = await fetchTokenTransactions(address);
+          setTransactions(txData.length > 0 ? txData : generateMockTransactions(token?.symbol || "TOKEN", 20));
+        } catch (err) {
+          console.error("Error fetching transactions:", err);
+          setTransactions(generateMockTransactions(token?.symbol || "TOKEN", 20));
+        } finally {
+          setIsLoading((prev) => ({ ...prev, transactions: false }));
+        }
+      }
+
+      // Fetch top traders when traders tab is selected
+      if (activeTab === "traders" && !topTraders.length) {
+        setIsLoading((prev) => ({ ...prev, traders: true }));
+        try {
+          const tradersData = await fetchTopTraders(address);
+          setTopTraders(tradersData.length > 0 ? tradersData : generateMockTraders(10));
+        } catch (err) {
+          console.error("Error fetching top traders:", err);
+          setTopTraders(generateMockTraders(10));
+        } finally {
+          setIsLoading((prev) => ({ ...prev, traders: false }));
+        }
+      }
+    };
+
+    fetchData();
+  }, [address, activeTab, transactions.length, topTraders.length, token?.symbol]);
+
+  // Fetch historical price data for chart from DefiLlama
   const {
     chartData: historicalPriceData,
     loading: chartLoading,
@@ -366,10 +574,23 @@ export default function TokenDetails() {
       token?.totalSupply
     ) {
       try {
-        const transformed = transformPriceToMarketCap(
-          historicalPriceData,
-          token.totalSupply
-        );
+        // DefiLlama historical data format is { timestamp: number, price: number }
+        const transformed = historicalPriceData.map(dataPoint => {
+          // Ensure dataPoint has the expected properties
+          if (typeof dataPoint !== 'object' || dataPoint === null) {
+            return null;
+          }
+          
+          const timestamp = typeof dataPoint.timestamp === 'number' ? dataPoint.timestamp : Math.floor(Date.now() / 1000);
+          const price = typeof dataPoint.price === 'number' ? dataPoint.price : 0;
+          
+          return {
+            timestamp,
+            value: calculateMarketCap(price, token.totalSupply),
+            price,
+          };
+        }).filter(Boolean); // Remove any null entries
+        
         return transformed;
       } catch (e) {
         console.error("Error transforming price data:", e);
@@ -1005,72 +1226,83 @@ export default function TokenDetails() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Price</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Maker</TableHead>
-                        <TableHead>Time</TableHead>
-                        <TableHead className="text-right">Tx</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {transactions.length === 0 ? (
+                  {isLoading.transactions ? (
+                    <div className="space-y-4 py-4">
+                      <div className="flex justify-center">
+                        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </div>
+                      <p className="text-center text-sm text-muted-foreground">
+                        Loading transaction data...
+                      </p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-4">
-                            No transactions found
-                          </TableCell>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Price</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Maker</TableHead>
+                          <TableHead>Time</TableHead>
+                          <TableHead className="text-right">Tx</TableHead>
                         </TableRow>
-                      ) : (
-                        transactions.map((tx) => (
-                          <TableRow key={tx.id}>
-                            <TableCell>
-                              <span className={cn(
-                                "px-2 py-1 rounded-md text-xs font-medium",
-                                tx.type === "Buy" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                              )}>
-                                {tx.type}
-                              </span>
-                            </TableCell>
-                            <TableCell>${tx.price.toFixed(6)}</TableCell>
-                            <TableCell>{tx.tokenAmount}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">
-                                  {tx.maker.address.slice(2, 4).toUpperCase()}
-                                </div>
-                                <span className="text-sm">
-                                  {tx.maker.profileName || truncateAddress(tx.maker.address)}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {(() => {
-                                try {
-                                  return formatLastTradedTime(new Date(tx.timestamp).toISOString());
-                                } catch (e) {
-                                  return `${Math.floor((Date.now() - tx.timestamp) / 60000)}m ago`;
-                                }
-                              })()}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <a 
-                                href={`https://basescan.org/tx/${tx.txHash}`} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline flex items-center justify-end gap-1"
-                              >
-                                <span className="text-xs">{truncateAddress(tx.txHash)}</span>
-                                <ExternalLink className="w-3 h-3" />
-                              </a>
+                      </TableHeader>
+                      <TableBody>
+                        {transactions.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-4">
+                              No transactions found
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                        ) : (
+                          transactions.map((tx) => (
+                            <TableRow key={tx.id}>
+                              <TableCell>
+                                <span className={cn(
+                                  "px-2 py-1 rounded-md text-xs font-medium",
+                                  tx.type === "Buy" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                                )}>
+                                  {tx.type}
+                                </span>
+                              </TableCell>
+                              <TableCell>${tx.price.toFixed(6)}</TableCell>
+                              <TableCell>{tx.tokenAmount}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">
+                                    {tx.maker.address.slice(2, 4).toUpperCase()}
+                                  </div>
+                                  <span className="text-sm">
+                                    {tx.maker.profileName || truncateAddress(tx.maker.address)}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {(() => {
+                                  try {
+                                    return formatLastTradedTime(new Date(tx.timestamp).toISOString());
+                                  } catch (e) {
+                                    return `${Math.floor((Date.now() - tx.timestamp) / 60000)}m ago`;
+                                  }
+                                })()}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <a 
+                                  href={`https://basescan.org/tx/${tx.txHash}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline flex items-center justify-end gap-1"
+                                >
+                                  <span className="text-xs">{truncateAddress(tx.txHash)}</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1088,53 +1320,64 @@ export default function TokenDetails() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Rank</TableHead>
-                        <TableHead>Trader</TableHead>
-                        <TableHead>Total Volume</TableHead>
-                        <TableHead>Trades</TableHead>
-                        <TableHead>Last Traded</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {topTraders.length === 0 ? (
+                  {isLoading.traders ? (
+                    <div className="space-y-4 py-4">
+                      <div className="flex justify-center">
+                        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </div>
+                      <p className="text-center text-sm text-muted-foreground">
+                        Loading trader data...
+                      </p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-4">
-                            No traders found
-                          </TableCell>
+                          <TableHead>Rank</TableHead>
+                          <TableHead>Trader</TableHead>
+                          <TableHead>Total Volume</TableHead>
+                          <TableHead>Trades</TableHead>
+                          <TableHead>Last Traded</TableHead>
                         </TableRow>
-                      ) : (
-                        topTraders.map((trader, index) => (
-                          <TableRow key={trader.address}>
-                            <TableCell>#{index + 1}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">
-                                  {trader.address.slice(2, 4).toUpperCase()}
-                                </div>
-                                <span className="text-sm">
-                                  {trader.profileName || truncateAddress(trader.address)}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>${trader.totalVolume.toLocaleString()}</TableCell>
-                            <TableCell>{trader.trades}</TableCell>
-                            <TableCell>
-                              {(() => {
-                                try {
-                                  return formatLastTradedTime(new Date(trader.lastTraded).toISOString());
-                                } catch (e) {
-                                  return `${Math.floor((Date.now() - trader.lastTraded) / 60000)}m ago`;
-                                }
-                              })()}
+                      </TableHeader>
+                      <TableBody>
+                        {topTraders.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-4">
+                              No traders found
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                        ) : (
+                          topTraders.map((trader, index) => (
+                            <TableRow key={trader.address}>
+                              <TableCell>#{index + 1}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">
+                                    {trader.address.slice(2, 4).toUpperCase()}
+                                  </div>
+                                  <span className="text-sm">
+                                    {trader.profileName || truncateAddress(trader.address)}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>${trader.totalVolume.toLocaleString()}</TableCell>
+                              <TableCell>{trader.trades}</TableCell>
+                              <TableCell>
+                                {(() => {
+                                  try {
+                                    return formatLastTradedTime(new Date(trader.lastTraded).toISOString());
+                                  } catch (e) {
+                                    return `${Math.floor((Date.now() - trader.lastTraded) / 60000)}m ago`;
+                                  }
+                                })()}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1152,45 +1395,56 @@ export default function TokenDetails() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Rank</TableHead>
-                        <TableHead>Holder</TableHead>
-                        <TableHead>Balance</TableHead>
-                        <TableHead>Percentage</TableHead>
-                        <TableHead className="text-right">Value</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {holders.length === 0 ? (
+                  {holdersLoading ? (
+                    <div className="space-y-4 py-4">
+                      <div className="flex justify-center">
+                        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </div>
+                      <p className="text-center text-sm text-muted-foreground">
+                        Loading holder data...
+                      </p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-4">
-                            No holders found
-                          </TableCell>
+                          <TableHead>Rank</TableHead>
+                          <TableHead>Holder</TableHead>
+                          <TableHead>Balance</TableHead>
+                          <TableHead>Percentage</TableHead>
+                          <TableHead className="text-right">Value</TableHead>
                         </TableRow>
-                      ) : (
-                        holders.map((holder, index) => (
-                          <TableRow key={holder.address}>
-                            <TableCell>#{index + 1}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">
-                                  {holder.address.slice(2, 4).toUpperCase()}
-                                </div>
-                                <span className="text-sm">
-                                  {holder.profileName || truncateAddress(holder.address)}
-                                </span>
-                              </div>
+                      </TableHeader>
+                      <TableBody>
+                        {holders.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-4">
+                              No holders found
                             </TableCell>
-                            <TableCell>{holder.balance}</TableCell>
-                            <TableCell>{holder.percentage.toFixed(2)}%</TableCell>
-                            <TableCell className="text-right">${holder.value.toLocaleString()}</TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                        ) : (
+                          holders.map((holder, index) => (
+                            <TableRow key={holder.address}>
+                              <TableCell>#{index + 1}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">
+                                    {holder.address.slice(2, 4).toUpperCase()}
+                                  </div>
+                                  <span className="text-sm">
+                                    {holder.profileName || truncateAddress(holder.address)}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>{holder.balance}</TableCell>
+                              <TableCell>{holder.percentage.toFixed(2)}%</TableCell>
+                              <TableCell className="text-right">${holder.value.toLocaleString()}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
