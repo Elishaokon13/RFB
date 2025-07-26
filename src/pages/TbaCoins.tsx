@@ -28,47 +28,7 @@ export default function TbaCoins() {
               <th className="py-2 text-right">Market Cap</th>
             </tr>
           </thead>
-          <tbody>
-            {data?.map((token) => (
-              <tr
-                key={token.id}
-                className="border-b border-border/50 hover:bg-muted/30"
-              >
-                <td className="py-3">
-                  <div className="flex items-center gap-2">
-                    {token.logoURI && (
-                      <img
-                        src={token.logoURI}
-                        alt={token.name}
-                        className="w-6 h-6 rounded-full"
-                      />
-                    )}
-                    <div>
-                      <div className="font-medium">{token.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {token.symbol}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td className="py-3 text-right font-mono">
-                  ${token.price?.toFixed(6) || "N/A"}
-                </td>
-                <td
-                  className={`py-3 text-right ${
-                    token.priceChange24h && token.priceChange24h > 0
-                      ? "text-green-500"
-                      : "text-red-500"
-                  }`}
-                >
-                  {/* {formatPriceChange(token.priceChange24h)} */}
-                </td>
-                <td className="py-3 text-right">
-                  {/* {formatMarketCap(token.marketCap)} */}
-                </td>
-              </tr>
-            ))}
-          </tbody>
+        
         </table>
       </div>
     </div>

@@ -42,7 +42,7 @@ export function useGetTBATokens() {
     setError(null);
 
     try {
-      const response = await axios.get("https://tba-be.onrender.com/");
+      const response = await axios.get("http://localhost:3000/api/");
 
       console.log("[TBA] API response:", response.data);
       setData(response.data);
