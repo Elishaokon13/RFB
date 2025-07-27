@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { usePreloadAllData } from "./usePreloadAllData";
 import { Coin } from "./usePreloadAllData";
+import { getCoinsMostValuable, getCoinsTopGainers, getCoinsTopVolume24h, getCoinsNew } from "@zoralabs/coins-sdk";
 
 // Deep comparison function for coin data
 const areCoinsEqual = (prevCoin: Coin, nextCoin: Coin) => {
@@ -38,6 +39,7 @@ export function useTokenFeed(activeFilter: string) {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   // Refs to store previous data for comparison
   const prevCoinsRef = useRef<Coin[]>([]);
@@ -159,11 +161,18 @@ export function useTokenFeed(activeFilter: string) {
 
     // Only update if data actually changed
     if (coinsChanged) {
-      setStableCoins(currentCoins);
-      prevCoinsRef.current = currentCoins;
-
-      // Only cache if we have valid data
-      if (currentCoins.length > 0) {
+      // If we're fetching more, append the new data instead of replacing
+      if (isFetchingMore) {
+        // Find unique coins to avoid duplicates
+        const existingIds = new Set(prevCoins.map(coin => coin.id));
+        const newCoins = currentCoins.filter(coin => !existingIds.has(coin.id));
+        
+        // Append new coins to existing ones
+        const updatedCoins = [...prevCoins, ...newCoins];
+        setStableCoins(updatedCoins);
+        prevCoinsRef.current = updatedCoins;
+        
+        // Update cache with combined data
         const currentCache = tabDataCache.get(activeFilter) || {
           coins: [],
           dexScreenerData: {},
@@ -171,15 +180,39 @@ export function useTokenFeed(activeFilter: string) {
           lastUpdate: 0,
           isInitialized: false,
         };
-
+        
         tabDataCache.set(activeFilter, {
           ...currentCache,
-          coins: currentCoins,
+          coins: updatedCoins,
           lastUpdate: Date.now(),
           isInitialized: true,
           dexScreenerData: stableDexScreenerData,
           pageInfo: pageInfo,
         });
+      } else {
+        // Normal update - replace data
+        setStableCoins(currentCoins);
+        prevCoinsRef.current = currentCoins;
+
+        // Only cache if we have valid data
+        if (currentCoins.length > 0) {
+          const currentCache = tabDataCache.get(activeFilter) || {
+            coins: [],
+            dexScreenerData: {},
+            pageInfo: null,
+            lastUpdate: 0,
+            isInitialized: false,
+          };
+
+          tabDataCache.set(activeFilter, {
+            ...currentCache,
+            coins: currentCoins,
+            lastUpdate: Date.now(),
+            isInitialized: true,
+            dexScreenerData: stableDexScreenerData,
+            pageInfo: pageInfo,
+          });
+        }
       }
     }
   }, [
@@ -188,6 +221,7 @@ export function useTokenFeed(activeFilter: string) {
     preloadLoading,
     stableDexScreenerData,
     pageInfo,
+    isFetchingMore,
   ]);
 
   // Smart diffing for page info
@@ -287,12 +321,20 @@ export function useTokenFeed(activeFilter: string) {
     setIsLoading(shouldShowLoading);
   }, [preloadLoading, stableCoins.length]);
 
+  // Reset fetchingMore state when loading is done
+  useEffect(() => {
+    if (!preloadLoading && isFetchingMore) {
+      setIsFetchingMore(false);
+    }
+  }, [preloadLoading, isFetchingMore]);
+
   // Refetch functions
   const refetchAll = useCallback(() => {
     mostValuable.refetch();
     topGainers.refetch();
     topVolume.refetch();
-  }, [mostValuable, topGainers, topVolume]);
+    newCoins.refetch();
+  }, [mostValuable, topGainers, topVolume, newCoins]);
 
   const refetchActive = useCallback(() => {
     switch (activeFilter) {
@@ -305,17 +347,102 @@ export function useTokenFeed(activeFilter: string) {
       case "Top Volume 24h":
         topVolume.refetch();
         break;
+      case "New Coins":
+        newCoins.refetch();
+        break;
     }
-  }, [activeFilter, mostValuable, topGainers, topVolume]);
+  }, [activeFilter, mostValuable, topGainers, topVolume, newCoins]);
+
+  // Fetch next page by making a direct API call
+  const fetchNextPage = useCallback(
+    async (cursor: string) => {
+      if (!cursor || isFetchingMore) return;
+      
+      setIsFetchingMore(true);
+      
+      try {
+        // Determine which API to call based on the active filter
+        let response;
+        const count = 20; // Number of items to fetch
+        
+        switch (activeFilter) {
+          case "Most Valuable":
+            response = await getCoinsMostValuable({ count, after: cursor });
+            break;
+          case "Top Gainers":
+            response = await getCoinsTopGainers({ count, after: cursor });
+            break;
+          case "Top Volume 24h":
+            response = await getCoinsTopVolume24h({ count, after: cursor });
+            break;
+          case "New Coins":
+            response = await getCoinsNew({ count, after: cursor });
+            break;
+          default:
+            response = await getCoinsMostValuable({ count, after: cursor });
+        }
+        
+        // Process the response to extract tokens and update state
+        if (response && response.data && response.data.exploreList) {
+          const newCoins = response.data.exploreList.edges.map(
+            (edge: { node: unknown }) => edge.node
+          ) as Coin[];
+          
+          const newCursor = response.data.exploreList.pageInfo?.endCursor;
+          
+          // Add new coins to existing ones
+          const existingIds = new Set(stableCoins.map(coin => coin.id));
+          const uniqueNewCoins = newCoins.filter(coin => !existingIds.has(coin.id));
+          
+          // Update coins state with combined data
+          const updatedCoins = [...stableCoins, ...uniqueNewCoins];
+          setStableCoins(updatedCoins);
+          prevCoinsRef.current = updatedCoins;
+          
+          // Update page info with new cursor
+          const updatedPageInfo = {
+            endCursor: newCursor,
+            hasNextPage: !!newCursor && newCursor.length > 0,
+          };
+          setPageInfo(updatedPageInfo);
+          prevPageInfoRef.current = updatedPageInfo;
+          
+          // Update cache
+          const currentCache = tabDataCache.get(activeFilter) || {
+            coins: [],
+            dexScreenerData: {},
+            pageInfo: null,
+            lastUpdate: 0,
+            isInitialized: false,
+          };
+          
+          tabDataCache.set(activeFilter, {
+            ...currentCache,
+            coins: updatedCoins,
+            pageInfo: updatedPageInfo,
+            lastUpdate: Date.now(),
+            isInitialized: true,
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching next page:", err);
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setIsFetchingMore(false);
+      }
+    },
+    [activeFilter, isFetchingMore, stableCoins]
+  );
 
   return {
     coins: stableCoins,
     dexScreenerData: stableDexScreenerData,
     pageInfo,
     error,
-    isLoading,
+    isLoading: isLoading || isFetchingMore,
     refetchAll,
     refetchActive,
     hasData: stableCoins.length > 0,
+    fetchNextPage,
   };
 }

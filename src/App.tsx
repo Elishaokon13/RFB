@@ -16,6 +16,7 @@ import Creators from "./pages/Creators";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import WhaleTrackerPage from "./pages/WhaleTrackerPage";
+import WatchlistPage from "./pages/WatchlistPage";
 import { NotificationProvider } from "./components/Header";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
                       <Route path="/token/:address" element={<TokenDetails />} />
                       <Route path="/creators" element={<Creators />} />
                       <Route path="/whale-tracker" element={<WhaleTrackerPage />} />
+                      <Route path="/watchlist" element={<WatchlistPage />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
                     </Route>
