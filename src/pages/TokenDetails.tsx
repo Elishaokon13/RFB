@@ -1,10 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { usePrivy } from '@privy-io/react-auth';
-import { useBalance } from 'wagmi';
-import { Swap, SwapAmountInput, SwapToggleButton, SwapButton, SwapMessage } from '@coinbase/onchainkit/swap';
-import { Token } from '@coinbase/onchainkit/token';
-import { useTheme as useNextTheme } from "next-themes";
 import { usePrivy } from "@privy-io/react-auth";
 import { useBalance } from "wagmi";
 import {
@@ -15,6 +10,7 @@ import {
   SwapMessage,
 } from "@coinbase/onchainkit/swap";
 import { Token } from "@coinbase/onchainkit/token";
+import { useTheme as useNextTheme } from "next-themes";
 import {
   ArrowLeft,
   TrendingUp,
