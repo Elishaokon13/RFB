@@ -19,7 +19,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTokenDetails, calculateCreatorEarnings, formatTokenValue, type TokenDetails } from "@/hooks/useTokenDetails";
+import { useTokenDetails, formatTokenValue, type TokenDetails } from "@/hooks/useTokenDetails";
+import { useTokenPrice } from "@/hooks/useTokenPrice";
 import { useNumberFormatter } from "@/lib/formatNumber";
 import { Button } from "@/components/ui/button";
 import {
@@ -133,7 +134,17 @@ function TokenHeader({ token }: { token: TokenDetails | null }) {
 
 // TokenStats Component
 function TokenStats({ token }: { token: TokenDetails | null }) {
-  const creatorEarnings = calculateCreatorEarnings(token);
+  const { data: priceData } = useTokenPrice(token?.address || null);
+
+  const formatPrice = (price: number): string => {
+    if (price < 0.01) {
+      return `$${price.toFixed(6)}`;
+    } else if (price < 1) {
+      return `$${price.toFixed(4)}`;
+    } else {
+      return `$${price.toFixed(2)}`;
+    }
+  };
 
   return (
     <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
@@ -157,12 +168,17 @@ function TokenStats({ token }: { token: TokenDetails | null }) {
           </div>
         </div>
         <div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Creator Earnings</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Token Price</p>
           <div className="flex items-center gap-1">
-            <Wallet className="w-4 h-4 text-gray-600" />
-            <span className="font-semibold text-gray-900 dark:text-white">
-              ${formatTokenValue(creatorEarnings)}
+            <DollarSign className="w-4 h-4 text-blue-500" />
+            <span className="font-semibold text-blue-500">
+              {priceData ? formatPrice(priceData.price) : '$0.00'}
             </span>
+            {priceData && priceData.priceChange24h !== 0 && (
+              <span className={`text-xs ${priceData.priceChange24h > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {priceData.priceChange24h > 0 ? '+' : ''}{priceData.priceChange24h.toFixed(2)}%
+              </span>
+            )}
           </div>
         </div>
       </div>

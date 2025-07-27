@@ -17,6 +17,8 @@ import { TableSkeleton, TokenTableRowSkeleton, TableHeaderSkeleton } from "@/com
 import { FollowerPointerCard } from "@/components/ui/following-pointer";
 import { useZoraProfile, getProfileImageSmall } from "@/hooks/useZoraProfile";
 import { Copy } from "lucide-react";
+import { CoinWithImage } from "./TokenTable";
+import { useNotifications } from "./Header";
 
 // Extend Coin type to include image property for table display
 type CoinWithImage = Coin & {
