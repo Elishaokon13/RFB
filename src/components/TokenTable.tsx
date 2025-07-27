@@ -82,6 +82,7 @@ export function TokenTable() {
     refetchAll,
     refetchActive,
     hasData,
+    fetchNextPage, // Make sure this function is available from useTokenFeed
   } = useTokenFeed(activeTopFilter);
   
   // Initial loading - populate known tokens without notifications
@@ -210,11 +211,14 @@ export function TokenTable() {
     };
   };
 
+  // Get all coins for the current page
+  const allCoins = useMemo(() => coins.map(ensureCoinWithImage), [coins]);
+
   // Pagination logic for 20 per page
   const paginatedCoins = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return coins.slice(start, start + ITEMS_PER_PAGE).map(ensureCoinWithImage);
-  }, [coins, currentPage]);
+    return allCoins.slice(start, start + ITEMS_PER_PAGE);
+  }, [allCoins, currentPage]);
 
   // Get token addresses for the current page
   const tokenAddresses = useMemo(
@@ -250,20 +254,47 @@ export function TokenTable() {
 
   // Handle pagination
   const handleLoadNextPage = useCallback(() => {
+    // First, check if we need to fetch more data from the API
+    if (pageInfo?.hasNextPage && pageInfo?.endCursor && fetchNextPage) {
+      // If we have a fetchNextPage function and there's a next page, fetch more data
+      fetchNextPage(pageInfo.endCursor);
+    }
+    
+    // Regardless, update the local page state
     setCurrentPage((prev) => prev + 1);
-  }, []);
+  }, [pageInfo, fetchNextPage]);
 
   const handleGoToPage = useCallback((page: number) => {
+    // Ensure we have enough data for this page
+    const requiredItemCount = page * ITEMS_PER_PAGE;
+    
+    // If we need to fetch more data and we can
+    if (allCoins.length < requiredItemCount && pageInfo?.hasNextPage && fetchNextPage) {
+      // Try to fetch more data first
+      fetchNextPage(pageInfo.endCursor);
+    }
+    
+    // Update the page state
     setCurrentPage(page);
-  }, []);
+  }, [allCoins.length, pageInfo, fetchNextPage]);
 
   const handleRefresh = useCallback(() => {
     refetchAll();
   }, [refetchAll]);
 
-  const loading = isLoading;
+  const loading = isLoading || dexLoading;
   const errorMsg = error || dexError;
-  const pageInfoToUse = pageInfo;
+
+  // Calculate proper pageInfo based on local pagination
+  const localPageInfo = useMemo(() => {
+    const totalPages = Math.ceil(allCoins.length / ITEMS_PER_PAGE);
+    const hasNextPage = currentPage < totalPages || (pageInfo?.hasNextPage ?? false);
+    
+    return {
+      ...pageInfo,
+      hasNextPage,
+    };
+  }, [allCoins.length, currentPage, pageInfo]);
 
   // Skeleton loading component
   const skeletonLoading = (
@@ -319,20 +350,21 @@ export function TokenTable() {
       </div>
 
       {/* Progressive Loading - Show data as soon as it's available */}
-      {isLoading && skeletonLoading}
+      {isLoading && !paginatedCoins.length && skeletonLoading}
       {paginatedCoins.length > 0 && (
         <TokenDataTable
           coins={paginatedCoins}
           dexScreenerData={dexScreenerData}
           currentPage={currentPage}
           loading={loading}
-          pageInfo={pageInfoToUse}
+          pageInfo={localPageInfo}
           onCoinClick={handleCoinClick}
           onLoadNextPage={handleLoadNextPage}
           onGoToPage={handleGoToPage}
           showPagination={true}
           itemsPerPage={ITEMS_PER_PAGE}
           activeFilter={activeTopFilter}
+          totalCount={allCoins.length}
         />
       )}
     </div>

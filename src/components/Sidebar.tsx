@@ -17,6 +17,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { pay } from "@base-org/account";
 import { RainbowButton } from "./magicui/rainbow-button";
+import { useWatchlist } from "@/hooks/useWatchlist";
+import { Badge } from "@/components/ui/badge";
 
 const chains = [
   // { name: "Solana", icon: "◎", color: "text-purple-400" },
@@ -41,12 +43,14 @@ export function Sidebar({ onClose }: SidebarProps) {
   const isMobile = useIsMobile();
   const [donateLoading, setDonateLoading] = useState(false);
   const [donateMessage, setDonateMessage] = useState<string | null>(null);
+  const { watchlist } = useWatchlist();
 
   const menuItems = [
     // { icon: Star, label: "Collections", active: false },
     // { icon: AlertCircle, label: "New Mints", active: false },
     // { icon: Zap, label: "Trending", path: "/trending" },
     { icon: TrendingUp, label: "Live Activity", path: "/" },
+    { icon: Star, label: "Watchlist", path: "/watchlist", count: watchlist.length },
     { icon: Users, label: "Creators", path: "/creators" },
     { icon: BarChart3, label: "Whale Tracker", path: "/whale-tracker" },
     // { icon: BarChart3, label: "Top Creators", active: false },
@@ -126,6 +130,11 @@ export function Sidebar({ onClose }: SidebarProps) {
             >
               <item.icon className="w-4 h-4 flex-shrink-0" />
               <span className="truncate">{item.label}</span>
+              {item.count !== undefined && item.count > 0 && (
+                <Badge variant={isActive ? "outline" : "default"} className="ml-auto">
+                  {item.count}
+                </Badge>
+              )}
             </button>
           );
         })}

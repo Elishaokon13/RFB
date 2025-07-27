@@ -19,32 +19,9 @@ import { useZoraProfile, getProfileImageSmall } from "@/hooks/useZoraProfile";
 import { Copy } from "lucide-react";
 import { CoinWithImage } from "./TokenTable";
 import { useNotifications } from "./Header";
+import { useToast } from "@/components/ui/use-toast";
 
-// Extend Coin type to include image property for table display
-type CoinWithImage = Coin & {
-  image?: string;
-  mediaContent?: {
-    mimeType?: string;
-    originalUri?: string;
-    previewImage?: {
-      small?: string;
-      medium?: string;
-      blurhash?: string;
-    };
-  };
-  fineAge?: string; // Add this for New Picks fine-grained age
-  creatorProfile?: {
-    handle?: string;
-    address?: string;
-    displayName?: string;
-    avatar?: {
-      previewImage?: {
-        small?: string;
-        medium?: string;
-      };
-    };
-  };
-};
+// Remove the conflicting CoinWithImage type definition and use the imported one from TokenTable
 
 // Real-time age component that updates every second
 const RealTimeAge = memo(({ createdAt }: { createdAt?: string }) => {
@@ -311,7 +288,17 @@ const TableRow = memo(
       </div>
     );
 
+    const [watchAnimation, setWatchAnimation] = useState<'add' | 'remove' | null>(null);
     const [copied, setCopied] = useState(false);
+    
+    const handleWatchlistToggle = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setWatchAnimation(isWatched ? 'remove' : 'add');
+      // Reset animation after it plays
+      setTimeout(() => setWatchAnimation(null), 500);
+      onToggleWatch();
+    };
+    
     const handleCopy = async (e: React.MouseEvent) => {
       e.stopPropagation();
       await navigator.clipboard.writeText(coin.address);
@@ -337,20 +324,23 @@ const TableRow = memo(
           <td className="px-2 sm:px-4 py-3">
             <div className="flex items-center gap-3">
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleWatch();
-                }}
+                onClick={handleWatchlistToggle}
                 className={cn(
-                  "mr-2 p-1 rounded-full hover:bg-muted transition-colors",
-                  isWatched ? "text-yellow-500" : "text-muted-foreground"
+                  "mr-2 p-1.5 rounded-full transition-all duration-300 relative",
+                  isWatched 
+                    ? "text-yellow-500 hover:text-yellow-600 bg-yellow-500/10" 
+                    : "text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
                 )}
                 title={isWatched ? "Remove from Watchlist" : "Add to Watchlist"}
               >
                 <Star
                   fill={isWatched ? "currentColor" : "none"}
-                  strokeWidth={2}
-                  className="w-5 h-5"
+                  strokeWidth={isWatched ? 1 : 2}
+                  className={cn(
+                    "w-5 h-5 transition-transform",
+                    watchAnimation === 'add' && "animate-ping-once scale-125",
+                    watchAnimation === 'remove' && "animate-spin-once"
+                  )}
                 />
               </button>
               <div className="">
@@ -554,6 +544,7 @@ const CreatorCell = memo(({ coin }: { coin: CoinWithImage }) => {
 });
 CreatorCell.displayName = "CreatorCell";
 
+// Add totalCount to the props interface
 interface TokenDataTableProps {
   coins: CoinWithImage[];
   dexScreenerData: Record<string, DexScreenerPair>;
@@ -570,6 +561,7 @@ interface TokenDataTableProps {
   itemsPerPage?: number;
   walletAddress?: string;
   activeFilter?: string;
+  totalCount?: number;
 }
 
 export function TokenDataTable({
@@ -585,9 +577,37 @@ export function TokenDataTable({
   itemsPerPage = 20,
   walletAddress,
   activeFilter,
+  totalCount,
 }: TokenDataTableProps) {
-  const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } =
-    useWatchlist(walletAddress);
+  const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist(walletAddress);
+  const { toast } = useToast();
+  
+  // Handle watchlist actions with toasts
+  const handleToggleWatchlist = useCallback((coin: CoinWithImage) => {
+    if (isInWatchlist(coin.address)) {
+      removeFromWatchlist(coin.address);
+      toast({
+        title: "Removed from watchlist",
+        description: `${coin.name || coin.symbol} has been removed from your watchlist`,
+        variant: "default",
+      });
+    } else {
+      // Add with additional metadata
+      addToWatchlist({
+        address: coin.address,
+        name: coin.name,
+        symbol: coin.symbol,
+        image: coin.mediaContent?.previewImage?.small
+      });
+      
+      toast({
+        title: "Added to watchlist",
+        description: `${coin.name || coin.symbol} has been added to your watchlist`,
+        variant: "default",
+      });
+    }
+  }, [isInWatchlist, addToWatchlist, removeFromWatchlist, toast]);
+  
   // Memoize the click handler to prevent unnecessary re-renders
   const handleCoinClick = useCallback(
     (address: string) => {
@@ -606,10 +626,7 @@ export function TokenDataTable({
         dexScreenerData={dexScreenerData}
         onCoinClick={handleCoinClick}
         isWatched={isInWatchlist(coin.address)}
-        onToggleWatch={() => {
-          if (isInWatchlist(coin.address)) removeFromWatchlist(coin.address);
-          else addToWatchlist(coin.address);
-        }}
+        onToggleWatch={() => handleToggleWatchlist(coin)}
         activeFilter={activeFilter}
       />
     ));
@@ -618,8 +635,7 @@ export function TokenDataTable({
     dexScreenerData,
     handleCoinClick,
     isInWatchlist,
-    addToWatchlist,
-    removeFromWatchlist,
+    handleToggleWatchlist,
     activeFilter,
   ]);
 
@@ -679,7 +695,7 @@ export function TokenDataTable({
       {showPagination && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-t border-border gap-4">
           <div className="text-sm text-muted-foreground text-center sm:text-left">
-            Page {currentPage} - Showing {coins.length} coins
+            Page {currentPage} - Showing {coins.length} {totalCount ? `of ${totalCount}` : ''} coins
           </div>
           <div className="flex items-center justify-center sm:justify-end gap-2">
             {/* Previous Page */}
@@ -698,7 +714,7 @@ export function TokenDataTable({
             <div className="flex items-center gap-1">
               {Array.from({ length: Math.min(currentPage + 2, 5) }, (_, i) => {
                 const pageNum = i + 1;
-                if (pageNum <= currentPage) {
+                if (pageNum <= Math.max(currentPage, 1)) {
                   return (
                     <button
                       key={pageNum}
