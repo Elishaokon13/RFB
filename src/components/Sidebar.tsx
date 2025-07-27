@@ -13,7 +13,7 @@ import {
   Heart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { pay } from "@base-org/account";
 import { RainbowButton } from "./magicui/rainbow-button";
@@ -134,8 +134,30 @@ export function Sidebar({ onClose }: SidebarProps) {
 
       {/* Footer with Donate Button */}
       <div className="w-full">
-        <div className="p-3 w-full">
-          <div className="w-full h-[180px] p-2 rounded-xl bg-[#0000FF]"></div>
+        <div className="p-3 w-full relative max-w-[180px]">
+          <div className="w-full h-[180px] rounded-xl bg-card border border-border overflow-hidden relative group flex flex-col items-center justify-center p-3 text-center">
+            <div className="mb-2 rounded-full bg-primary/10 flex items-center justify-center">
+              <img src="/zoracle.svg" alt="Logo" className="w-6 opacity-60" />
+            </div>
+            <p className="text-sm font-medium text-foreground">
+              Advertisement Space
+            </p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-[180px]">
+              Advertise your content coin here.
+            </p>
+            <Link
+              to="https://t.me/oxbryte"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 px-3 py-1 text-xs bg-primary/10 hover:bg-primary/20 text-primary rounded-md transition-colors cursor-pointer"
+            >
+              Contact us
+            </Link>
+          </div>
+          {/* "Ad" label */}
+          <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-muted/80 rounded text-[10px] text-muted-foreground">
+            AD
+          </div>
         </div>
         <div className="p-4 border-t border-border space-y-3">
           <div className="w-full">
