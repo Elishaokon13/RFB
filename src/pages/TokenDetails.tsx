@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { usePrivy } from "@privy-io/react-auth";
 import { useBalance } from "wagmi";
+import { LiFiWidget, WidgetConfig, Appearance, ChainType } from "@lifi/widget";
 import {
   Swap,
   SwapAmountInput,
@@ -215,64 +216,35 @@ function TokenStats({ token }: { token: TokenDetails | null }) {
   );
 }
 
-// Sleek Trading Interface with OnchainKit Swap
 function TradingInterface({ token }: { token: TokenDetails | null }) {
-  // Get Privy user info
   const { user, authenticated } = usePrivy();
   const userAddress = user?.wallet?.address;
 
-  // Get ETH balance
-  const {
-    data: ethBalance,
-    isLoading: isBalanceLoading,
-    refetch: refetchBalance,
-  } = useBalance({
-    address: userAddress as `0x${string}`,
-    query: {
-      enabled: !!userAddress && authenticated,
-      refetchInterval: 10000, // Refresh every 10 seconds
+  const widgetConfig: WidgetConfig = {
+    integrator: "Zoracle",
+    fromChain: 8453,
+    toChain: 8453,
+    toToken: token?.address,
+    appearance: "system",
+    variant: "compact",
+    buildUrl: false, // prevents widget links updating your URL/history
+    theme: { container: { display: "flex", height: "100%", maxHeight: 800 } },
+    sdkConfig: {
+      rpcUrls: {
+        8453: [
+          "https://base-mainnet.g.alchemy.com/v2/dnbpgJAxbCT9dbs-cHKAXVSYLNYDrt_n",
+        ],
+      },
     },
-  });
-
-  // Define ETH token for Base chain (always the source)
-  const ETH_TOKEN: Token = {
-    name: "Ethereum",
-    address: "", // Empty string for native ETH on Base
-    symbol: "ETH",
-    decimals: 18,
-    image:
-      "https://wallet-api-production.s3.amazonaws.com/uploads/tokens/eth_288.png",
-    chainId: 8453,
-  };
-
-  // Define current token (always the destination)
-  const CURRENT_TOKEN: Token = {
-    name: token?.name || "Token",
-    address: (token?.address || "0x") as `0x${string}`,
-    symbol: token?.symbol || "TOKEN",
-    decimals: 18,
-    image: token?.mediaContent?.previewImage?.small || "",
-    chainId: 8453,
   };
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6"></div>
-
-      {/* OnchainKit Swap Component */}
-      <div className="space-y-4">
-        <Swap>
-          <SwapAmountInput label="You pay" type="from" token={ETH_TOKEN} />
-          <SwapAmountInput
-            label="You receive"
-            type="to"
-            token={CURRENT_TOKEN}
-          />
-          <SwapButton />
-          <SwapMessage />
-        </Swap>
-      </div>
+    <div className="h-full flex flex-col">
+      {authenticated && token?.address ? (
+        <LiFiWidget config={widgetConfig} integrator="Zoracle" />
+      ) : (
+        <p className="p-4">Please connect your wallet to swap.</p>
+      )}
     </div>
   );
 }
