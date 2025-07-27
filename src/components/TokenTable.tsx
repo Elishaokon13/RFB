@@ -54,7 +54,7 @@ type CoinWithImage = Coin & {
 export function TokenTable() {
   const navigate = useNavigate();
   const [activeTopFilter, setActiveTopFilter] = useState<string>(() => {
-    return localStorage.getItem("activeTopFilter") || "Most Valuable";
+    return localStorage.getItem("activeTopFilter") || "Trending";
   });
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -385,9 +385,6 @@ export function CreatorsTable({ coins }: { coins: Coin[] }) {
       <table className="min-w-full w-full max-w-full">
         <thead className="bg-muted border-b border-border">
           <tr className="text-left">
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              #
-            </th>
             <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Creator
             </th>

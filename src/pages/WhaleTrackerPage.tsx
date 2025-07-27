@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { WhaleTracker } from "../components/WhaleTracker";
 import { sanitizeEthereumAddress } from "@/lib/utils";
-import { Search, TrendingUp, Users, Activity, Copy, ExternalLink } from "lucide-react";
+import {
+  Search,
+  TrendingUp,
+  Users,
+  Activity,
+  Copy,
+  ExternalLink,
+} from "lucide-react";
 
 export default function WhaleTrackerPage() {
   const [tokenAddress, setTokenAddress] = useState("");
@@ -10,18 +17,50 @@ export default function WhaleTrackerPage() {
 
   // Example tokens on Base mainnet
   const exampleTokens = [
-    { name: "USDC", address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", icon: "💵" },
-    { name: "DAI", address: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb", icon: "🪙" },
-    { name: "WETH", address: "0x4200000000000000000000000000000000000006", icon: "🔷" },
-    { name: "cbETH", address: "0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22", icon: "🏦" },
-    { name: "USDbC", address: "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca", icon: "💎" },
+    {
+      name: "USDC",
+      address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      icon: "💵",
+    },
+    {
+      name: "DAI",
+      address: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb",
+      icon: "🪙",
+    },
+    {
+      name: "WETH",
+      address: "0x4200000000000000000000000000000000000006",
+      icon: "🔷",
+    },
+    {
+      name: "cbETH",
+      address: "0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22",
+      icon: "🏦",
+    },
+    {
+      name: "USDbC",
+      address: "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca",
+      icon: "💎",
+    },
   ];
 
   // Popular tokens on Base
   const popularTokens = [
-    { name: "BALD", address: "0xf73978b3a7d1d4974abae11f696c1b4408c027a0", icon: "🦅" },
-    { name: "DEGEN", address: "0x4ed4e862860bed51a9570b96d89af5e1b0efefed", icon: "🎲" },
-    { name: "TOSHI", address: "0xac1bd2486aaf3b5c0fc3fd868558b082a531b2b4", icon: "🐱" },
+    {
+      name: "BALD",
+      address: "0xf73978b3a7d1d4974abae11f696c1b4408c027a0",
+      icon: "🦅",
+    },
+    {
+      name: "DEGEN",
+      address: "0x4ed4e862860bed51a9570b96d89af5e1b0efefed",
+      icon: "🎲",
+    },
+    {
+      name: "TOSHI",
+      address: "0xac1bd2486aaf3b5c0fc3fd868558b082a531b2b4",
+      icon: "🐱",
+    },
   ];
 
   useEffect(() => {
@@ -51,7 +90,7 @@ export default function WhaleTrackerPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
@@ -63,7 +102,8 @@ export default function WhaleTrackerPage() {
             </h1>
           </div>
           <p className="text-muted-foreground text-sm sm:text-base">
-            Track token holders, monitor whale movements, and analyze transfer patterns on Base
+            Track token holders, monitor whale movements, and analyze transfer
+            patterns on Base
           </p>
         </div>
 
@@ -81,7 +121,10 @@ export default function WhaleTrackerPage() {
 
             {/* Search Input */}
             <div className="mb-6">
-              <label htmlFor="token-address" className="block text-sm font-medium mb-3">
+              <label
+                htmlFor="token-address"
+                className="block text-sm font-medium mb-3"
+              >
                 Token Address
               </label>
               <div className="flex flex-col sm:flex-row gap-3">
@@ -101,8 +144,16 @@ export default function WhaleTrackerPage() {
                   />
                   {inputError && (
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      <svg
+                        className="h-5 w-5 text-red-500"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </div>
                   )}
@@ -118,8 +169,16 @@ export default function WhaleTrackerPage() {
               </div>
               {inputError && (
                 <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   {inputError}
                 </p>
@@ -170,20 +229,21 @@ export default function WhaleTrackerPage() {
         </div>
 
         {/* Content */}
-        {submittedAddress && (
-          <WhaleTracker tokenAddress={submittedAddress} />
-        )}
-        
+        {submittedAddress && <WhaleTracker tokenAddress={submittedAddress} />}
+
         {!submittedAddress && (
           <div className="text-center py-16 sm:py-24">
             <div className="max-w-md mx-auto">
               <div className="p-4 bg-muted/50 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
                 <TrendingUp className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-3">Ready to Track Whales?</h3>
+              <h3 className="text-lg font-semibold mb-3">
+                Ready to Track Whales?
+              </h3>
               <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
-                Enter a token address above or select one of the example tokens to start tracking whales, 
-                top holders, and transfer patterns on the Base network.
+                Enter a token address above or select one of the example tokens
+                to start tracking whales, top holders, and transfer patterns on
+                the Base network.
               </p>
             </div>
           </div>

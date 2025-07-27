@@ -332,9 +332,6 @@ const TableRow = memo(
             "animate-pulse-subtle"
           )}
         >
-          <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
-            #{index + 1}
-          </td>
           <td className="px-2 sm:px-4 py-3">
             <div className="flex items-center gap-3">
               <button
@@ -644,9 +641,6 @@ export function TokenDataTable({
       <table className="min-w-[800px] w-full">
         <thead className="bg-muted border-b border-border">
           <tr className="text-left">
-            <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              #
-            </th>
             <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               TOKEN
             </th>

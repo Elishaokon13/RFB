@@ -69,9 +69,6 @@ export function MostValuableTable() {
         <thead className="bg-muted border-b border-border">
           <tr className="text-left">
             <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              #
-            </th>
-            <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               TOKEN
             </th>
             <th className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -102,9 +99,6 @@ export function MostValuableTable() {
                   index % 2 === 0 ? "bg-card" : "bg-background"
                 )}
               >
-                <td className="px-4 py-3 text-sm text-muted-foreground">
-                  #{(currentPage - 1) * 20 + index + 1}
-                </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1">

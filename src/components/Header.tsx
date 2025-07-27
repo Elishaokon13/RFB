@@ -21,6 +21,15 @@ interface SearchResult {
   marketCapDelta24h?: string;
   image?: string;
   searchScore?: number;
+  mediaContent?: {
+    mimeType?: string;
+    originalUri?: string;
+    previewImage?: {
+      small?: string;
+      medium?: string;
+      blurhash?: string;
+    };
+  };
 }
 
 interface TokenIndex {
@@ -200,7 +209,12 @@ export function Header({ onMenuClick }: HeaderProps) {
           try {
             const response = await getCoin({ address: query });
             if (response.data?.zora20Token) {
-              return [{ ...response.data.zora20Token as SearchResult, searchScore: 100 }];
+              const token = response.data.zora20Token as SearchResult;
+              return [{ 
+                ...token, 
+                searchScore: 100,
+                image: token.mediaContent?.previewImage?.medium || token.image
+              }];
             }
           } catch (error) {
             console.log("Token not found by address:", query);
@@ -222,7 +236,26 @@ export function Header({ onMenuClick }: HeaderProps) {
         responses.forEach((response) => {
           if (response.status === 'fulfilled' && response.value.data?.exploreList?.edges) {
             const tokens = response.value.data.exploreList.edges.map(
-              (edge: { node: unknown }) => edge.node as SearchResult
+              (edge: { node: unknown }) => {
+                const token = edge.node as SearchResult;
+                // Ensure we have the proper image data structure
+                const processedToken = {
+                  ...token,
+                  image: token.mediaContent?.previewImage?.medium || token.image
+                };
+                
+                // Debug logging for first few tokens
+                if (allTokens.length < 3) {
+                  console.log('Token image data:', {
+                    name: processedToken.name,
+                    symbol: processedToken.symbol,
+                    image: processedToken.image,
+                    mediaContent: processedToken.mediaContent
+                  });
+                }
+                
+                return processedToken;
+              }
             );
             allTokens.push(...tokens);
           }
@@ -276,10 +309,12 @@ export function Header({ onMenuClick }: HeaderProps) {
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "/" && !isSearchOpen) {
+      // Cmd+K (Mac) or Ctrl+K (Windows/Linux) to open search
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
         event.preventDefault();
         setIsSearchOpen(true);
       }
+      // Escape to close search
       if (event.key === "Escape" && isSearchOpen) {
         setIsSearchOpen(false);
         setSearchQuery("");
@@ -382,154 +417,214 @@ export function Header({ onMenuClick }: HeaderProps) {
         </button>
 
         {/* Search */}
-        <div className="relative flex-1 max-w-lg lg:max-w-2xl" ref={searchRef}>
+        <div className="relative flex-1 max-w-md lg:max-w-lg z-50" ref={searchRef}>
           <form onSubmit={handleSearchSubmit}>
-            <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            type="text"
-                placeholder="Search tokens..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setIsSearchOpen(true);
-                }}
-                onFocus={() => setIsSearchOpen(true)}
-                className="pl-10 bg-muted border-0 focus:ring-2 focus:ring-primary h-10 text-sm"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setIsSearchOpen(false);
-                  }}
-                  className="absolute right-8 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-          <kbd className="absolute right-3 top-1/2 transform -translate-y-1/2 px-1.5 py-0.5 bg-muted-foreground/10 text-xs text-muted-foreground rounded">
-            /
-          </kbd>
+            <div className="relative group">
+              {/* Glowing background effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-purple-500/20 to-blue-500/20 rounded-xl blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-500"></div>
+              
+                            {/* Main search container */}
+              <div className="relative bg-background/80 backdrop-blur-xl  rounded-lg shadow-lg group-focus-within:shadow-xl group-focus-within:border-primary/50 transition-all duration-300">
+                <div className="flex items-center px-2 py-2">
+                  {/* Search icon with animation */}
+                  
+                  
+                  {/* Input field */}
+                  <Input
+                    type="text"
+                    placeholder="Search tokens..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setIsSearchOpen(true);
+                    }}
+                    onFocus={() => setIsSearchOpen(true)}
+                    className="flex-1 ml-2 bg-transparent border-0 focus:ring-0 text-sm placeholder:text-muted-foreground/70 placeholder:font-medium transition-all duration-300 group-focus-within:text-foreground"
+                  />
+                  
+                  {/* Clear button with smooth animation */}
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setIsSearchOpen(false);
+                      }}
+                      className="relative p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200 group/clear"
+                    >
+                      <X className="w-3 h-3 transition-transform duration-200 group-hover/clear:scale-110" />
+                      <div className="absolute inset-0 bg-red-500/10 rounded-md scale-0 group-hover/clear:scale-100 transition-transform duration-200"></div>
+                    </button>
+                  )}
+                  
+                  {/* Keyboard shortcut badge */}
+                  <div className="relative ml-1.5">
+                    <kbd className="px-1.5 py-0.5 bg-muted/50 text-xs text-muted-foreground rounded-md border border-border/50 font-mono transition-all duration-300 group-focus-within:bg-primary/10 group-focus-within:text-primary group-focus-within:border-primary/30">
+                      ⌘K
+                    </kbd>
+                  </div>
+                </div>
+              </div>
             </div>
           </form>
 
-          {/* Search Results Dropdown */}
+          {/* Enhanced Search Results Dropdown */}
           {isSearchOpen && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-lg shadow-lg z-50 max-h-80 sm:max-h-96 overflow-y-auto">
-              {debouncedQuery.length < 2 ? (
-                <div className="p-4 text-center text-muted-foreground">
-                  <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p>Type at least 2 characters to search</p>
-                  <div className="mt-3 text-xs space-y-1">
-                    <p className="font-medium">Smart Search Features:</p>
-                    <p>• Fuzzy matching for similar names</p>
-                    <p>• Partial word matching</p>
-                    <p>• Popular token suggestions</p>
-                    <p>• Use keyboard shortcut: <kbd className="px-1 py-0.5 bg-muted rounded text-xs">/</kbd></p>
-                    <p>• Press <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Esc</kbd> to close</p>
+            <div className="absolute top-full left-0 right-0 mt-3 animate-in slide-in-from-top-2 duration-300 z-[9999]">
+              {/* Backdrop blur */}
+              <div className="absolute inset-0 bg-background/80 backdrop-blur-xl rounded-2xl border border-border/50 shadow-2xl"></div>
+              
+              {/* Content */}
+              <div className="relative bg-background/90 backdrop-blur-xl rounded-2xl border border-border/50 shadow-2xl max-h-96 overflow-hidden">
+                {debouncedQuery.length < 2 ? (
+                  <div className="p-8 text-center">
+                    <div className="relative mb-6">
+                      <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Search className="w-8 h-8 text-primary" />
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-2xl blur-xl opacity-50"></div>
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+                      Smart Token Search
+                    </h3>
+                    <p className="text-muted-foreground mb-6">Type at least 2 characters to discover tokens</p>
+                    
+                    {/* Feature highlights */}
+                    
                   </div>
-                </div>
-              ) : isSearching ? (
-                <div className="p-2">
-                  <div className="text-xs text-muted-foreground mb-2 px-2 flex justify-between">
-                    <span>Searching...</span>
-                  </div>
-                  {Array.from({ length: 5 }, (_, index) => (
-                    <Card key={index} className="p-3 mb-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Skeleton className="w-8 h-8 rounded-full" />
-                          <div>
-                            <Skeleton className="h-4 w-32 mb-1" />
-                            <Skeleton className="h-3 w-16" />
+                ) : isSearching ? (
+                  <div className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="relative">
+                        <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                      </div>
+                      <span className="text-sm font-medium">Searching across networks...</span>
+                    </div>
+                    
+                    {/* Enhanced skeleton loading */}
+                    <div className="space-y-3">
+                      {Array.from({ length: 3 }, (_, index) => (
+                        <div key={index} className="p-4 bg-muted/30 rounded-xl border border-border/30 animate-pulse">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-muted rounded-xl"></div>
+                            <div className="flex-1 space-y-2">
+                              <div className="h-4 bg-muted rounded w-3/4"></div>
+                              <div className="h-3 bg-muted rounded w-1/2"></div>
+                            </div>
+                            <div className="text-right space-y-2">
+                              <div className="h-4 bg-muted rounded w-20"></div>
+                              <div className="h-3 bg-muted rounded w-16"></div>
+                            </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <Skeleton className="h-4 w-20 mb-1" />
-                          <Skeleton className="h-3 w-16" />
-                        </div>
-                      </div>
-                      <div className="mt-2 flex items-center gap-4">
-                        <Skeleton className="h-3 w-16" />
-                        <Skeleton className="h-3 w-20" />
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              ) : searchResults && searchResults.length > 0 ? (
-                <div className="p-2">
-                  <div className="text-xs text-muted-foreground mb-2 px-2 flex justify-between">
-                    <span>Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</span>
-                    <span className="text-xs">Sorted by relevance</span>
+                      ))}
+                    </div>
                   </div>
-                  {searchResults.map((token, index) => (
-                    <Card 
-                      key={token.id} 
-                      className="p-3 mb-2 hover:bg-muted/50 cursor-pointer transition-all duration-200 hover:shadow-md active:scale-95"
-                      onClick={() => handleTokenClick(token)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          {token.image ? (
-                            <img src={token.image} alt={token.name} className="w-8 h-8 rounded-full" />
-                          ) : (
-                            <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-                              <DollarSign className="w-4 h-4 text-muted-foreground" />
-                            </div>
-                          )}
-                                                      <div>
-                              <div className="font-medium flex items-center gap-2">
-                                {token.name?.length > 12 ? token.name.slice(0, 12) + '...' : token.name}
-                                {index < 3 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Top {index + 1}
-                                  </Badge>
-                                )}
+                ) : searchResults && searchResults.length > 0 ? (
+                  <div className="p-4">
+                    {/* Results header */}
+                    <div className="flex items-center justify-between mb-4 p-3 bg-muted/30 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-sm font-medium">
+                          {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-lg">
+                        Sorted by relevance
+                      </span>
+                    </div>
+                    
+                    {/* Results list */}
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {searchResults.map((token, index) => (
+                        <div 
+                          key={token.id} 
+                          className="group p-4 bg-muted/20 hover:bg-muted/40 rounded-xl border border-border/30 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+                          onClick={() => handleTokenClick(token)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              {/* Token icon */}
+                              <div className="relative">
+                                <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-xl flex items-center justify-center overflow-hidden">
+                                  {token.image ? (
+                                    <img 
+                                      src={token.image} 
+                                      alt={token.symbol} 
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        // Fallback to symbol if image fails to load
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        target.nextElementSibling?.classList.remove('hidden');
+                                      }}
+                                    />
+                                  ) : null}
+                                  <span className={`text-lg font-bold text-primary ${token.image ? 'hidden' : ''}`}>
+                                    {token.symbol?.charAt(0) || '?'}
+                                  </span>
+                                </div>
+                                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background flex items-center justify-center">
+                                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                                </div>
                               </div>
-                              <div className="text-sm text-muted-foreground">
-                                {token.symbol?.length > 8 ? token.symbol.slice(0, 8) + '...' : token.symbol}
+                              
+                              {/* Token info */}
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                                    {token.name}
+                                  </h4>
+                                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-lg font-medium">
+                                    {token.symbol}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground font-mono">
+                                  {token.address.slice(0, 6)}...{token.address.slice(-4)}
+                                </p>
                               </div>
                             </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium">{formatMarketCap(token.marketCap)}</div>
-                          <div className={`text-xs ${getChangeColor(token.marketCapDelta24h)}`}>
-                            {formatPercentChange(token.marketCapDelta24h)}
+                            
+                            {/* Market data */}
+                            <div className="text-right">
+                              <div className="text-sm font-semibold text-foreground">
+                                {formatMarketCap(token.marketCap)}
+                              </div>
+                              <div className={`text-xs font-medium ${getChangeColor(token.marketCapDelta24h)}`}>
+                                {formatPercentChange(token.marketCapDelta24h)}
+                              </div>
+                            </div>
                           </div>
-                          {token.searchScore && (
-                            <div className={`text-xs ${getSearchScoreColor(token.searchScore)}`}>
-                              {token.searchScore}% match
-                            </div>
-                          )}
+                          
+                          {/* Additional metrics */}
+                          
                         </div>
-                      </div>
-                      <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <TrendingUp className="w-3 h-3" />
-                          {formatVolume(token.volume24h)}
-                        </div>
-                        <Badge variant="secondary" className="text-xs">
-                          {token.address.slice(0, 6)}...{token.address.slice(-4)}
-                        </Badge>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              ) : debouncedQuery.length >= 2 ? (
-                <div className="p-4 text-center text-muted-foreground">
-                  <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p>No tokens found for "{debouncedQuery}"</p>
-                  <p className="text-xs mt-1">Try different keywords or check spelling</p>
-                  <div className="mt-2 text-xs">
-                    <p>Suggestions:</p>
-                    <p>• Try partial names (e.g., "eth" for "Ethereum")</p>
-                    <p>• Use symbols (e.g., "BTC" for "Bitcoin")</p>
-                    <p>• Enter full contract address</p>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ) : null}
+                ) : debouncedQuery.length >= 2 ? (
+                  <div className="p-8 text-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-red-500/20 to-orange-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <Search className="w-8 h-8 text-red-500" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">No tokens found</h3>
+                    <p className="text-muted-foreground mb-6">
+                      No results for "<span className="font-medium text-foreground">{debouncedQuery}</span>"
+                    </p>
+                    
+                    {/* Suggestions */}
+                    <div className="text-sm text-muted-foreground space-y-2">
+                      <p className="font-medium">Try these suggestions:</p>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        <span className="px-3 py-1 bg-muted/50 rounded-lg">Use partial names</span>
+                        <span className="px-3 py-1 bg-muted/50 rounded-lg">Try symbols (BTC, ETH)</span>
+                        <span className="px-3 py-1 bg-muted/50 rounded-lg">Enter full address</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           )}
         </div>
@@ -546,9 +641,9 @@ export function Header({ onMenuClick }: HeaderProps) {
         </button>
 
         {/* Wallet Connect */}
-        <div className="hidden sm:block">
+        {/* <div className="hidden sm:block">
           <WalletConnect />
-        </div>
+        </div> */}
       </div>
     </header>
   );
