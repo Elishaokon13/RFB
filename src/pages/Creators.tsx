@@ -1,12 +1,6 @@
 import { CreatorsTable } from "@/components/CreatorsTable";
 import { useCreators } from "@/hooks/useCreators";
-import {
-  RefreshCw,
-  Users,
-  TrendingUp,
-  DollarSign,
-  BarChart3,
-} from "lucide-react";
+import { RefreshCw, Users, DollarSign } from "lucide-react";
 import { useState, useMemo } from "react";
 
 export default function CreatorsPage() {
@@ -19,7 +13,7 @@ export default function CreatorsPage() {
   const totalPages = Math.ceil(creators.length / creatorsPerPage);
   const startIndex = (currentPage - 1) * creatorsPerPage;
   const endIndex = startIndex + creatorsPerPage;
-  const currentCreators = creators.slice(startIndex, endIndex);
+  const currentCreators = creators;
 
   // Calculate total earnings across all creators
   const totalEarnings = useMemo(() => {
@@ -100,29 +94,8 @@ export default function CreatorsPage() {
         </div>
 
         {/* Main Content */}
-        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-green-500" />
-                  Top Earnings Creators
-                </h2>
-              </div>
-              <button
-                onClick={refetch}
-                disabled={isLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw
-                  className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
-                />
-                <span className="hidden sm:inline">Refresh</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="p-6">
+        <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+          <div className="">
             {isLoading ? (
               <div className="flex items-center justify-center p-8">
                 <div className="flex items-center gap-2">
@@ -141,62 +114,9 @@ export default function CreatorsPage() {
               </div>
             ) : (
               <>
-                <CreatorsTable
-                  creators={currentCreators}
-                  isLoading={isLoading}
-                />
+                <CreatorsTable creators={currentCreators} />
 
                 {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="text-sm text-muted-foreground text-center sm:text-left">
-                      Page {currentPage} of {totalPages} - Showing{" "}
-                      {creatorsPerPage} creators per page
-                    </div>
-
-                    <div className="flex items-center justify-center gap-2">
-                      {/* Previous Page */}
-                      <button
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="flex items-center gap-1 px-3 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <span className="hidden sm:inline">Previous</span>
-                      </button>
-
-                      {/* Page Numbers */}
-                      <div className="flex items-center gap-1">
-                        {getPageNumbers().map((page, index) => (
-                          <button
-                            key={index}
-                            onClick={() =>
-                              typeof page === "number" && handlePageChange(page)
-                            }
-                            disabled={page === "..." || page === currentPage}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                              page === currentPage
-                                ? "bg-primary text-primary-foreground"
-                                : page === "..."
-                                ? "text-muted-foreground cursor-default"
-                                : "bg-muted text-muted-foreground hover:bg-muted/80"
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Next Page */}
-                      <button
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className="flex items-center gap-1 px-3 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <span className="hidden sm:inline">Next</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
               </>
             )}
           </div>
