@@ -27,6 +27,7 @@ import {
   Search,
   AlertCircle,
   Home,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -41,6 +42,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { useTheme } from "next-themes";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@radix-ui/react-dialog";
+import { DialogHeader } from "@/components/ui/dialog";
 
 // GeckoTerminalWidget Component
 function GeckoTerminalWidget({ tokenAddress }: { tokenAddress: string }) {
@@ -214,13 +223,14 @@ function TokenStats({ token }: { token: TokenDetails | null }) {
 function TradingInterface({ token }: { token: TokenDetails | null }) {
   const { user, authenticated } = usePrivy();
   const userAddress = user?.wallet?.address;
+  const { theme } = useTheme();
 
   const widgetConfig: WidgetConfig = {
     integrator: "Zoracle",
     fromChain: 8453,
     toChain: 8453,
     toToken: token?.address,
-    appearance: "system",
+    appearance: theme === "dark" ? "dark" : "light",
     variant: "compact",
     buildUrl: false, // prevents widget links updating your URL/history
     theme: { container: { display: "flex", height: "100%", maxHeight: 800 } },
@@ -442,6 +452,7 @@ function getTimeAgo(dateString: string): string {
 }
 
 export default function TokenDetails() {
+  const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const { address: rawAddress } = useParams<{ address: string }>();
   const navigate = useNavigate();
 
@@ -613,7 +624,38 @@ export default function TokenDetails() {
           <div className="w-full lg:w-80 xl:w-96 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg flex flex-col h-[800px]">
             <TokenHeader token={token} />
             <TokenStats token={token} />
-            <TradingInterface token={token} />
+            <div className="p-4 border-t border-gray-100 dark:border-gray-800">
+              <button
+                onClick={() => setIsTradeModalOpen(true)}
+                className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg shadow-sm transition-all flex items-center justify-center gap-2"
+              >
+                <ArrowUpDown className="w-4 h-4" />
+                Trade {token.symbol || "Token"}
+              </button>
+            </div>
+            {isTradeModalOpen && (
+              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-[800px] h-[80vh] max-h-[800px] flex flex-col overflow-hidden">
+                  <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                    <h3 className="font-semibold text-lg flex items-center gap-2">
+                      Trade {token.name}
+                      <span className="text-sm font-normal px-2 py-1 bg-primary/10 text-primary rounded-full">
+                        {token.symbol}
+                      </span>
+                    </h3>
+                    <button
+                      onClick={() => setIsTradeModalOpen(false)}
+                      className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-auto">
+                    <TradingInterface token={token} />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
