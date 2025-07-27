@@ -5,11 +5,12 @@ import { PrivyClientConfig } from '@privy-io/react-auth';
 
 // Privy configuration
 export const privyConfig: PrivyClientConfig = {
-  loginMethods: ['wallet', 'email', 'sms'],
+  loginMethods: ['wallet'],
   appearance: {
     theme: 'light',
     accentColor: '#676FFF',
     logo: 'https://zoracle.xyz/zoracle.svg',
+    walletList: [ "base_account", "metamask", "wallet_connect", "coinbase_wallet" ],
   },
   embeddedWallets: {
     createOnLogin: 'users-without-wallets',
