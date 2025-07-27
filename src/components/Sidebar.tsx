@@ -133,27 +133,32 @@ export function Sidebar({ onClose }: SidebarProps) {
       </div>
 
       {/* Footer with Donate Button */}
-      <div className="p-4 border-t border-border space-y-3">
-        <div className="w-full">
-          <RainbowButton
-            className="w-full justify-center py-5 text-white dark:text-black"
-            onClick={handleDonate}
-            disabled={donateLoading}
-          >
-            <Heart className="w-4 h-4 text-white dark:text-black" />
-            {donateLoading ? "Processing..." : "Donate"}
-          </RainbowButton>
+      <div className="w-full">
+        <div className="p-3 w-full">
+          <div className="w-full h-[180px] p-2 rounded-xl bg-[#0000FF]"></div>
         </div>
-
-        {/* Donate Message */}
-        {donateMessage && (
-          <div className="text-xs text-muted-foreground text-center p-2 bg-muted rounded-md">
-            {donateMessage}
+        <div className="p-4 border-t border-border space-y-3">
+          <div className="w-full">
+            <RainbowButton
+              className="w-full justify-center py-5 text-white dark:text-black"
+              onClick={handleDonate}
+              disabled={donateLoading}
+            >
+              <Heart className="w-4 h-4 text-white dark:text-black" />
+              {donateLoading ? "Processing..." : "Donate"}
+            </RainbowButton>
           </div>
-        )}
 
-        {/* Version */}
-        {/* <div className="text-xs text-muted-foreground text-center">v1.0.0</div> */}
+          {/* Donate Message */}
+          {donateMessage && (
+            <div className="text-xs text-muted-foreground text-center p-2 bg-muted rounded-md">
+              {donateMessage}
+            </div>
+          )}
+
+          {/* Version */}
+          {/* <div className="text-xs text-muted-foreground text-center">v1.0.0</div> */}
+        </div>
       </div>
     </div>
   );
