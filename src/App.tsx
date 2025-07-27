@@ -10,13 +10,13 @@ import { ThemeProvider } from "next-themes";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider } from "wagmi";
 import { privyConfig, wagmiConfig } from "./wagmi";
-import Index from "./pages/Index";
-import TokenDetails from "./pages/TokenDetails";
-import Creators from "./pages/Creators";
-import NotFound from "./pages/NotFound";
+import Index from "./pages/Index.tsx";
+import TokenDetails from "./pages/TokenDetails.tsx";
+import Creators from "./pages/Creators.tsx";
+import NotFound from "./pages/NotFound.tsx";
 import Layout from "./components/Layout";
-import WhaleTrackerPage from "./pages/WhaleTrackerPage";
-import WatchlistPage from "./pages/WatchlistPage";
+import WhaleTrackerPage from "./pages/WhaleTrackerPage.tsx";
+import WatchlistPage from "./pages/WatchlistPage.tsx";
 import { NotificationProvider } from "./components/Header";
 
 const queryClient = new QueryClient();
@@ -42,15 +42,19 @@ const App = () => (
                     <Route element={<Layout />}>
                       <Route path="/" element={<Index />} />
                       <Route
-                        path="/token/:address"
+                        path="/token/:address/*"
                         element={<TokenDetails />}
                       />
+
                       <Route path="/creators" element={<Creators />} />
                       <Route
                         path="/whale-tracker"
                         element={<WhaleTrackerPage />}
                       />
-                      <Route path="/whale-tracker" element={<WhaleTrackerPage />} />
+                      <Route
+                        path="/whale-tracker"
+                        element={<WhaleTrackerPage />}
+                      />
                       <Route path="/watchlist" element={<WatchlistPage />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
