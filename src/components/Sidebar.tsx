@@ -47,7 +47,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     // { icon: AlertCircle, label: "New Mints", active: false },
     // { icon: Zap, label: "Trending", path: "/trending" },
     { icon: TrendingUp, label: "Live Activity", path: "/" },
-    { icon: Star, label: "TBA Coins", path: "/tba" },
+    // { icon: Star, label: "TBA Coins", path: "/tba" },
     { icon: Users, label: "Creators", path: "/creators" },
     { icon: BarChart3, label: "Whale Tracker", path: "/whale-tracker" },
     // { icon: BarChart3, label: "Top Creators", active: false },
