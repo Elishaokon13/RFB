@@ -61,6 +61,7 @@
     "@xmtp/xmtp-js": "^13.0.4",
     "@zoralabs/coins-sdk": "^0.2.8",
     "abitype": "^1.0.8",
+    "alchemy-sdk": "^3.6.2",
     "buffer": "^6.0.3",
     "chart.js": "^4.5.0",
     "class-variance-authority": "^0.7.1",

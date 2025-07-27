@@ -15,6 +15,7 @@ import {
   useUserBalances,
 } from "@/hooks/useZoraProfile";
 import { TableSkeleton } from "@/components/TableSkeleton";
+import { useNotifications, NewCoinNotification } from "@/components/Header";
 
 // Filter options
 const topFilters = [
@@ -27,7 +28,7 @@ const topFilters = [
 const ITEMS_PER_PAGE = 20;
 
 // Extend Coin type to include image property for table display (from TokenDataTable)
-type CoinWithImage = Coin & {
+export type CoinWithImage = Coin & {
   mediaContent?: {
     mimeType?: string;
     originalUri?: string;
@@ -57,6 +58,20 @@ export function TokenTable() {
     return localStorage.getItem("activeTopFilter") || "Trending";
   });
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Track known tokens to detect new ones
+  const [knownTokenAddresses, setKnownTokenAddresses] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem('known-tokens');
+    return new Set(saved ? JSON.parse(saved) : []);
+  });
+  
+  // Last notification time tracking to prevent spam
+  const [lastNotificationTime, setLastNotificationTime] = useState<number>(() => {
+    return parseInt(localStorage.getItem('last-notification-time') || '0');
+  });
+  
+  // Access notification context
+  const { addNotification } = useNotifications();
 
   // Use dedicated hook for smart state handling
   const {
@@ -68,12 +83,87 @@ export function TokenTable() {
     refetchActive,
     hasData,
   } = useTokenFeed(activeTopFilter);
+  
+  // Initial loading - populate known tokens without notifications
+  useEffect(() => {
+    if (!isLoading && coins.length > 0 && knownTokenAddresses.size === 0) {
+      const initialKnownTokens = new Set(
+        coins.map(coin => coin.address)
+      );
+      setKnownTokenAddresses(initialKnownTokens);
+      localStorage.setItem('known-tokens', JSON.stringify(Array.from(initialKnownTokens)));
+    }
+  }, [coins, isLoading, knownTokenAddresses.size]);
+  
+  // Detect new coins and send notifications
+  useEffect(() => {
+    if (!coins.length || isLoading || knownTokenAddresses.size === 0) return;
+    
+    // Check for new coins
+    const now = Date.now();
+    const newTokens = coins.filter(coin => !knownTokenAddresses.has(coin.address));
+    
+    // Only send notifications if we have new tokens and aren't spamming (limit to once per minute)
+    if (newTokens.length > 0 && (now - lastNotificationTime > 60000)) {
+      // Update known tokens
+      const updatedKnownTokens = new Set(knownTokenAddresses);
+      
+      // Create notifications for new tokens (limit to 5 at once to avoid spam)
+      newTokens.slice(0, 5).forEach(token => {
+        // Only notify for tokens less than 12 hours old
+        const tokenCreatedAt = token.createdAt ? new Date(token.createdAt).getTime() : now;
+        const isRecent = (now - tokenCreatedAt) < 12 * 60 * 60 * 1000; // 12 hours
+        
+        if (isRecent) {
+          // Create the notification
+          const notification: NewCoinNotification = {
+            id: `new-coin-${token.address}-${Date.now()}`,
+            title: `New Token: ${token.symbol || 'Unknown'}`,
+            message: `${token.name || 'New token'} was just added to the network`,
+            timestamp: new Date(),
+            read: false,
+            coinAddress: token.address,
+            tokenSymbol: token.symbol,
+            // Use type assertion to access mediaContent
+            tokenImage: (token as CoinWithImage).mediaContent?.previewImage?.medium || undefined,
+          };
+          
+          addNotification(notification);
+        }
+        
+        updatedKnownTokens.add(token.address);
+      });
+      
+      // Update known tokens state and localStorage
+      setKnownTokenAddresses(updatedKnownTokens);
+      localStorage.setItem('known-tokens', JSON.stringify(Array.from(updatedKnownTokens)));
+      
+      // Update last notification time
+      setLastNotificationTime(now);
+      localStorage.setItem('last-notification-time', now.toString());
+    }
+  }, [coins, isLoading, knownTokenAddresses, addNotification, lastNotificationTime]);
 
   // Save active filter to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem("activeTopFilter", activeTopFilter);
     if (currentPage !== 1) setCurrentPage(1);
   }, [activeTopFilter, currentPage]);
+  
+  // Setup polling for new coins (every minute for "New Coins" filter)
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (activeTopFilter === "New Coins") {
+      interval = setInterval(() => {
+        refetchActive();
+      }, 60000); // Check every minute
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeTopFilter, refetchActive]);
 
   // Helper for fine-grained age (seconds/minutes/hours/days/weeks/years)
   function getFineAgeFromTimestamp(timestamp: string) {
@@ -214,6 +304,16 @@ export function TokenTable() {
                 ))}
               </div>
             </div>
+            
+            {/* Refresh button with animation */}
+            <button
+              onClick={handleRefresh}
+              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Refresh data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
           </div>
         </div>
       </div>
