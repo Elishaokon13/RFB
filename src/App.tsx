@@ -1,4 +1,4 @@
-import '@coinbase/onchainkit/styles.css';
+import "@coinbase/onchainkit/styles.css";
 import { OnchainKitProvider } from "@coinbase/onchainkit";
 import { base } from "viem/chains";
 import { Toaster } from "@/components/ui/toaster";
