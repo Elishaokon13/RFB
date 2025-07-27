@@ -16,6 +16,7 @@ import Creators from "./pages/Creators";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import WhaleTrackerPage from "./pages/WhaleTrackerPage";
+import { NotificationProvider } from "./components/Header";
 
 const queryClient = new QueryClient();
 
@@ -31,22 +32,24 @@ const App = () => (
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
         <WagmiProvider config={wagmiConfig}>
           <QueryClientProvider client={queryClient}>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  <Route element={<Layout />}>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/token/:address" element={<TokenDetails />} />
-                    <Route path="/creators" element={<Creators />} />
-                    <Route path="/whale-tracker" element={<WhaleTrackerPage />} />
-                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                    <Route path="*" element={<NotFound />} />
-                  </Route>
-                </Routes>
-              </BrowserRouter>
-            </TooltipProvider>
+            <NotificationProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
+                    <Route element={<Layout />}>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/token/:address" element={<TokenDetails />} />
+                      <Route path="/creators" element={<Creators />} />
+                      <Route path="/whale-tracker" element={<WhaleTrackerPage />} />
+                      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                      <Route path="*" element={<NotFound />} />
+                    </Route>
+                  </Routes>
+                </BrowserRouter>
+              </TooltipProvider>
+            </NotificationProvider>
           </QueryClientProvider>
         </WagmiProvider>
       </ThemeProvider>
