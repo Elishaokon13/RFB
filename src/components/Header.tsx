@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Skeleton } from "@/components/ui/skeleton";
-import { WalletConnect } from "@/components/WalletConnect";
+import { PrivyWalletConnect } from "@/components/PrivyWalletConnect";
 
 interface SearchResult {
   id: string;
@@ -641,9 +641,9 @@ export function Header({ onMenuClick }: HeaderProps) {
         </button>
 
         {/* Wallet Connect */}
-        {/* <div className="hidden sm:block">
-          <WalletConnect />
-        </div> */}
+        <div>
+          <PrivyWalletConnect />
+        </div>
       </div>
     </header>
   );
