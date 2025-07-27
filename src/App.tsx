@@ -17,7 +17,9 @@ import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import WhaleTrackerPage from "./pages/WhaleTrackerPage";
 import WatchlistPage from "./pages/WatchlistPage";
+import ComparisonPage from "./pages/ComparisonPage";
 import { NotificationProvider } from "./components/Header";
+import { ComparisonProvider } from "./context/ComparisonContext";
 
 const queryClient = new QueryClient();
 
@@ -34,23 +36,26 @@ const App = () => (
         <WagmiProvider config={wagmiConfig}>
           <QueryClientProvider client={queryClient}>
             <NotificationProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <Routes>
-                    <Route element={<Layout />}>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/token/:address" element={<TokenDetails />} />
-                      <Route path="/creators" element={<Creators />} />
-                      <Route path="/whale-tracker" element={<WhaleTrackerPage />} />
-                      <Route path="/watchlist" element={<WatchlistPage />} />
-                      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                      <Route path="*" element={<NotFound />} />
-                    </Route>
-                  </Routes>
-                </BrowserRouter>
-              </TooltipProvider>
+              <ComparisonProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <BrowserRouter>
+                    <Routes>
+                      <Route element={<Layout />}>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/token/:address" element={<TokenDetails />} />
+                        <Route path="/creators" element={<Creators />} />
+                        <Route path="/whale-tracker" element={<WhaleTrackerPage />} />
+                        <Route path="/watchlist" element={<WatchlistPage />} />
+                        <Route path="/comparison" element={<ComparisonPage />} />
+                        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                        <Route path="*" element={<NotFound />} />
+                      </Route>
+                    </Routes>
+                  </BrowserRouter>
+                </TooltipProvider>
+              </ComparisonProvider>
             </NotificationProvider>
           </QueryClientProvider>
         </WagmiProvider>

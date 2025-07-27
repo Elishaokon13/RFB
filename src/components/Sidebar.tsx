@@ -11,6 +11,7 @@ import {
   Users,
   X,
   Heart,
+  BarChart2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -50,10 +51,9 @@ export function Sidebar({ onClose }: SidebarProps) {
     // { icon: AlertCircle, label: "New Mints", active: false },
     // { icon: Zap, label: "Trending", path: "/trending" },
     { icon: TrendingUp, label: "Live Activity", path: "/" },
-
     { icon: Star, label: "Watchlist", path: "/watchlist", count: watchlist.length },
     // { icon: Star, label: "TBA Coins", path: "/tba" },
-
+    { icon: BarChart2, label: "Compare Tokens", path: "/comparison" },
     { icon: Users, label: "Creators", path: "/creators" },
     { icon: BarChart3, label: "Whale Tracker", path: "/whale-tracker" },
     // { icon: BarChart3, label: "Top Creators", active: false },

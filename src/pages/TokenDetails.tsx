@@ -4,6 +4,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useBalance } from 'wagmi';
 import { Swap, SwapAmountInput, SwapToggleButton, SwapButton, SwapMessage } from '@coinbase/onchainkit/swap';
 import { Token } from '@coinbase/onchainkit/token';
+import { useTheme as useNextTheme } from "next-themes";
 import {
   ArrowLeft,
   TrendingUp,
@@ -36,6 +37,10 @@ import { Badge } from "@/components/ui/badge";
 // GeckoTerminalWidget Component
 function GeckoTerminalWidget({ tokenAddress }: { tokenAddress: string }) {
   const [widgetLoaded, setWidgetLoaded] = useState(false);
+  const { theme } = useNextTheme();
+
+  // Determine GeckoTerminal theme based on app's theme
+  const geckoTheme = theme === 'dark' ? 'dark' : 'light';
 
   useEffect(() => {
     const timer = setTimeout(() => setWidgetLoaded(true), 1000);
@@ -44,7 +49,7 @@ function GeckoTerminalWidget({ tokenAddress }: { tokenAddress: string }) {
 
   return (
     <div className="w-full h-full">
-      <div className="w-full h-[800px] rounded-lg overflow-hidden relative bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+      <div className="w-full h-[800px] rounded-lg overflow-hidden relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
         {!widgetLoaded && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <div className="text-center space-y-3">
@@ -56,7 +61,7 @@ function GeckoTerminalWidget({ tokenAddress }: { tokenAddress: string }) {
           </div>
         )}
         <iframe
-          src={`https://www.geckoterminal.com/base/tokens/${tokenAddress}?embed=1&info=0&swaps=1`}
+          src={`https://www.geckoterminal.com/base/tokens/${tokenAddress}?embed=1&info=0&swaps=1&theme=${geckoTheme}`}
           frameBorder="0"
           allow="clipboard-write"
           className="w-full h-full"
@@ -134,7 +139,7 @@ function TokenHeader({ token }: { token: TokenDetails | null }) {
 
 // TokenStats Component
 function TokenStats({ token }: { token: TokenDetails | null }) {
-  const { data: priceData } = useTokenPrice(token?.address || null);
+  const priceData = useTokenPrice(token?.address || null);
 
   const formatPrice = (price: number): string => {
     if (price < 0.01) {
