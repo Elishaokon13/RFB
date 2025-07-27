@@ -1,6 +1,24 @@
 import { http, cookieStorage, createConfig, createStorage } from "wagmi";
 import { base } from "wagmi/chains";
 import { coinbaseWallet, metaMask, walletConnect } from "wagmi/connectors";
+import { PrivyClientConfig } from '@privy-io/react-auth';
+
+// Privy configuration
+export const privyConfig: PrivyClientConfig = {
+  loginMethods: ['wallet', 'email', 'sms'],
+  appearance: {
+    theme: 'light',
+    accentColor: '#676FFF',
+    logo: 'https://zoracle.xyz/zoracle.svg',
+  },
+  embeddedWallets: {
+    createOnLogin: 'users-without-wallets',
+    requireUserPasswordOnCreate: true,
+  },
+  defaultChain: base,
+  supportedChains: [base],
+};
+
 
 export const wagmiConfig = createConfig({
   chains: [base],
@@ -10,8 +28,8 @@ export const wagmiConfig = createConfig({
       projectId: "",
     }),
     coinbaseWallet({
-      appName: "Base Screener",
-      preference: "eoaOnly",
+      appName: "Zoracle",
+      preference: "all",
     }),
   ],
   storage: createStorage({

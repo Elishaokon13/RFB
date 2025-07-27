@@ -1,64 +1,34 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { usePrivy } from '@privy-io/react-auth';
+import { useBalance } from 'wagmi';
+import { Swap, SwapAmountInput, SwapToggleButton, SwapButton, SwapMessage } from '@coinbase/onchainkit/swap';
+import { Token } from '@coinbase/onchainkit/token';
 import {
   ArrowLeft,
-  RefreshCw,
   TrendingUp,
-  TrendingDown,
   DollarSign,
-  BarChart3,
+  Activity,
   ExternalLink,
-  Copy,
+  ArrowUpDown,
+  Wallet,
+  MessageCircle,
   Users,
-  Calendar,
-  Globe,
-  Shield,
-  Circle,
-  HelpCircle,
+  BarChart3,
+  Lock,
+  RefreshCw,
 } from "lucide-react";
-import PriceChart from "@/components/PriceCharts";
-import { cn, truncateAddress } from "@/lib/utils";
-import {
-  useTrendingCoins,
-  formatCoinData,
-  useCoinDetails,
-} from "@/hooks/useTopVolume24h";
-import {
-  useDexScreenerTokens,
-  DexScreenerPair,
-  calculateFallbackPrice,
-  useDefiLlamaPrice,
-  useDefiLlamaChart,
-  useDefiLlamaHistoricalPrices,
-} from "@/hooks/useDexScreener";
-import { tradeCoin, TradeParameters } from "@zoralabs/coins-sdk";
-import { parseEther, parseUnits, erc20Abi } from "viem";
-import { useWalletClient } from "wagmi";
-import { wagmiConfig } from "@/wagmi";
-import { base } from "viem/chains";
-import { getCoin } from "@zoralabs/coins-sdk";
-import type { WalletClient, PublicClient } from "viem";
-import type { Account } from "viem/accounts";
-import { Identity } from "@coinbase/onchainkit/identity";
-import { useAccount, useBalance } from "wagmi";
-import {
-  SignInWithBaseButton,
-  BasePayButton,
-} from "@base-org/account-ui/react";
-import { createBaseAccountSDK, pay, getPaymentStatus } from "@base-org/account";
+import { cn } from "@/lib/utils";
+import { useTokenDetails, calculateCreatorEarnings, formatTokenValue, type TokenDetails } from "@/hooks/useTokenDetails";
 import { useNumberFormatter } from "@/lib/formatNumber";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { baseClient } from "@/utils/basenames";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useZoraProfile, getProfileImageSmall } from "@/hooks/useZoraProfile";
 import { formatLastTradedTime } from "@/hooks/getCoinsLastTraded";
@@ -694,247 +664,231 @@ export default function TokenDetails() {
   const [slippage, setSlippage] = useState(0.5); // Default slippage
   const [inputMode, setInputMode] = useState<"ETH" | "USD">("ETH");
   const [sellInputMode, setSellInputMode] = useState<"TOKEN" | "USD">("TOKEN");
+import { Badge } from "@/components/ui/badge";
 
-  // ERC-20 token balance for Sell
-  const { data: tokenBalance, isLoading: isTokenBalanceLoading } = useBalance({
-    address: walletAddress,
-    token:
-      tradeType === "sell"
-        ? (token?.address as `0x${string}` | undefined)
-        : undefined,
-    chainId: 8453,
-  });
+// GeckoTerminalWidget Component
+function GeckoTerminalWidget({ tokenAddress }: { tokenAddress: string }) {
+  const [widgetLoaded, setWidgetLoaded] = useState(false);
 
-  const { priceData: ethPriceData, loading: ethPriceLoading } =
-    useDefiLlamaPrice("base", "0x4200000000000000000000000000000000000006");
+  useEffect(() => {
+    const timer = setTimeout(() => setWidgetLoaded(true), 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
-  // Helper to get ETH value from input
-  const getEthAmount = () => {
-    if (inputMode === "ETH") {
-      return tradeAmount;
-    } else {
-      // USD mode: convert USD to ETH using price
-      const price = ethPriceData?.price || 0;
-      if (!price) return "";
-      const usd = Number(tradeAmount);
-      if (isNaN(usd) || usd <= 0) return "";
-      return (usd / price).toString();
-    }
-  };
-
-  // Helper to get USD value from input
-  const getUsdAmount = () => {
-    if (inputMode === "USD") {
-      return tradeAmount;
-    } else {
-      // ETH mode: convert ETH to USD using price
-      const price = ethPriceData?.price || 0;
-      const eth = Number(tradeAmount);
-      if (!price || isNaN(eth) || eth <= 0) return "";
-      return (eth * price).toString();
-    }
-  };
-
-  // Helper to get token amount from input for Sell
-  const getSellTokenAmount = () => {
-    if (sellInputMode === "TOKEN") {
-      return tradeAmount;
-    } else {
-      // USD mode: convert USD to token using price
-      let pricePerToken = 0;
-      if (typeof price === "number" && !isNaN(price)) {
-        pricePerToken = price;
-      } else if (dexData?.priceUsd) {
-        pricePerToken = parseFloat(dexData.priceUsd);
-      }
-      if (!pricePerToken) return "";
-      const usd = Number(tradeAmount);
-      if (isNaN(usd) || usd <= 0) return "";
-      return (usd / pricePerToken).toString();
-    }
-  };
-
-  // Helper to get USD value from input for Sell
-  const getSellUsdAmount = () => {
-    if (sellInputMode === "USD") {
-      return tradeAmount;
-    } else {
-      let pricePerToken = 0;
-      if (typeof price === "number" && !isNaN(price)) {
-        pricePerToken = price;
-      } else if (dexData?.priceUsd) {
-        pricePerToken = parseFloat(dexData.priceUsd);
-      }
-      const tokenAmt = Number(tradeAmount);
-      if (!pricePerToken || isNaN(tokenAmt) || tokenAmt <= 0) return "";
-      return (tokenAmt * pricePerToken).toString();
-    }
-  };
-
-  const handleBuy = async () => {
-    setTxStatus("pending");
-    setTxError(null);
-    setTxReceipt(null);
-    try {
-      const ethAmount = getEthAmount();
-      if (
-        !token?.address ||
-        !walletClient ||
-        !walletClient.account ||
-        !ethAmount
-      ) {
-        setTxStatus("error");
-        setTxError("Missing required data.");
-        return;
-      }
-      const tradeParameters = {
-        sell: { type: "eth" as const },
-        buy: {
-          type: "erc20" as const,
-          address: token.address as `0x${string}`,
-        },
-        amountIn: parseEther(ethAmount),
-        slippage: slippage / 100, // slippage is percent (e.g. 0.5 for 0.5%)
-        sender: walletClient.account.address,
-      };
-      const receipt = await tradeCoin({
-        tradeParameters,
-        walletClient,
-        account: walletClient.account,
-        publicClient: baseClient,
-      });
-      setTxStatus("success");
-      setTxReceipt(receipt);
-    } catch (err: unknown) {
-      setTxStatus("error");
-      setTxError(err instanceof Error ? err.message : "Transaction failed");
-    }
-  };
-
-  // Add handleSell function after handleBuy
-  const handleSell = async () => {
-    setTxStatus("pending");
-    setTxError(null);
-    setTxReceipt(null);
-    try {
-      const tokenAmount = getSellTokenAmount();
-      const decimals = 18; // Default to 18 decimals
-      if (
-        !token?.address ||
-        !walletClient ||
-        !walletClient.account ||
-        !tokenAmount
-      ) {
-        setTxStatus("error");
-        setTxError("Missing required data.");
-        return;
-      }
-      // 1. Approve the router to spend the amount being sold
-      const amountToApprove = parseUnits(tokenAmount, decimals);
-      await walletClient.writeContract({
-        address: token.address as `0x${string}`,
-        abi: erc20Abi,
-        functionName: "approve",
-        args: [TRADE_ROUTER_ADDRESS, amountToApprove],
-        account: walletClient.account,
-        chain: base,
-      });
-      // 2. Call tradeCoin
-      const tradeParameters = {
-        sell: {
-          type: "erc20" as const,
-          address: token.address as `0x${string}`,
-        },
-        buy: { type: "eth" as const },
-        amountIn: amountToApprove,
-        slippage: slippage / 100,
-        sender: walletClient.account.address,
-      };
-      const receipt = await tradeCoin({
-        tradeParameters,
-        walletClient,
-        account: walletClient.account,
-        publicClient: baseClient,
-      });
-      setTxStatus("success");
-      setTxReceipt(receipt);
-    } catch (err: unknown) {
-      setTxStatus("error");
-      setTxError(err instanceof Error ? err.message : "Transaction failed");
-    }
-  };
-
-  // Add max button logic
-  const handleMaxBuy = () => {
-    if (inputMode === "ETH") {
-      if (ethBalance?.formatted) setTradeAmount(ethBalance.formatted);
-    } else {
-      // USD mode
-      if (ethBalance?.formatted && ethPriceData?.price) {
-        setTradeAmount(
-          (Number(ethBalance.formatted) * ethPriceData.price).toString()
-        );
-      }
-    }
-  };
-  const handleMaxSell = () => {
-    if (sellInputMode === "TOKEN") {
-      if (tokenBalance?.formatted) setTradeAmount(tokenBalance.formatted);
-    } else {
-      // USD mode
-      if (tokenBalance?.formatted) {
-        let pricePerToken = 0;
-        if (typeof price === "number" && !isNaN(price)) {
-          pricePerToken = price;
-        } else if (dexData?.priceUsd) {
-          pricePerToken = parseFloat(dexData.priceUsd);
-        }
-        setTradeAmount(
-          (Number(tokenBalance.formatted) * pricePerToken).toString()
-        );
-      }
-    }
-  };
-
-  // Early return if no address (before hooks that depend on it)
-  if (!address) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Card className="w-full max-w-md">
-            <CardContent className="pt-6 text-center">
-              <div className="mb-4">
-                <Shield className="w-12 h-12 mx-auto text-muted-foreground" />
+  return (
+    <div className="w-full h-full">
+      <div className="w-full h-[800px] rounded-lg overflow-hidden relative bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+        {!widgetLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <div className="text-center space-y-3">
+              <div className="w-12 h-12 mx-auto bg-blue-500 rounded-full flex items-center justify-center animate-pulse">
+                <Activity className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-xl font-semibold text-foreground mb-2">
-                Invalid Token Address
-              </h2>
-              <p className="text-muted-foreground mb-6">
-                No token address provided in the URL.
-              </p>
-              <Button onClick={handleBack} className="w-full">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Go Back
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="space-y-6">
-          {/* Header Skeleton */}
-          <div className="flex items-center gap-4">
-            <Skeleton className="w-8 h-8" />
-            <div className="space-y-2">
-              <Skeleton className="w-32 h-6" />
-              <Skeleton className="w-24 h-4" />
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Loading Trading Interface</p>
             </div>
           </div>
+        )}
+        <iframe
+          src={`https://www.geckoterminal.com/base/tokens/${tokenAddress}?embed=1&info=0&swaps=1`}
+          frameBorder="0"
+          allow="clipboard-write"
+          className="w-full h-full"
+          onLoad={() => setWidgetLoaded(true)}
+          title="GeckoTerminal Trading Widget"
+        />
+      </div>
+    </div>
+  );
+}
+
+// TokenHeader Component
+function TokenHeader({ token }: { token: TokenDetails | null }) {
+  const [showFullDescription, setShowFullDescription] = useState(false);
+  const creatorHandle = token?.creatorAddress ? `${token.creatorAddress.slice(0, 6)}...${token.creatorAddress.slice(-4)}` : 'Unknown';
+  const timeAgo = token?.createdAt ? getTimeAgo(token.createdAt) : '4d';
+  
+  const description = token?.description || "Loading token description...";
+  const MAX_DESCRIPTION_LENGTH = 120; // Characters to show before truncating
+  const shouldTruncate = description.length > MAX_DESCRIPTION_LENGTH;
+  const displayDescription = shouldTruncate && !showFullDescription 
+    ? `${description.slice(0, MAX_DESCRIPTION_LENGTH)}...` 
+    : description;
+
+  return (
+    <div className="p-6 border-b border-gray-100 dark:border-gray-800">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+          {token?.mediaContent?.previewImage?.small ? (
+            <img 
+              src={token.mediaContent.previewImage.small} 
+              alt={token.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-lg">🧠</span>
+          )}
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm text-gray-500">{creatorHandle}</span>
+            <span className="text-sm text-gray-400">{timeAgo}</span>
+            {token?.creatorAddress && (
+              <a 
+                href={`https://basescan.org/address/${token.creatorAddress}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            {token?.name || "Loading..."}
+          </h1>
+          <div className="text-gray-600 dark:text-gray-400 text-sm">
+            <p className="leading-relaxed">
+              {displayDescription}
+            </p>
+            {shouldTruncate && (
+              <button
+                onClick={() => setShowFullDescription(!showFullDescription)}
+                className="text-primary hover:text-primary/80 text-xs font-medium mt-1 transition-colors"
+              >
+                {showFullDescription ? 'Show less' : 'Show more'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// TokenStats Component
+function TokenStats({ token }: { token: TokenDetails | null }) {
+  const creatorEarnings = calculateCreatorEarnings(token);
+
+  return (
+    <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+      <div className="grid grid-cols-3 gap-6">
+        <div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Market Cap</p>
+          <div className="flex items-center gap-1">
+            <TrendingUp className="w-4 h-4 text-green-500" />
+            <span className="font-semibold text-green-500">
+              ${token ? formatTokenValue(token.marketCap) : '0'}
+            </span>
+          </div>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">24H Volume</p>
+          <div className="flex items-center gap-1">
+            <Activity className="w-4 h-4 text-gray-600" />
+            <span className="font-semibold text-gray-900 dark:text-white">
+              ${token ? formatTokenValue(token.volume24h) : '0'}
+            </span>
+          </div>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Creator Earnings</p>
+          <div className="flex items-center gap-1">
+            <Wallet className="w-4 h-4 text-gray-600" />
+            <span className="font-semibold text-gray-900 dark:text-white">
+              ${formatTokenValue(creatorEarnings)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Sleek Trading Interface with OnchainKit Swap
+function TradingInterface({ token }: { token: TokenDetails | null }) {
+  // Get Privy user info
+  const { user, authenticated } = usePrivy();
+  const userAddress = user?.wallet?.address;
+
+  // Get ETH balance
+  const { data: ethBalance, isLoading: isBalanceLoading, refetch: refetchBalance } = useBalance({
+    address: userAddress as `0x${string}`,
+    query: {
+      enabled: !!userAddress && authenticated,
+      refetchInterval: 10000, // Refresh every 10 seconds
+    },
+  });
+
+  // Define ETH token for Base chain (always the source)
+  const ETH_TOKEN: Token = {
+    name: 'Ethereum',
+    address: '', // Empty string for native ETH on Base
+    symbol: 'ETH',
+    decimals: 18,
+    image: 'https://wallet-api-production.s3.amazonaws.com/uploads/tokens/eth_288.png',
+    chainId: 8453,
+  };
+
+  // Define current token (always the destination)
+  const CURRENT_TOKEN: Token = {
+    name: token?.name || 'Token',
+    address: (token?.address || '0x') as `0x${string}`,
+    symbol: token?.symbol || 'TOKEN',
+    decimals: 18,
+    image: token?.mediaContent?.previewImage?.small || '',
+    chainId: 8453,
+  };
+
+  return (
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-6">
+        
+        
+        
+      </div>
+
+      {/* OnchainKit Swap Component */}
+      <div className="space-y-4">
+        <Swap>
+          <SwapAmountInput
+            label="You pay"
+            type="from"
+            token={ETH_TOKEN}
+          />
+          <SwapAmountInput
+            label="You receive"
+            type="to"
+            token={CURRENT_TOKEN}
+          />
+          <SwapButton />
+          <SwapMessage />
+        </Swap>
+      </div>
+    </div>
+  );
+}
+
+// CommentsSection Component
+function CommentsSection({ token }: { token: TokenDetails | null }) {
+  const comments = token?.zoraComments?.edges || [];
+  const commentsCount = token?.zoraComments?.count || 0;
+
+  return (
+    <div className="flex-1">
+      <Tabs defaultValue="comments" className="h-full flex flex-col">
+        <div className="px-6 py-3 border-b border-gray-100 dark:border-gray-800">
+          <TabsList className="grid w-full grid-cols-4 bg-gray-100 dark:bg-gray-800">
+            <TabsTrigger value="comments" className="text-xs">
+              Comments <Badge className="ml-1 text-xs">{commentsCount}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="holders" className="text-xs">
+              Holders <Badge className="ml-1 text-xs">{token?.uniqueHolders || '0'}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="activity" className="text-xs">Activity</TabsTrigger>
+            <TabsTrigger value="details" className="text-xs">Details</TabsTrigger>
+          </TabsList>
+        </div>
 
           {/* Stats Cards Skeleton */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1856,8 +1810,218 @@ export default function TokenDetails() {
             </Card>
           </div>
         ) : null}
-      </div>
+        <TabsContent value="comments" className="flex-1 p-0 m-0">
+          <div className="px-6 py-3 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                placeholder="Add a comment..."
+                className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span>Become a holder to unlock</span>
+                <Lock className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto">
+            {comments.length > 0 ? (
+              comments.map((comment, index) => (
+                <div key={comment.node.txHash || index} className="px-6 py-4 border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-sm overflow-hidden">
+                      {comment.node.userProfile?.avatar?.previewImage?.small ? (
+                        <img 
+                          src={comment.node.userProfile.avatar.previewImage.small} 
+                          alt={comment.node.userProfile.handle}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span>👤</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-sm text-gray-900 dark:text-white">
+                          {comment.node.userProfile?.handle || `${comment.node.userAddress.slice(0, 6)}...${comment.node.userAddress.slice(-4)}`}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {getTimeAgo(new Date(comment.node.timestamp * 1000).toISOString())}
+                        </span>
+                        <div className="ml-auto flex items-center gap-1">
+                          <button className="text-gray-400 hover:text-gray-600">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M10 12l-4-4h8l-4 4z"/>
+                            </svg>
+                          </button>
+                          <span className="text-xs text-gray-500">0</span>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                        {comment.node.comment}
+                      </p>
+                      <button className="text-xs text-gray-500 hover:text-gray-700 mt-2">
+                        Reply
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center text-gray-500">
+                  <MessageCircle className="w-8 h-8 mx-auto mb-2" />
+                  <p>No comments yet</p>
+                  <p className="text-xs">Be the first to comment!</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="holders" className="flex-1 p-6">
+          <div className="text-center text-gray-500 py-8">
+            <Users className="w-8 h-8 mx-auto mb-2" />
+            <p>Holders: {token?.uniqueHolders || '0'}</p>
+            <p className="text-sm">Total Supply: {token ? formatTokenValue(token.totalSupply) : '0'}</p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="activity" className="flex-1 p-6">
+          <div className="text-center text-gray-500 py-8">
+            <BarChart3 className="w-8 h-8 mx-auto mb-2" />
+            <p>Total Volume: ${token ? formatTokenValue(token.totalVolume) : '0'}</p>
+            <p className="text-sm">24h Volume: ${token ? formatTokenValue(token.volume24h) : '0'}</p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="details" className="flex-1 p-6">
+          <div className="space-y-4 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Contract Address:</span>
+              <span className="font-mono">{token?.address ? `${token.address.slice(0, 6)}...${token.address.slice(-4)}` : 'N/A'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Symbol:</span>
+              <span>{token?.symbol || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Creator:</span>
+              <span className="font-mono">{token?.creatorAddress ? `${token.creatorAddress.slice(0, 6)}...${token.creatorAddress.slice(-4)}` : 'N/A'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Created:</span>
+              <span>{token?.createdAt ? new Date(token.createdAt).toLocaleDateString() : 'N/A'}</span>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
 
+// Helper function to get time ago
+function getTimeAgo(dateString: string): string {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+  const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+
+  if (diffInDays > 0) {
+    return `${diffInDays}d`;
+  } else if (diffInHours > 0) {
+    return `${diffInHours}h`;
+  } else if (diffInMinutes > 0) {
+    return `${diffInMinutes}m`;
+  } else {
+    return 'now';
+  }
+}
+
+export default function TokenDetails() {
+  const { address: rawAddress } = useParams<{ address: string }>();
+  const navigate = useNavigate();
+
+  const address = useMemo(() => rawAddress || null, [rawAddress]);
+  const { data: token, isLoading: loading, error } = useTokenDetails(address);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900">
+        <div className="container mx-auto px-4 py-6 max-w-[1800px]">
+          <div className="flex items-center gap-4 mb-6">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <Skeleton className="h-8 w-48" />
+          </div>
+          <div className="flex gap-6">
+            <div className="flex-1">
+              <Skeleton className="h-[800px] w-full rounded-lg" />
+            </div>
+            <div className="w-80 xl:w-96 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <Skeleton className="h-[800px] w-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !token) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900">
+        <div className="container mx-auto px-4 py-6 max-w-[1800px]">
+          <div className="flex items-center gap-4 mb-6">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+          </div>
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold mb-2">Token Not Found</h2>
+              <p className="text-gray-500">
+                The token you're looking for doesn't exist or couldn't be loaded.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-gray-900">
+      <div className="container mx-auto px-4 py-6 max-w-[1800px]">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+        </div>
+
+        {/* Main Layout */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left Section - Main Content (GeckoTerminal Widget) */}
+          <div className="flex-1">
+            <GeckoTerminalWidget tokenAddress={token.address} />
+          </div>
+
+          {/* Right Section - Sidebar (Fixed Width) */}
+          <div className="w-full lg:w-80 xl:w-96 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg flex flex-col h-[800px]">
+            <TokenHeader token={token} />
+            <TokenStats token={token} />
+            <TradingInterface token={token} />
+            
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
