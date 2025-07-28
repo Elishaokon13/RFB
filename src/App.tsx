@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound.tsx";
 import Layout from "./components/Layout";
 import WhaleTrackerPage from "./pages/WhaleTrackerPage.tsx";
 import WatchlistPage from "./pages/WatchlistPage.tsx";
+import PortfolioPage from "./pages/PortfolioPage.tsx";
 import { NotificationProvider } from "./components/Header";
 
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ const App = () => (
                         element={<WhaleTrackerPage />}
                       />
                       <Route path="/watchlist" element={<WatchlistPage />} />
+                      <Route path="/portfolio" element={<PortfolioPage />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
                     </Route>
