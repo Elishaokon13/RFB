@@ -379,26 +379,15 @@ const TableRow = memo(
           <td className="px-2 sm:px-4 py-3">
             <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
           </td>
-          <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
-            {(() => {
-              console.log('Age column debug:', {
-                activeFilter,
-                coinCreatedAt: coin.createdAt,
-                coinFineAge: coin.fineAge,
-                willUseRealTime: activeFilter === "New Coins"
-              });
-              
-              if (activeFilter === "New Coins") {
-                return <RealTimeAge createdAt={coin.createdAt} />;
-              } else {
-                return coin.fineAge
-                  ? coin.fineAge
-                  : coin.createdAt
-                    ? getAgeFromTimestamp(coin.createdAt)
-                  : "N/A";
-              }
-            })()}
-          </td>
+          {activeFilter !== "New Coins" && (
+            <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
+              {coin.fineAge
+                ? coin.fineAge
+                : coin.createdAt
+                  ? getAgeFromTimestamp(coin.createdAt)
+                  : "N/A"}
+            </td>
+          )}
           <td className="px-2 sm:px-4 py-3">
             <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
           </td>
@@ -640,7 +629,7 @@ export function TokenDataTable({
   ]);
 
   if (loading && coins.length === 0) {
-    return <TableSkeleton rows={10} columns={7} />;
+    return <TableSkeleton rows={10} columns={activeFilter === "New Coins" ? 6 : 7} />;
   }
 
   if (coins.length === 0) {
@@ -656,7 +645,7 @@ export function TokenDataTable({
 
   return (
     <div className="w-full overflow-x-auto bg-card rounded-lg border border-border">
-      <table className="min-w-[800px] w-full">
+      <table className={`w-full ${activeFilter === "New Coins" ? "min-w-[700px]" : "min-w-[800px]"}`}>
         <thead className="bg-muted border-b border-border">
           <tr className="text-left">
             <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -665,9 +654,11 @@ export function TokenDataTable({
             <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               PRICE
             </th>
-            <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              AGE
-            </th>
+            {activeFilter !== "New Coins" && (
+              <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                AGE
+              </th>
+            )}
             <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               VOLUME
             </th>
