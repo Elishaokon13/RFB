@@ -227,6 +227,7 @@ function TradingInterface({ token }: { token: TokenDetails | null }) {
 
   const widgetConfig: WidgetConfig = {
     integrator: "Zoracle",
+    fee: 0.05,
     fromChain: 8453,
     toChain: 8453,
     toToken: token?.address,
