@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -8,16 +8,18 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWalletTokens } from "@/hooks/useWalletTokens";
 import { usePrivy } from "@privy-io/react-auth";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import {
-  TrendingUp,
-  TrendingDown,
-  Wallet,
-  BarChart3,
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Wallet, 
+  BarChart3, 
   DollarSign,
   ArrowUpRight,
   ArrowDownRight,
@@ -25,19 +27,34 @@ import {
   EyeOff,
   AlertCircle,
   RefreshCw,
+  Search,
 } from "lucide-react";
 
 const PortfolioPage = () => {
   const [showBalances, setShowBalances] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
   const { user, authenticated } = usePrivy();
   const { tokens, loading, error, refetch, isConnected, walletAddress } =
     useWalletTokens();
 
+  // Filter tokens based on search query
+  const filteredTokens = useMemo(() => {
+    if (!searchQuery.trim()) return tokens;
+    
+    const query = searchQuery.toLowerCase();
+    return tokens.filter(token => 
+      token.name.toLowerCase().includes(query) ||
+      token.symbol.toLowerCase().includes(query) ||
+      token.contractAddress.toLowerCase().includes(query)
+    );
+  }, [tokens, searchQuery]);
+
   // Calculate portfolio summary from real data
   const portfolioSummary = {
-    totalTokens: tokens.length,
+    totalTokens: filteredTokens.length,
     totalValue: 0, // TODO: Add price fetching to calculate real value
-    bestPerformer: tokens.length > 0 ? tokens[0] : null,
+    bestPerformer: filteredTokens.length > 0 ? filteredTokens[0] : null,
   };
 
   const formatNumber = (num: number) => {
@@ -67,7 +84,7 @@ const PortfolioPage = () => {
             <h1 className="text-2xl font-bold">Portfolio</h1>
             <p className="text-muted-foreground text-sm">
               {isConnected ? (
-                <></>
+                "Track your investments and performance"
               ) : (
                 "Connect your wallet to view your portfolio"
               )}
@@ -152,6 +169,27 @@ const PortfolioPage = () => {
           </Card>
         ) : (
           <div className="space-y-3">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Search tokens by name, symbol, or address..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Search Results Info */}
+            {searchQuery && (
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredTokens.length} of {tokens.length} tokens
+                {filteredTokens.length === 0 && (
+                  <span className="text-red-500 ml-2">No tokens match your search</span>
+                )}
+              </div>
+            )}
+
             {/* Portfolio Overview */}
             <Card>
               <CardHeader className="pb-3">
@@ -202,13 +240,14 @@ const PortfolioPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {tokens.map((token, index) => (
+                  {filteredTokens.map((token, index) => (
                     <tr
                       key={token.contractAddress}
                       className={cn(
-                        "border-b border-border hover:bg-muted/50 transition-colors",
+                        "border-b border-border hover:bg-muted/50 transition-colors cursor-pointer",
                         index % 2 === 0 ? "bg-card" : "bg-background"
                       )}
+                      onClick={() => navigate(`/portfolio/token/${token.contractAddress}`)}
                     >
                       <td className="py-2 px-3">
                         <div className="flex items-center gap-2">

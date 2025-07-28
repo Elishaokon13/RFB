@@ -18,6 +18,7 @@ import Layout from "./components/Layout";
 import WhaleTrackerPage from "./pages/WhaleTrackerPage.tsx";
 import WatchlistPage from "./pages/WatchlistPage.tsx";
 import PortfolioPage from "./pages/PortfolioPage.tsx";
+import PortfolioTokenDetails from "./pages/PortfolioTokenDetails.tsx";
 import { NotificationProvider } from "./components/Header";
 
 const queryClient = new QueryClient();
@@ -58,6 +59,7 @@ const App = () => (
                       />
                       <Route path="/watchlist" element={<WatchlistPage />} />
                       <Route path="/portfolio" element={<PortfolioPage />} />
+                      <Route path="/portfolio/token/:address/*" element={<PortfolioTokenDetails />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
                     </Route>
