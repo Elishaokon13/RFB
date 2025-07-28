@@ -466,6 +466,7 @@ function getTimeAgo(dateString: string): string {
 export default function TokenDetails() {
   const { address: rawAddress, "*": extraPath } = useParams<{ address: string, "*": string }>();
   const navigate = useNavigate();
+  const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
 
   // Handle extra path parameters like "from-token"
   useEffect(() => {
