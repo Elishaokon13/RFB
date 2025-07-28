@@ -2,15 +2,9 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { usePrivy } from "@privy-io/react-auth";
 import { useBalance } from "wagmi";
-import { LiFiWidget, WidgetConfig, Appearance, ChainType } from "@lifi/widget";
-import {
-  Swap,
-  SwapAmountInput,
-  SwapToggleButton,
-  SwapButton,
-  SwapMessage,
-} from "@coinbase/onchainkit/swap";
+import { LiFiWidget, WidgetConfig, type WidgetVariant } from "@lifi/widget";
 import { Token } from "@coinbase/onchainkit/token";
+import { useTheme as useNextTheme } from "next-themes";
 import {
   ArrowLeft,
   TrendingUp,
@@ -54,6 +48,10 @@ import { DialogHeader } from "@/components/ui/dialog";
 // GeckoTerminalWidget Component
 function GeckoTerminalWidget({ tokenAddress }: { tokenAddress: string }) {
   const [widgetLoaded, setWidgetLoaded] = useState(false);
+  const { theme } = useNextTheme();
+
+  // Determine GeckoTerminal theme based on app's theme
+  const geckoTheme = theme === 'dark' ? 'dark' : 'light';
 
   useEffect(() => {
     const timer = setTimeout(() => setWidgetLoaded(true), 1000);
@@ -62,7 +60,7 @@ function GeckoTerminalWidget({ tokenAddress }: { tokenAddress: string }) {
 
   return (
     <div className="w-full h-full">
-      <div className="w-full h-[800px] rounded-lg overflow-hidden relative bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+      <div className="w-full h-[800px] rounded-lg overflow-hidden relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
         {!widgetLoaded && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <div className="text-center space-y-3">
@@ -76,7 +74,7 @@ function GeckoTerminalWidget({ tokenAddress }: { tokenAddress: string }) {
           </div>
         )}
         <iframe
-          src={`https://www.geckoterminal.com/base/tokens/${tokenAddress}?embed=1&info=0&swaps=1`}
+          src={`https://www.geckoterminal.com/base/tokens/${tokenAddress}?embed=1&info=0&swaps=1&theme=${geckoTheme}`}
           frameBorder="0"
           allow="clipboard-write"
           className="w-full h-full"
@@ -155,7 +153,7 @@ function TokenHeader({ token }: { token: TokenDetails | null }) {
 
 // TokenStats Component
 function TokenStats({ token }: { token: TokenDetails | null }) {
-  const { data: priceData } = useTokenPrice(token?.address || null);
+  const priceData = useTokenPrice(token?.address || null);
 
   const formatPrice = (price: number): string => {
     if (price < 0.01) {
@@ -220,18 +218,22 @@ function TokenStats({ token }: { token: TokenDetails | null }) {
   );
 }
 
+// TradingInterface Component with LI.FI Widget
 function TradingInterface({ token }: { token: TokenDetails | null }) {
+  // Get Privy user info
   const { user, authenticated } = usePrivy();
   const userAddress = user?.wallet?.address;
-  const { theme } = useTheme();
+  const { theme } = useNextTheme();
 
+  // Configure LI.FI Widget based on v3.24.3
   const widgetConfig: WidgetConfig = {
     integrator: "Zoracle",
+    fromChain: 8453, // Base chain
+    toChain: 8453,  // Default to same chain
+    fromToken: "0x0000000000000000000000000000000000000000", // ETH
+    toToken: token?.address || "", // Current token
+    appearance: theme === 'dark' ? 'dark' : 'light',
     fee: 0.05,
-    fromChain: 8453,
-    toChain: 8453,
-    toToken: token?.address,
-    appearance: theme === "dark" ? "dark" : "light",
     variant: "compact",
     buildUrl: false, // prevents widget links updating your URL/history
     theme: { container: { display: "flex", height: "100%", maxHeight: 800 } },
@@ -243,13 +245,23 @@ function TradingInterface({ token }: { token: TokenDetails | null }) {
       },
     },
   };
-
+  
   return (
-    <div className="h-full flex flex-col">
-      {authenticated && token?.address ? (
-        <LiFiWidget config={widgetConfig} integrator="Zoracle" />
+    <div className="p-6">
+      {authenticated ? (
+        <LiFiWidget
+          config={widgetConfig}
+          integrator="Zoracle"
+        />
       ) : (
-        <p className="p-4">Please connect your wallet to swap.</p>
+        <div className="text-center p-6 bg-muted/30 rounded-lg">
+          <Wallet className="w-12 h-12 mx-auto mb-3 text-primary/50" />
+          <p className="text-lg font-medium mb-2">Connect your wallet</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Connect your wallet to swap tokens using LI.FI
+          </p>
+          <Button variant="default">Connect Wallet</Button>
+        </div>
       )}
     </div>
   );
@@ -453,9 +465,19 @@ function getTimeAgo(dateString: string): string {
 }
 
 export default function TokenDetails() {
-  const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
-  const { address: rawAddress } = useParams<{ address: string }>();
+  const { address: rawAddress, "*": extraPath } = useParams<{ address: string, "*": string }>();
   const navigate = useNavigate();
+  const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+
+  // Handle extra path parameters like "from-token"
+  useEffect(() => {
+    // If we have a path like "/token/{address}/from-token"
+    if (extraPath && extraPath.includes("from-token") && rawAddress) {
+      console.log(`Token details with "from-token" path: ${rawAddress}/${extraPath}`);
+      // The LI.FI widget will handle this internally through its UI
+      // No need to redirect, the widget will show the right interface
+    }
+  }, [extraPath, rawAddress]);
 
   const address = useMemo(() => rawAddress || null, [rawAddress]);
   const { data: token, isLoading: loading, error } = useTokenDetails(address);

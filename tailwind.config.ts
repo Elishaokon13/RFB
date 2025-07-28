@@ -1,4 +1,6 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
+import plugin from "tailwindcss/plugin";
 
 export default {
 	darkMode: ["class"],
@@ -18,6 +20,18 @@ export default {
 			}
 		},
 		extend: {
+			transformStyle: {
+        'preserve-3d': 'preserve-3d',
+      },
+      willChange: {
+        'transform': 'transform',
+      },
+      perspective: {
+        'none': 'none',
+        '1000': '1000px',
+        '2000': '2000px',
+        '3000': '3000px',
+      },
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -109,5 +123,18 @@ export default {
 			}
 		}
 	},
-	plugins: [require("tailwindcss-animate")],
+	plugins: [
+		tailwindcssAnimate,
+		plugin(({ addUtilities }) => {
+      const newUtilities = {
+        '.transform-3d': {
+          'transform-style': 'preserve-3d',
+        },
+        '.perspective-3000': {
+          'perspective': '3000px',
+        },
+      };
+      addUtilities(newUtilities);
+    })
+	],
 } satisfies Config;

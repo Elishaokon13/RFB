@@ -20,6 +20,7 @@ import WatchlistPage from "./pages/WatchlistPage.tsx";
 import PortfolioPage from "./pages/PortfolioPage.tsx";
 import PortfolioTokenDetails from "./pages/PortfolioTokenDetails.tsx";
 import { NotificationProvider } from "./components/Header";
+import CopyTradeListener from "./components/CopyTradeListener";
 
 const queryClient = new QueryClient();
 
@@ -43,20 +44,9 @@ const App = () => (
                   <Routes>
                     <Route element={<Layout />}>
                       <Route path="/" element={<Index />} />
-                      <Route
-                        path="/token/:address/*"
-                        element={<TokenDetails />}
-                      />
-
+                      <Route path="/token/:address/*" element={<TokenDetails />} />
                       <Route path="/creators" element={<Creators />} />
-                      <Route
-                        path="/whale-tracker"
-                        element={<WhaleTrackerPage />}
-                      />
-                      <Route
-                        path="/whale-tracker"
-                        element={<WhaleTrackerPage />}
-                      />
+                      <Route path="/whale-tracker" element={<WhaleTrackerPage />} />
                       <Route path="/watchlist" element={<WatchlistPage />} />
                       <Route path="/portfolio" element={<PortfolioPage />} />
                       <Route path="/portfolio/token/:address/*" element={<PortfolioTokenDetails />} />
@@ -65,6 +55,7 @@ const App = () => (
                     </Route>
                   </Routes>
                 </BrowserRouter>
+                <CopyTradeListener />
               </TooltipProvider>
             </NotificationProvider>
           </QueryClientProvider>
