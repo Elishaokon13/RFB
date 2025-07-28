@@ -238,7 +238,7 @@ function TradingInterface({ token }: { token: TokenDetails | null }) {
     sdkConfig: {
       rpcUrls: {
         8453: [
-          "https://base-mainnet.g.alchemy.com/v2/dnbpgJAxbCT9dbs-cHKAXVSYLNYDrt_n",
+          `https://base-mainnet.g.alchemy.com/v2/${import.meta.env.VITE_ALCHEMY_API_KEY}`,
         ],
       },
     },
