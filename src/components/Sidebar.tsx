@@ -56,8 +56,8 @@ export function Sidebar({ onClose }: SidebarProps) {
     // { icon: BarChart2, label: "Compare Tokens", path: "/comparison" },
     { icon: Users, label: "Creators", path: "/creators" },
     { icon: BarChart3, label: "Whale Tracker", path: "/whale-tracker" },
+    { icon: Wallet, label: "Portfolio", path: "/portfolio" },
     // { icon: BarChart3, label: "Top Creators", active: false },
-    // { icon: Wallet, label: "Portfolio", active: false },
     // { icon: Settings, label: "Advertise", active: false },
   ];
 

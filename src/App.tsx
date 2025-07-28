@@ -15,11 +15,11 @@ import TokenDetails from "./pages/TokenDetails.tsx";
 import Creators from "./pages/Creators.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Layout from "./components/Layout";
-import WhaleTrackerPage from "./pages/WhaleTrackerPage";
-import WatchlistPage from "./pages/WatchlistPage";
-// import ComparisonPage from "./pages/ComparisonPage";
+import WhaleTrackerPage from "./pages/WhaleTrackerPage.tsx";
+import WatchlistPage from "./pages/WatchlistPage.tsx";
+import PortfolioPage from "./pages/PortfolioPage.tsx";
+import PortfolioTokenDetails from "./pages/PortfolioTokenDetails.tsx";
 import { NotificationProvider } from "./components/Header";
-// import { ComparisonProvider } from "./context/ComparisonContext";
 import CopyTradeListener from "./components/CopyTradeListener";
 
 const queryClient = new QueryClient();
@@ -37,28 +37,26 @@ const App = () => (
         <WagmiProvider config={wagmiConfig}>
           <QueryClientProvider client={queryClient}>
             <NotificationProvider>
-              {/* <ComparisonProvider> */}
-                <TooltipProvider>
-                  <Toaster />
-                  <Sonner />
-                  <BrowserRouter>
-                    <Routes>
-                      <Route element={<Layout />}>
-                        <Route path="/" element={<Index />} />
-                        <Route path="/token/:address/*" element={<TokenDetails />} />
-                        <Route path="/creators" element={<Creators />} />
-                        <Route path="/whale-tracker" element={<WhaleTrackerPage />} />
-                        <Route path="/watchlist" element={<WatchlistPage />} />
-                        {/* <Route path="/comparison" element={<ComparisonPage />} /> */}
-                        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                        <Route path="*" element={<NotFound />} />
-                      </Route>
-                    </Routes>
-                  </BrowserRouter>
-                  {/* Add CopyTradeListener here to enable monitoring for all routes */}
-                  <CopyTradeListener />
-                </TooltipProvider>
-              {/* </ComparisonProvider> */}
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
+                    <Route element={<Layout />}>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/token/:address/*" element={<TokenDetails />} />
+                      <Route path="/creators" element={<Creators />} />
+                      <Route path="/whale-tracker" element={<WhaleTrackerPage />} />
+                      <Route path="/watchlist" element={<WatchlistPage />} />
+                      <Route path="/portfolio" element={<PortfolioPage />} />
+                      <Route path="/portfolio/token/:address/*" element={<PortfolioTokenDetails />} />
+                      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                      <Route path="*" element={<NotFound />} />
+                    </Route>
+                  </Routes>
+                </BrowserRouter>
+                <CopyTradeListener />
+              </TooltipProvider>
             </NotificationProvider>
           </QueryClientProvider>
         </WagmiProvider>

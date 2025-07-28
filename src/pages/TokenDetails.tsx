@@ -233,16 +233,17 @@ function TradingInterface({ token }: { token: TokenDetails | null }) {
     fromToken: "0x0000000000000000000000000000000000000000", // ETH
     toToken: token?.address || "", // Current token
     appearance: theme === 'dark' ? 'dark' : 'light',
-    theme: {
-      container: {
-        width: '100%',
-        height: '400px',
-        border: 'none',
-        borderRadius: '12px',
-      }
-    },
-    variant: 'compact' as WidgetVariant, // Use compact variant for better embedding
+    fee: 0.05,
+    variant: "compact",
     buildUrl: false, // prevents widget links updating your URL/history
+    theme: { container: { display: "flex", height: "100%", maxHeight: 800 } },
+    sdkConfig: {
+      rpcUrls: {
+        8453: [
+          `https://base-mainnet.g.alchemy.com/v2/${import.meta.env.VITE_ALCHEMY_API_KEY}`,
+        ],
+      },
+    },
   };
   
   return (
