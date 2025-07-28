@@ -1,3 +1,4 @@
+/*
 import React, { createContext, useContext, useState, useCallback } from 'react';
 
 // Define types
@@ -141,4 +142,8 @@ export const useComparison = () => {
     throw new Error('useComparison must be used within a ComparisonProvider');
   }
   return context;
-}; 
+};
+*/
+
+// Empty implementation to avoid compilation errors when referenced
+export const ComparisonProvider = ({ children }: { children: React.ReactNode }) => children; 

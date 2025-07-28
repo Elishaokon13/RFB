@@ -53,7 +53,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     { icon: TrendingUp, label: "Live Activity", path: "/" },
     { icon: Star, label: "Watchlist", path: "/watchlist", count: watchlist.length },
     // { icon: Star, label: "TBA Coins", path: "/tba" },
-    { icon: BarChart2, label: "Compare Tokens", path: "/comparison" },
+    // { icon: BarChart2, label: "Compare Tokens", path: "/comparison" },
     { icon: Users, label: "Creators", path: "/creators" },
     { icon: BarChart3, label: "Whale Tracker", path: "/whale-tracker" },
     // { icon: BarChart3, label: "Top Creators", active: false },

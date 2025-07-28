@@ -2,14 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { usePrivy } from "@privy-io/react-auth";
 import { useBalance } from "wagmi";
-import { LiFiWidget, WidgetConfig, Appearance, ChainType } from "@lifi/widget";
-import {
-  Swap,
-  SwapAmountInput,
-  SwapToggleButton,
-  SwapButton,
-  SwapMessage,
-} from "@coinbase/onchainkit/swap";
+import { LiFiWidget, WidgetConfig, type WidgetVariant } from "@lifi/widget";
 import { Token } from "@coinbase/onchainkit/token";
 import { useTheme as useNextTheme } from "next-themes";
 import {
@@ -216,34 +209,49 @@ function TokenStats({ token }: { token: TokenDetails | null }) {
   );
 }
 
+// TradingInterface Component with LI.FI Widget
 function TradingInterface({ token }: { token: TokenDetails | null }) {
+  // Get Privy user info
   const { user, authenticated } = usePrivy();
   const userAddress = user?.wallet?.address;
+  const { theme } = useNextTheme();
 
+  // Configure LI.FI Widget based on v3.24.3
   const widgetConfig: WidgetConfig = {
     integrator: "Zoracle",
-    fromChain: 8453,
-    toChain: 8453,
-    toToken: token?.address,
-    appearance: "system",
-    variant: "compact",
-    buildUrl: false, // prevents widget links updating your URL/history
-    theme: { container: { display: "flex", height: "100%", maxHeight: 800 } },
-    sdkConfig: {
-      rpcUrls: {
-        8453: [
-          "https://base-mainnet.g.alchemy.com/v2/dnbpgJAxbCT9dbs-cHKAXVSYLNYDrt_n",
-        ],
-      },
+    fromChain: 8453, // Base chain
+    toChain: 8453,  // Default to same chain
+    fromToken: "0x0000000000000000000000000000000000000000", // ETH
+    toToken: token?.address || "", // Current token
+    appearance: theme === 'dark' ? 'dark' : 'light',
+    theme: {
+      container: {
+        width: '100%',
+        height: '400px',
+        border: 'none',
+        borderRadius: '12px',
+      }
     },
+    variant: 'compact' as WidgetVariant, // Use compact variant for better embedding
+    buildUrl: false, // prevents widget links updating your URL/history
   };
-
+  
   return (
-    <div className="h-full flex flex-col">
-      {authenticated && token?.address ? (
-        <LiFiWidget config={widgetConfig} integrator="Zoracle" />
+    <div className="p-6">
+      {authenticated ? (
+        <LiFiWidget
+          config={widgetConfig}
+          integrator="Zoracle"
+        />
       ) : (
-        <p className="p-4">Please connect your wallet to swap.</p>
+        <div className="text-center p-6 bg-muted/30 rounded-lg">
+          <Wallet className="w-12 h-12 mx-auto mb-3 text-primary/50" />
+          <p className="text-lg font-medium mb-2">Connect your wallet</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Connect your wallet to swap tokens using LI.FI
+          </p>
+          <Button variant="default">Connect Wallet</Button>
+        </div>
       )}
     </div>
   );
@@ -447,8 +455,18 @@ function getTimeAgo(dateString: string): string {
 }
 
 export default function TokenDetails() {
-  const { address: rawAddress } = useParams<{ address: string }>();
+  const { address: rawAddress, "*": extraPath } = useParams<{ address: string, "*": string }>();
   const navigate = useNavigate();
+
+  // Handle extra path parameters like "from-token"
+  useEffect(() => {
+    // If we have a path like "/token/{address}/from-token"
+    if (extraPath && extraPath.includes("from-token") && rawAddress) {
+      console.log(`Token details with "from-token" path: ${rawAddress}/${extraPath}`);
+      // The LI.FI widget will handle this internally through its UI
+      // No need to redirect, the widget will show the right interface
+    }
+  }, [extraPath, rawAddress]);
 
   const address = useMemo(() => rawAddress || null, [rawAddress]);
   const { data: token, isLoading: loading, error } = useTokenDetails(address);

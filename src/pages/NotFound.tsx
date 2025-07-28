@@ -1,16 +1,31 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { Home, ArrowLeft, Search } from "lucide-react";
 
 const NotFound = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
+    // Log the 404 error
     console.error(
       "404 Error: User attempted to access non-existent route:",
       location.pathname
     );
-  }, [location.pathname]);
+
+    // Handle specific redirect case for token paths with "/from-token"
+    if (location.pathname.includes("/token/") && location.pathname.includes("/from-token")) {
+      // Extract the token address from the path
+      const match = location.pathname.match(/\/token\/([^/]+)(\/from-token.*)?/);
+      if (match && match[1]) {
+        const tokenAddress = match[1];
+        // Redirect to the base token page
+        console.log(`Redirecting from ${location.pathname} to /token/${tokenAddress}`);
+        navigate(`/token/${tokenAddress}`, { replace: true });
+        return;
+      }
+    }
+  }, [location.pathname, navigate]);
 
   const handleGoBack = () => {
     if (window.history.length > 1) {

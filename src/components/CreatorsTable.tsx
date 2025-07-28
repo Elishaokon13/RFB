@@ -11,6 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   RefreshCw,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import { CreatorInfoPointer } from "./CreatorInfoPointer";
 import { FollowerPointerCard } from "./ui/following-pointer";
@@ -92,6 +94,7 @@ const CreatorRow = ({
   index: number;
 }) => {
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
   // const { profile } = useZoraProfile(creator.address);
 
   const handle = creator.address || creator.handle || "";
@@ -115,6 +118,13 @@ const CreatorRow = ({
     setCopiedAddress(true);
     setTimeout(() => setCopiedAddress(false), 2000);
   };
+  
+  const toggleFollow = () => {
+    setIsFollowing(prev => !prev);
+    // In a real application, you would call a function to update the followed creators list
+    // For example: updateFollowedCreators(creator.address, !isFollowing);
+  };
+  
   // Get creator profile for the pointer
   const imageUrl =
     profile?.avatar?.previewImage?.small || getProfileImageSmall(profile);
@@ -200,6 +210,27 @@ const CreatorRow = ({
         <td className="px-6 py-4 text-sm align-top">
           <div className="flex items-center gap-2">
             <button
+              onClick={toggleFollow}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${
+                isFollowing 
+                ? "bg-primary/10 text-primary hover:bg-primary/20" 
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+              title={isFollowing ? "Unfollow creator" : "Follow creator for copy trading"}
+            >
+              {isFollowing ? (
+                <>
+                  <BellOff className="w-3 h-3" />
+                  <span>Unfollow</span>
+                </>
+              ) : (
+                <>
+                  <Bell className="w-3 h-3" />
+                  <span>Follow</span>
+                </>
+              )}
+            </button>
+            <button
               onClick={handleCopyAddress}
               className="p-1 hover:bg-muted rounded transition-colors"
               title="Copy address"
@@ -257,7 +288,7 @@ export function CreatorsTable({ creators }: CreatorsTableProps) {
     const halfVisible = Math.floor(maxVisiblePages / 2);
 
     let startPage = Math.max(1, currentPage - halfVisible);
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
     // Adjust start page if we're near the end
     if (endPage - startPage + 1 < maxVisiblePages) {

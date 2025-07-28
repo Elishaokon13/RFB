@@ -1,3 +1,4 @@
+/*
 import { useState, useEffect } from 'react';
 import { getCoin } from '@zoralabs/coins-sdk';
 import { ComparisonToken, TimeframeOption } from '@/context/ComparisonContext';
@@ -322,4 +323,12 @@ function generatePlaceholderHistory(currentValue: number, timeframe: TimeframeOp
   }
   
   return points;
-} 
+}
+*/
+
+// Empty export to prevent import errors
+export const useComparisonTokens = () => ({
+  data: [],
+  loading: false,
+  error: null
+}); 

@@ -1,3 +1,20 @@
+// ComparisonPage.tsx - This feature is currently disabled
+import React from 'react';
+
+export default function ComparisonPage() {
+  return (
+    <div className="container mx-auto p-8 text-center">
+      <h1 className="text-xl font-medium">Token Comparison Feature Disabled</h1>
+      <p className="text-muted-foreground mt-2">
+        This feature is currently disabled.
+      </p>
+    </div>
+  );
+}
+
+/*
+Original implementation kept for reference:
+
 import { useState } from 'react';
 import { TokenSelector } from '@/components/comparison/TokenSelector';
 import { ComparisonGrid } from '@/components/comparison/ComparisonGrid';
@@ -40,7 +57,6 @@ export default function ComparisonPage() {
   return (
     <div className="container mx-auto px-4 py-6 max-w-[1800px]">
       <div className="flex flex-col space-y-6">
-        {/* Page header */}
         <div>
           <h1 className="text-2xl font-bold">Token Comparison</h1>
           <p className="text-muted-foreground">
@@ -48,13 +64,11 @@ export default function ComparisonPage() {
           </p>
         </div>
         
-        {/* Token selection and controls */}
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <TokenSelector />
           </div>
           <div className="flex flex-col justify-end gap-4">
-            {/* Timeframe selector */}
             <div>
               <Label className="mb-2 block">Timeframe</Label>
               <ToggleGroup 
@@ -71,7 +85,6 @@ export default function ComparisonPage() {
               </ToggleGroup>
             </div>
             
-            {/* Chart type selector */}
             <div>
               <Label className="mb-2 block">Chart Type</Label>
               <ToggleGroup 
@@ -92,7 +105,6 @@ export default function ComparisonPage() {
               </ToggleGroup>
             </div>
             
-            {/* Relative mode toggle */}
             <div className="flex items-center space-x-2">
               <Switch 
                 id="relative-mode" 
@@ -104,14 +116,12 @@ export default function ComparisonPage() {
           </div>
         </div>
         
-        {/* Metrics Grid */}
         <ComparisonGrid 
           data={data} 
           loading={loading} 
           isRelative={state.isRelative}
         />
         
-        {/* Charts */}
         <ComparisonCharts 
           data={data}
           loading={loading}
@@ -121,4 +131,5 @@ export default function ComparisonPage() {
       </div>
     </div>
   );
-} 
+}
+*/
