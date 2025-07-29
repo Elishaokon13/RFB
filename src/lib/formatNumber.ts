@@ -234,3 +234,38 @@ export const useCryptoFormatter = () => {
     formatCompact,
   };
 };
+
+// Utility function to format numbers in compact notation (e.g., 1.7M, 2.5B)
+export const formatNumberCompact = (value: number | string): string => {
+  if (!value) return "N/A";
+  
+  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(numValue)) return "N/A";
+  
+  const formatter = new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  });
+  
+  return `$${formatter.format(numValue)}`;
+};
+
+// Utility function to format volume in compact notation
+export const formatVolumeCompact = (volume24h?: string | number): string => {
+  if (!volume24h) return "N/A";
+  
+  const value = typeof volume24h === 'string' ? parseFloat(volume24h) : volume24h;
+  if (isNaN(value)) return "N/A";
+  
+  return formatNumberCompact(value);
+};
+
+// Utility function to format market cap in compact notation
+export const formatMarketCapCompact = (marketCap?: string | number): string => {
+  if (!marketCap) return "N/A";
+  
+  const value = typeof marketCap === 'string' ? parseFloat(marketCap) : marketCap;
+  if (isNaN(value)) return "N/A";
+  
+  return formatNumberCompact(value);
+};

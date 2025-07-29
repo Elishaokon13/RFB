@@ -1,6 +1,7 @@
 import { RefreshCw } from "lucide-react";
 import { cn, truncateAddress } from "@/lib/utils";
 import { formatCoinData, Coin } from "@/hooks/useTopVolume24h";
+import { formatVolumeCompact, formatMarketCapCompact } from "@/lib/formatNumber";
 import moment from 'moment'
 import {
   formatDexScreenerPrice,
@@ -175,15 +176,15 @@ const VolumeCell = memo(
     const priceData = dexScreenerData[coin.address.toLowerCase()];
     if (priceData && priceData.volume?.h24 !== undefined) {
       return (
-        <div className="text-sm text-muted-foreground">
-          {priceData.volume.h24.toLocaleString()}
+        <div className="text-sm text-black dark:text-white">
+          {formatVolumeCompact(priceData.volume.h24)}
         </div>
       );
     }
     const formattedCoin = formatCoinData(coin);
     return (
-      <div className="text-sm text-muted-foreground">
-        {formattedCoin.formattedVolume24h || "N/A"}
+      <div className="text-sm text-black dark:text-white">
+        {formatVolumeCompact(formattedCoin.volume24h) || "N/A"}
       </div>
     );
   }
@@ -380,7 +381,7 @@ const TableRow = memo(
             <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
           </td>
           {activeFilter !== "New Coins" && (
-            <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
+            <td className="px-2 sm:px-4 py-3 text-sm text-black dark:text-white">
               {coin.fineAge
                 ? coin.fineAge
                 : coin.createdAt
@@ -391,8 +392,8 @@ const TableRow = memo(
           <td className="px-2 sm:px-4 py-3">
             <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
           </td>
-          <td className="px-2 sm:px-4 text-black py-3 text-sm text-muted-foreground">
-            {formattedCoin.formattedMarketCap}
+          <td className="px-2 sm:px-4 py-3 text-sm text-black dark:text-white">
+            {formatMarketCapCompact(formattedCoin.marketCap)}
           </td>
           <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
             <CreatorCell coin={coin} />
