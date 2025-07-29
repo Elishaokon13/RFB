@@ -5,8 +5,8 @@ import UseZoracle from "@/components/UseZoracle";
 const Index = () => {
   return (
     <div className="w-full mx-auto space-y-4 sm:space-y-4">
-      <UseZoracle />
-      {/* <Trending /> */}
+      {/* <UseZoracle /> */}
+      <Trending />
       <TokenTable />
     </div>
   );
