@@ -20,6 +20,8 @@ export default function UseZoracle({
     refetch,
   } = useTokenDetails(tokenAddress);
 
+  console.log("Token Details:", token);
+
   // Group token stats for cleaner rendering
   const tokenStats = [
     {
@@ -76,26 +78,26 @@ export default function UseZoracle({
       {tokenStats.map((stat, index) => (
         <div key={index} className="flex items-center gap-1.5">
           <span className="text-primary">{stat.icon}</span>
-          <span className="text-xs text-muted-foreground">{stat.label}:</span>
+          <span className="text-sm text-muted-foreground">{stat.label}:</span>
           {isLoading ? (
             <div
               className={`h-3.5 w-${stat.skeleton / 10} rounded-sm bg-muted`}
             />
           ) : (
-            <span className="text-xs font-medium">{stat.value || "N/A"}</span>
+            <span className="text-sm font-medium">{stat.value || "N/A"}</span>
           )}
         </div>
       ))}
 
       {/* Optional refresh button */}
-      {!isLoading && (
+      {/* {!isLoading && (
         <button
           onClick={() => refetch()}
           className="ml-auto text-xs text-primary hover:text-primary/80 transition-colors"
         >
           Refresh
         </button>
-      )}
+      )} */}
     </div>
   );
 }
