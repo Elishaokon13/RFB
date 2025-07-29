@@ -173,7 +173,7 @@ function TokenStats({ token }: { token: TokenDetails | null }) {
             Market Cap
           </p>
           <div className="flex items-center gap-1">
-            <TrendingUp className="w-4 h-4 text-green-500" />
+            
             <span className="font-semibold text-green-500">
               ${token ? formatTokenValue(token.marketCap) : "0"}
             </span>
@@ -184,7 +184,7 @@ function TokenStats({ token }: { token: TokenDetails | null }) {
             24H Volume
           </p>
           <div className="flex items-center gap-1">
-            <Activity className="w-4 h-4 text-gray-600" />
+            
             <span className="font-semibold text-gray-900 dark:text-white">
               ${token ? formatTokenValue(token.volume24h) : "0"}
             </span>
@@ -195,7 +195,7 @@ function TokenStats({ token }: { token: TokenDetails | null }) {
             Token Price
           </p>
           <div className="flex items-center gap-1">
-            <DollarSign className="w-4 h-4 text-blue-500" />
+            
             <span className="font-semibold text-blue-500">
               {priceData ? formatPrice(priceData.price) : "$0.00"}
             </span>

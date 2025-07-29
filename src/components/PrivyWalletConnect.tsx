@@ -41,8 +41,8 @@ export function PrivyWalletConnect() {
           className="bg-primary hover:bg-primary/90 text-primary-foreground border-0 shadow-md hover:shadow-lg transition-all duration-200"
           size="sm"
         >
-          <Wallet className="w-4 h-4 mr-2" />
-          Connect Wallet
+          
+          Sign in
         </Button>
       </div>
     );
@@ -134,7 +134,7 @@ export function PrivyWalletConnect() {
           className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
         >
           <LogOut className="w-4 h-4 mr-2" />
-          Disconnect Wallet
+          Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

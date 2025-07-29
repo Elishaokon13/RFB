@@ -13,6 +13,7 @@ import {
   Heart,
   BarChart2,
 } from "lucide-react";
+import { SearchModal } from "./SearchModal";
 import { cn } from "@/lib/utils";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -44,6 +45,7 @@ export function Sidebar({ onClose }: SidebarProps) {
   const isMobile = useIsMobile();
   const [donateLoading, setDonateLoading] = useState(false);
   const [donateMessage, setDonateMessage] = useState<string | null>(null);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const { watchlist } = useWatchlist();
 
   const menuItems = [
@@ -114,6 +116,20 @@ export function Sidebar({ onClose }: SidebarProps) {
             <X className="w-5 h-5 text-muted-foreground" />
           </button>
         )}
+      </div>
+
+      {/* Search Button */}
+      <div className="p-4 border-b border-border">
+        <button
+          onClick={() => setIsSearchModalOpen(true)}
+          className="w-full flex items-center gap-3 px-4 py-3 bg-muted/50 hover:bg-muted rounded-lg text-left text-sm transition-colors group"
+        >
+          <Search className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+          <span className="text-muted-foreground group-hover:text-foreground">Search tokens...</span>
+          <kbd className="ml-auto px-2 py-1 bg-muted text-xs text-muted-foreground rounded border">
+            ⌘K
+          </kbd>
+        </button>
       </div>
 
       {/* Menu Items */}
@@ -193,6 +209,12 @@ export function Sidebar({ onClose }: SidebarProps) {
           {/* <div className="text-xs text-muted-foreground text-center">v1.0.0</div> */}
         </div>
       </div>
+
+      {/* Search Modal */}
+      <SearchModal 
+        isOpen={isSearchModalOpen} 
+        onClose={() => setIsSearchModalOpen(false)} 
+      />
     </div>
   );
 }

@@ -1,12 +1,28 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { Outlet } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { SearchModal } from './SearchModal';
 
 export default function Layout() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+
+  // Global keyboard shortcut for search
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Cmd+K (Mac) or Ctrl+K (Windows/Linux) to open search
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+        event.preventDefault();
+        setIsSearchModalOpen(true);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -40,6 +56,12 @@ export default function Layout() {
           </main>
         </div>
       </div>
+      
+      {/* Global Search Modal */}
+      <SearchModal 
+        isOpen={isSearchModalOpen} 
+        onClose={() => setIsSearchModalOpen(false)} 
+      />
     </div>
   );
 }
