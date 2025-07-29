@@ -408,7 +408,7 @@ const TableRow = memo(
           <td className="px-2 sm:px-4 py-3">
             <PriceCell coin={coin} dexScreenerData={dexScreenerData} />
           </td>
-          {activeFilter !== "New Coins" && (
+          {activeFilter !== "New Coins" && !isPinned && (
             <td className="px-2 sm:px-4 py-3 text-sm text-black dark:text-white">
               {coin.fineAge
                 ? coin.fineAge
@@ -643,11 +643,12 @@ export function TokenDataTable({
       totalSupply: pinnedToken.totalSupply || "",
       totalVolume: pinnedToken.volume24h || "",
       volume24h: pinnedToken.volume24h || "",
-      createdAt: activeFilter === "New Coins" ? "" : pinnedToken.createdAt,
+      createdAt: activeFilter === "New Coins" ? "" : pinnedToken.createdAt || "",
       creatorAddress: pinnedToken.creatorAddress || "",
       marketCap: pinnedToken.marketCap || "",
-      marketCapDelta24h: pinnedToken.marketCapDelta24h || "",
+      marketCapDelta24h: "0", // Default value since TokenDetails doesn't have this property
       uniqueHolders: pinnedToken.uniqueHolders || 0,
+      uniswapV3PoolAddress: "", // Add the missing required property
       mediaContent: {
         previewImage: {
           small: "/zoracle.svg", // Your Zoracle logo path
@@ -658,7 +659,7 @@ export function TokenDataTable({
       // Highlight that this is a pinned token
       isPinned: true,
     };
-  }, [pinnedToken, pinnedTokenAddress]);
+  }, [pinnedToken, pinnedTokenAddress, activeFilter]);
 
   // Handle watchlist actions with toasts
   const handleToggleWatchlist = useCallback(
