@@ -18,38 +18,38 @@ import { TableSkeleton } from "@/components/TableSkeleton";
 import { useNotifications, NewCoinNotification } from "@/components/Header";
 
 // Filter options
-const topFilters = [
-  "Trending",
-  "Top Gainers",
-  "Top Volume 24h",
-  "New Coins",
-];
+const topFilters = ["Trending", "Top Gainers", "Top Volume 24h", "New Coins"];
 
 const ITEMS_PER_PAGE = 20;
 
 // Extend Coin type to include image property for table display (from TokenDataTable)
 export type CoinWithImage = Coin & {
+  id: string;
+  name: string;
+  symbol: string;
+  address: string;
+  chainId: number;
+  description: string;
+  totalSupply: string;
+  totalVolume: string;
+  volume24h: string;
+  createdAt: string;
+  creatorAddress: string;
+  marketCap: string;
+  marketCapDelta24h: string;
+  uniqueHolders: number;
+  uniswapV3PoolAddress?: string;
   mediaContent?: {
-    mimeType?: string;
-    originalUri?: string;
     previewImage?: {
       small?: string;
       medium?: string;
-      blurhash?: string;
+      large?: string;
     };
   };
   fineAge?: string;
-  creatorProfile?: {
-    handle?: string;
-    address?: string;
-    displayName?: string;
-    avatar?: {
-      previewImage?: {
-        small?: string;
-        medium?: string;
-      };
-    };
-  };
+  creatorProfile?: any;
+  isPinned?: boolean; // New property
+  pinnedTokenAddress?: string;
 };
 
 export function TokenTable() {
@@ -58,18 +58,22 @@ export function TokenTable() {
     return localStorage.getItem("activeTopFilter") || "Trending";
   });
   const [currentPage, setCurrentPage] = useState(1);
-  
+
   // Track known tokens to detect new ones
-  const [knownTokenAddresses, setKnownTokenAddresses] = useState<Set<string>>(() => {
-    const saved = localStorage.getItem('known-tokens');
-    return new Set(saved ? JSON.parse(saved) : []);
-  });
-  
+  const [knownTokenAddresses, setKnownTokenAddresses] = useState<Set<string>>(
+    () => {
+      const saved = localStorage.getItem("known-tokens");
+      return new Set(saved ? JSON.parse(saved) : []);
+    }
+  );
+
   // Last notification time tracking to prevent spam
-  const [lastNotificationTime, setLastNotificationTime] = useState<number>(() => {
-    return parseInt(localStorage.getItem('last-notification-time') || '0');
-  });
-  
+  const [lastNotificationTime, setLastNotificationTime] = useState<number>(
+    () => {
+      return parseInt(localStorage.getItem("last-notification-time") || "0");
+    }
+  );
+
   // Access notification context
   const { addNotification } = useNotifications();
 
@@ -84,83 +88,101 @@ export function TokenTable() {
     hasData,
     fetchNextPage, // Make sure this function is available from useTokenFeed
   } = useTokenFeed(activeTopFilter);
-  
+
   // Initial loading - populate known tokens without notifications
   useEffect(() => {
     if (!isLoading && coins.length > 0 && knownTokenAddresses.size === 0) {
-      const initialKnownTokens = new Set(
-        coins.map(coin => coin.address)
-      );
+      const initialKnownTokens = new Set(coins.map((coin) => coin.address));
       setKnownTokenAddresses(initialKnownTokens);
-      localStorage.setItem('known-tokens', JSON.stringify(Array.from(initialKnownTokens)));
+      localStorage.setItem(
+        "known-tokens",
+        JSON.stringify(Array.from(initialKnownTokens))
+      );
     }
   }, [coins, isLoading, knownTokenAddresses.size]);
-  
+
   // Detect new coins and send notifications
   useEffect(() => {
     if (!coins.length || isLoading || knownTokenAddresses.size === 0) return;
-    
+
     // Check for new coins
     const now = Date.now();
-    const newTokens = coins.filter(coin => !knownTokenAddresses.has(coin.address));
-    
+    const newTokens = coins.filter(
+      (coin) => !knownTokenAddresses.has(coin.address)
+    );
+
     // Only send notifications if we have new tokens and aren't spamming (limit to once per minute)
-    if (newTokens.length > 0 && (now - lastNotificationTime > 60000)) {
+    if (newTokens.length > 0 && now - lastNotificationTime > 60000) {
       // Update known tokens
       const updatedKnownTokens = new Set(knownTokenAddresses);
-      
+
       // Create notifications for new tokens (limit to 5 at once to avoid spam)
-      newTokens.slice(0, 5).forEach(token => {
+      newTokens.slice(0, 5).forEach((token) => {
         // Only notify for tokens less than 12 hours old
-        const tokenCreatedAt = token.createdAt ? new Date(token.createdAt).getTime() : now;
-        const isRecent = (now - tokenCreatedAt) < 12 * 60 * 60 * 1000; // 12 hours
-        
+        const tokenCreatedAt = token.createdAt
+          ? new Date(token.createdAt).getTime()
+          : now;
+        const isRecent = now - tokenCreatedAt < 12 * 60 * 60 * 1000; // 12 hours
+
         if (isRecent) {
           // Create the notification
           const notification: NewCoinNotification = {
             id: `new-coin-${token.address}-${Date.now()}`,
-            title: `New Token: ${token.symbol || 'Unknown'}`,
-            message: `${token.name || 'New token'} was just added to the network`,
+            title: `New Token: ${token.symbol || "Unknown"}`,
+            message: `${
+              token.name || "New token"
+            } was just added to the network`,
             timestamp: new Date(),
             read: false,
             coinAddress: token.address,
             tokenSymbol: token.symbol,
             // Use type assertion to access mediaContent
-            tokenImage: (token as CoinWithImage).mediaContent?.previewImage?.medium || undefined,
+            tokenImage:
+              (token as CoinWithImage).mediaContent?.previewImage?.medium ||
+              undefined,
           };
-          
+
           addNotification(notification);
         }
-        
+
         updatedKnownTokens.add(token.address);
       });
-      
+
       // Update known tokens state and localStorage
       setKnownTokenAddresses(updatedKnownTokens);
-      localStorage.setItem('known-tokens', JSON.stringify(Array.from(updatedKnownTokens)));
-      
+      localStorage.setItem(
+        "known-tokens",
+        JSON.stringify(Array.from(updatedKnownTokens))
+      );
+
       // Update last notification time
       setLastNotificationTime(now);
-      localStorage.setItem('last-notification-time', now.toString());
+      localStorage.setItem("last-notification-time", now.toString());
     }
-  }, [coins, isLoading, knownTokenAddresses, addNotification, lastNotificationTime]);
+  }, [
+    coins,
+    isLoading,
+    knownTokenAddresses,
+    addNotification,
+    lastNotificationTime,
+  ]);
 
   // Save active filter to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem("activeTopFilter", activeTopFilter);
     if (currentPage !== 1) setCurrentPage(1);
   }, [activeTopFilter, currentPage]);
-  
+
   // Setup polling for new coins (every minute for "New Coins" filter)
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+
     if (activeTopFilter === "New Coins") {
       interval = setInterval(() => {
         refetchActive();
       }, 60000); // Check every minute
     }
-    
+
     return () => {
       if (interval) clearInterval(interval);
     };
@@ -259,24 +281,31 @@ export function TokenTable() {
       // If we have a fetchNextPage function and there's a next page, fetch more data
       fetchNextPage(pageInfo.endCursor);
     }
-    
+
     // Regardless, update the local page state
     setCurrentPage((prev) => prev + 1);
   }, [pageInfo, fetchNextPage]);
 
-  const handleGoToPage = useCallback((page: number) => {
-    // Ensure we have enough data for this page
-    const requiredItemCount = page * ITEMS_PER_PAGE;
-    
-    // If we need to fetch more data and we can
-    if (allCoins.length < requiredItemCount && pageInfo?.hasNextPage && fetchNextPage) {
-      // Try to fetch more data first
-      fetchNextPage(pageInfo.endCursor);
-    }
-    
-    // Update the page state
-    setCurrentPage(page);
-  }, [allCoins.length, pageInfo, fetchNextPage]);
+  const handleGoToPage = useCallback(
+    (page: number) => {
+      // Ensure we have enough data for this page
+      const requiredItemCount = page * ITEMS_PER_PAGE;
+
+      // If we need to fetch more data and we can
+      if (
+        allCoins.length < requiredItemCount &&
+        pageInfo?.hasNextPage &&
+        fetchNextPage
+      ) {
+        // Try to fetch more data first
+        fetchNextPage(pageInfo.endCursor);
+      }
+
+      // Update the page state
+      setCurrentPage(page);
+    },
+    [allCoins.length, pageInfo, fetchNextPage]
+  );
 
   const handleRefresh = useCallback(() => {
     refetchAll();
@@ -288,8 +317,9 @@ export function TokenTable() {
   // Calculate proper pageInfo based on local pagination
   const localPageInfo = useMemo(() => {
     const totalPages = Math.ceil(allCoins.length / ITEMS_PER_PAGE);
-    const hasNextPage = currentPage < totalPages || (pageInfo?.hasNextPage ?? false);
-    
+    const hasNextPage =
+      currentPage < totalPages || (pageInfo?.hasNextPage ?? false);
+
     return {
       ...pageInfo,
       hasNextPage,
@@ -309,7 +339,7 @@ export function TokenTable() {
   return (
     <div className="space-y-4 px-4 sm:px-0">
       {/* Header with Live Indicator */}
-      <div className="bg-card border-b border-border p-4">
+      <div className="bg-card px-4 p-2">
         {/* Filters */}
         <div className="flex flex-col gap-4">
           {/* Top row: Filters */}
@@ -335,14 +365,16 @@ export function TokenTable() {
                 ))}
               </div>
             </div>
-            
+
             {/* Refresh button with animation */}
             <button
               onClick={handleRefresh}
               className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Refresh data"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`}
+              />
               <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
@@ -365,6 +397,7 @@ export function TokenTable() {
           itemsPerPage={ITEMS_PER_PAGE}
           activeFilter={activeTopFilter}
           totalCount={allCoins.length}
+          // pinnedTokenAddress="0x907bdae00e91544a270694714832410ad8418888"
         />
       )}
     </div>

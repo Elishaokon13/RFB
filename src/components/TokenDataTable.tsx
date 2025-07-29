@@ -1,8 +1,11 @@
 import { RefreshCw } from "lucide-react";
 import { cn, truncateAddress } from "@/lib/utils";
 import { formatCoinData, Coin } from "@/hooks/useTopVolume24h";
-import { formatVolumeCompact, formatMarketCapCompact } from "@/lib/formatNumber";
-import moment from 'moment'
+import moment from "moment";
+import {
+  formatVolumeCompact,
+  formatMarketCapCompact,
+} from "@/lib/formatNumber";
 import {
   formatDexScreenerPrice,
   DexScreenerPair,
@@ -14,13 +17,18 @@ import { Address } from "viem";
 import { Star } from "lucide-react";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useBasename } from "@/hooks/useBasename";
-import { TableSkeleton, TokenTableRowSkeleton, TableHeaderSkeleton } from "@/components/TableSkeleton";
+import {
+  TableSkeleton,
+  TokenTableRowSkeleton,
+  TableHeaderSkeleton,
+} from "@/components/TableSkeleton";
 import { FollowerPointerCard } from "@/components/ui/following-pointer";
 import { useZoraProfile, getProfileImageSmall } from "@/hooks/useZoraProfile";
 import { Copy } from "lucide-react";
 import { CoinWithImage } from "./TokenTable";
 import { useNotifications } from "./Header";
 import { useToast } from "@/components/ui/use-toast";
+import { useTokenDetails } from "@/hooks/useTokenDetails";
 
 // Remove the conflicting CoinWithImage type definition and use the imported one from TokenTable
 
@@ -30,7 +38,7 @@ const RealTimeAge = memo(({ createdAt }: { createdAt?: string }) => {
 
   useEffect(() => {
     if (!createdAt) return;
-    
+
     const interval = setInterval(() => {
       setCurrentTime(Date.now());
     }, 1000);
@@ -50,13 +58,13 @@ const RealTimeAge = memo(({ createdAt }: { createdAt?: string }) => {
   const diffYears = Math.floor(diffDays / 365);
 
   // Debug logging
-  console.log('RealTimeAge:', {
+  console.log("RealTimeAge:", {
     createdAt,
     currentTime,
     diffMs,
     diffSec,
     diffMin,
-    diffHour
+    diffHour,
   });
 
   if (diffSec < 60) return <span>{diffSec}s</span>;
@@ -124,9 +132,10 @@ const PriceCell = memo(
     dexScreenerData: Record<string, DexScreenerPair>;
   }) => {
     const priceData = dexScreenerData[coin.address.toLowerCase()];
-    const price = priceData && priceData.priceUsd 
-      ? `$${parseFloat(priceData.priceUsd).toFixed(6)}`
-      : calculateFallbackPrice(coin.marketCap, coin.totalSupply);
+    const price =
+      priceData && priceData.priceUsd
+        ? `$${parseFloat(priceData.priceUsd).toFixed(6)}`
+        : calculateFallbackPrice(coin.marketCap, coin.totalSupply);
 
     // Calculate percentage change
     const delta = Number(coin.marketCapDelta24h);
@@ -136,17 +145,20 @@ const PriceCell = memo(
       const percent = (delta / (cap - delta)) * 100;
       percentageChange = {
         value: percent,
-        isPositive: percent >= 0
+        isPositive: percent >= 0,
       };
     }
 
     return (
       <div className="space-y-1">
-        <div className="text-sm font-medium text-foreground">
-          {price}
-        </div>
+        <div className="text-sm font-medium text-foreground">{price}</div>
         {percentageChange ? (
-          <div className={cn("text-xs font-medium", percentageChange.isPositive ? "text-gain" : "text-loss")}>
+          <div
+            className={cn(
+              "text-xs font-medium",
+              percentageChange.isPositive ? "text-gain" : "text-loss"
+            )}
+          >
             {percentageChange.isPositive ? "+" : ""}
             {formatPercentage(percentageChange.value)}%
           </div>
@@ -245,6 +257,7 @@ const TableRow = memo(
     isWatched,
     onToggleWatch,
     activeFilter,
+    isPinned = false,
   }: {
     coin: CoinWithImage;
     index: number;
@@ -253,6 +266,7 @@ const TableRow = memo(
     isWatched: boolean;
     onToggleWatch: () => void;
     activeFilter?: string;
+    isPinned?: boolean;
   }) => {
     // Log the full coin object for debugging
     const formattedCoin = formatCoinData(coin);
@@ -263,7 +277,8 @@ const TableRow = memo(
 
     // Get creator profile for the pointer
     const { profile } = useZoraProfile(coin?.creatorAddress || "");
-    const imageUrl = profile?.avatar?.previewImage?.small || getProfileImageSmall(profile);
+    const imageUrl =
+      profile?.avatar?.previewImage?.small || getProfileImageSmall(profile);
 
     // Creator info for the pointer
     const creatorInfo = (
@@ -284,22 +299,27 @@ const TableRow = memo(
           </div>
         )}
         <span className="font-medium">
-          {profile?.displayName || (coin.creatorAddress ? truncateAddress(coin.creatorAddress) : "Unknown")}
+          {profile?.displayName ||
+            (coin.creatorAddress
+              ? truncateAddress(coin.creatorAddress)
+              : "Unknown")}
         </span>
       </div>
     );
 
-    const [watchAnimation, setWatchAnimation] = useState<'add' | 'remove' | null>(null);
+    const [watchAnimation, setWatchAnimation] = useState<
+      "add" | "remove" | null
+    >(null);
     const [copied, setCopied] = useState(false);
-    
+
     const handleWatchlistToggle = (e: React.MouseEvent) => {
       e.stopPropagation();
-      setWatchAnimation(isWatched ? 'remove' : 'add');
+      setWatchAnimation(isWatched ? "remove" : "add");
       // Reset animation after it plays
       setTimeout(() => setWatchAnimation(null), 500);
       onToggleWatch();
     };
-    
+
     const handleCopy = async (e: React.MouseEvent) => {
       e.stopPropagation();
       await navigator.clipboard.writeText(coin.address);
@@ -308,16 +328,17 @@ const TableRow = memo(
     };
 
     return (
-      <FollowerPointerCard
-        title={creatorInfo}
-        className="contents"
-      >
+      <FollowerPointerCard title={creatorInfo} className="contents">
         <tr
           key={`${coin.id}-${coin.address}`}
           onClick={() => onCoinClick(coin.address)}
           className={cn(
-            "border-b border-border hover:bg-muted/50 transition-colors cursor-pointer",
-            index % 2 === 0 ? "bg-card" : "bg-background",
+            "border-b border-border transition-colors cursor-pointer",
+            isPinned
+              ? "bg-primary/5 sticky top-0 z-10"
+              : index % 2 === 0
+              ? "bg-card"
+              : "bg-background",
             // Add subtle animation for real-time updates
             "animate-pulse-subtle"
           )}
@@ -328,8 +349,8 @@ const TableRow = memo(
                 onClick={handleWatchlistToggle}
                 className={cn(
                   "mr-2 p-1.5 rounded-full transition-all duration-300 relative",
-                  isWatched 
-                    ? "text-yellow-500 hover:text-yellow-600 bg-yellow-500/10" 
+                  isWatched
+                    ? "text-yellow-500 hover:text-yellow-600 bg-yellow-500/10"
                     : "text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
                 )}
                 title={isWatched ? "Remove from Watchlist" : "Add to Watchlist"}
@@ -339,8 +360,8 @@ const TableRow = memo(
                   strokeWidth={isWatched ? 1 : 2}
                   className={cn(
                     "w-5 h-5 transition-transform",
-                    watchAnimation === 'add' && "animate-ping-once scale-125",
-                    watchAnimation === 'remove' && "animate-spin-once"
+                    watchAnimation === "add" && "animate-ping-once scale-125",
+                    watchAnimation === "remove" && "animate-spin-once"
                   )}
                 />
               </button>
@@ -354,8 +375,15 @@ const TableRow = memo(
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-foreground">
-                    {coin.symbol?.length > 8 ? coin.symbol.slice(0, 8) + '...' : coin.symbol}
+                    {coin.symbol?.length > 8
+                      ? coin.symbol.slice(0, 8) + "..."
+                      : coin.symbol}
                   </span>
+                  {isPinned && (
+                    <span className="bg-primary/20 text-primary text-xs px-1.5 py-0.5 rounded-full">
+                      Pinned
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 mt-1">
                   <span className="text-xs font-mono text-muted-foreground">
@@ -385,8 +413,8 @@ const TableRow = memo(
               {coin.fineAge
                 ? coin.fineAge
                 : coin.createdAt
-                  ? getAgeFromTimestamp(coin.createdAt)
-                  : "N/A"}
+                ? getAgeFromTimestamp(coin.createdAt)
+                : "N/A"}
             </td>
           )}
           <td className="px-2 sm:px-4 py-3">
@@ -402,11 +430,13 @@ const TableRow = memo(
       </FollowerPointerCard>
     );
   },
+  // Update the comparison function to include isPinned
   (prevProps, nextProps) => {
     // Deep comparison for the entire row
     return (
       prevProps.index === nextProps.index &&
-      prevProps.coin.address === nextProps.coin.address
+      prevProps.coin.address === nextProps.coin.address &&
+      prevProps.isPinned === nextProps.isPinned
     );
   }
 );
@@ -425,96 +455,116 @@ const CreatorCell = memo(({ coin }: { coin: CoinWithImage }) => {
     coin?.creatorAddress ? (coin.creatorAddress as `0x${string}`) : undefined
   );
   const { profile } = useZoraProfile(coin?.creatorAddress || "");
-  const profileName = coin.creatorProfile?.handle || coin.creatorProfile?.displayName;
-  const zoraProfileUrl = `https://zora.co/${coin.creatorProfile?.handle || coin.creatorAddress || ''}`;
-  
+  const profileName =
+    coin.creatorProfile?.handle || coin.creatorProfile?.displayName;
+  const zoraProfileUrl = `https://zora.co/${
+    coin.creatorProfile?.handle || coin.creatorAddress || ""
+  }`;
+
   // Get profile image - first try from coin.creatorProfile, then from profile
-  const imageUrl = 
-    coin.creatorProfile?.avatar?.previewImage?.small || 
-    profile?.avatar?.previewImage?.small || 
+  const imageUrl =
+    coin.creatorProfile?.avatar?.previewImage?.small ||
+    profile?.avatar?.previewImage?.small ||
     getProfileImageSmall(profile);
-  
-  if (profileName) return (
-    <a
-      href={zoraProfileUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-blue-600 hover:text-blue-800 underline flex items-center gap-2"
-      title="View Zora Profile"
-    >
-      {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt="profile"
-          className="w-5 h-5 rounded-full object-cover"
-        />
-      ) : coin.creatorAddress ? (
-        <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white">
-          {coin.creatorAddress.slice(2, 4).toUpperCase()}
-        </div>
-      ) : (
-        <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white">
-          ?
-        </div>
-      )}
-      {profileName}
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 inline ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 13v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h6m5-3h3m0 0v3m0-3L10 14" /></svg>
-    </a>
-  );
-  
+
+  if (profileName)
+    return (
+      <a
+        href={zoraProfileUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 hover:text-blue-800 underline flex items-center gap-2"
+        title="View Zora Profile"
+      >
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt="profile"
+            className="w-5 h-5 rounded-full object-cover"
+          />
+        ) : coin.creatorAddress ? (
+          <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white">
+            {coin.creatorAddress.slice(2, 4).toUpperCase()}
+          </div>
+        ) : (
+          <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white">
+            ?
+          </div>
+        )}
+        {profileName}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-3 h-3 inline ml-0.5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M18 13v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h6m5-3h3m0 0v3m0-3L10 14"
+          />
+        </svg>
+      </a>
+    );
+
   if (!coin.creatorAddress) return <span>N/A</span>;
-  
-  if (loading) return (
-    <div className="flex items-center gap-2">
-      {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt="profile"
-          className="w-5 h-5 rounded-full object-cover"
-        />
-      ) : (
-        <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white">
-          {coin.creatorAddress.slice(2, 4).toUpperCase()}
-        </div>
-      )}
-      <span>Resolving...</span>
-    </div>
-  );
-  
-  if (basename) return (
-    <div className="flex items-center gap-2">
-      {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt="profile"
-          className="w-5 h-5 rounded-full object-cover"
-        />
-      ) : (
-        <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white">
-          {coin.creatorAddress.slice(2, 4).toUpperCase()}
-        </div>
-      )}
-      <span>{basename}</span>
-    </div>
-  );
-  
-  if (error) return (
-    <div className="flex items-center gap-2">
-      {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt="profile"
-          className="w-5 h-5 rounded-full object-cover"
-        />
-      ) : (
-        <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white">
-          {coin.creatorAddress.slice(2, 4).toUpperCase()}
-        </div>
-      )}
-      <span title={error}>{truncateMiddle(coin.creatorAddress)}</span>
-    </div>
-  );
-  
+
+  if (loading)
+    return (
+      <div className="flex items-center gap-2">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt="profile"
+            className="w-5 h-5 rounded-full object-cover"
+          />
+        ) : (
+          <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white">
+            {coin.creatorAddress.slice(2, 4).toUpperCase()}
+          </div>
+        )}
+        <span>Resolving...</span>
+      </div>
+    );
+
+  if (basename)
+    return (
+      <div className="flex items-center gap-2">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt="profile"
+            className="w-5 h-5 rounded-full object-cover"
+          />
+        ) : (
+          <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white">
+            {coin.creatorAddress.slice(2, 4).toUpperCase()}
+          </div>
+        )}
+        <span>{basename}</span>
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="flex items-center gap-2">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt="profile"
+            className="w-5 h-5 rounded-full object-cover"
+          />
+        ) : (
+          <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white">
+            {coin.creatorAddress.slice(2, 4).toUpperCase()}
+          </div>
+        )}
+        <span title={error}>{truncateMiddle(coin.creatorAddress)}</span>
+      </div>
+    );
+
   return (
     <div className="flex items-center gap-2">
       {imageUrl ? (
@@ -552,6 +602,7 @@ interface TokenDataTableProps {
   walletAddress?: string;
   activeFilter?: string;
   totalCount?: number;
+  pinnedTokenAddress?: Address; // Pinned token address
 }
 
 export function TokenDataTable({
@@ -568,36 +619,80 @@ export function TokenDataTable({
   walletAddress,
   activeFilter,
   totalCount,
+  pinnedTokenAddress = "0x907bdae00e91544a270694714832410ad8418888", // Zoracle token address
 }: TokenDataTableProps) {
-  const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist(walletAddress);
+  const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } =
+    useWatchlist(walletAddress);
   const { toast } = useToast();
-  
+
+  // Fetch pinned token data
+  const { data: pinnedToken, isLoading: pinnedTokenLoading } =
+    useTokenDetails(pinnedTokenAddress);
+
+  // Convert pinnedToken to CoinWithImage format for the table
+  const pinnedCoin: CoinWithImage | null = useMemo(() => {
+    if (!pinnedToken) return null;
+
+    return {
+      id: pinnedToken.id || pinnedTokenAddress,
+      name: pinnedToken.name || "Zoracle",
+      symbol: pinnedToken.symbol || "ZORA",
+      address: pinnedTokenAddress,
+      chainId: 8453, // Base chain
+      description: pinnedToken.description || "",
+      totalSupply: pinnedToken.totalSupply || "",
+      totalVolume: pinnedToken.volume24h || "",
+      volume24h: pinnedToken.volume24h || "",
+      createdAt: activeFilter === "New Coins" ? "" : pinnedToken.createdAt,
+      creatorAddress: pinnedToken.creatorAddress || "",
+      marketCap: pinnedToken.marketCap || "",
+      marketCapDelta24h: pinnedToken.marketCapDelta24h || "",
+      uniqueHolders: pinnedToken.uniqueHolders || 0,
+      mediaContent: {
+        previewImage: {
+          small: "/zoracle.svg", // Your Zoracle logo path
+          medium: "/zoracle.svg",
+          large: "/zoracle.svg",
+        },
+      },
+      // Highlight that this is a pinned token
+      isPinned: true,
+    };
+  }, [pinnedToken, pinnedTokenAddress]);
+
   // Handle watchlist actions with toasts
-  const handleToggleWatchlist = useCallback((coin: CoinWithImage) => {
-    if (isInWatchlist(coin.address)) {
-      removeFromWatchlist(coin.address);
-      toast({
-        title: "Removed from watchlist",
-        description: `${coin.name || coin.symbol} has been removed from your watchlist`,
-        variant: "default",
-      });
-    } else {
-      // Add with additional metadata
-      addToWatchlist({
-        address: coin.address,
-        name: coin.name,
-        symbol: coin.symbol,
-        image: coin.mediaContent?.previewImage?.small
-      });
-      
-      toast({
-        title: "Added to watchlist",
-        description: `${coin.name || coin.symbol} has been added to your watchlist`,
-        variant: "default",
-      });
-    }
-  }, [isInWatchlist, addToWatchlist, removeFromWatchlist, toast]);
-  
+  const handleToggleWatchlist = useCallback(
+    (coin: CoinWithImage) => {
+      if (isInWatchlist(coin.address)) {
+        removeFromWatchlist(coin.address);
+        toast({
+          title: "Removed from watchlist",
+          description: `${
+            coin.name || coin.symbol
+          } has been removed from your watchlist`,
+          variant: "default",
+        });
+      } else {
+        // Add with additional metadata
+        addToWatchlist({
+          address: coin.address,
+          name: coin.name,
+          symbol: coin.symbol,
+          image: coin.mediaContent?.previewImage?.small,
+        });
+
+        toast({
+          title: "Added to watchlist",
+          description: `${
+            coin.name || coin.symbol
+          } has been added to your watchlist`,
+          variant: "default",
+        });
+      }
+    },
+    [isInWatchlist, addToWatchlist, removeFromWatchlist, toast]
+  );
+
   // Memoize the click handler to prevent unnecessary re-renders
   const handleCoinClick = useCallback(
     (address: string) => {
@@ -606,11 +701,30 @@ export function TokenDataTable({
     [onCoinClick]
   );
 
+  // Combine pinned token with regular coins
+  const combinedCoins = useMemo(() => {
+    const result: CoinWithImage[] = [];
+
+    // Add pinned token first if available
+    if (pinnedCoin) {
+      result.push(pinnedCoin);
+    }
+
+    // Add the rest of the coins, filtering out duplicates of the pinned token
+    coins.forEach((coin) => {
+      if (coin.address.toLowerCase() !== pinnedTokenAddress.toLowerCase()) {
+        result.push(coin);
+      }
+    });
+
+    return result;
+  }, [coins, pinnedCoin, pinnedTokenAddress]);
+
   // Memoize the table body with stable keys to prevent unnecessary re-renders
   const tableBody = useMemo(() => {
-    return coins.map((coin, index) => (
+    return combinedCoins.map((coin, index) => (
       <TableRow
-        key={`${coin.id}-${coin.address}`}
+        key={`${coin.id}-${coin.address}${coin.isPinned ? "-pinned" : ""}`}
         coin={coin}
         index={index}
         dexScreenerData={dexScreenerData}
@@ -618,10 +732,11 @@ export function TokenDataTable({
         isWatched={isInWatchlist(coin.address)}
         onToggleWatch={() => handleToggleWatchlist(coin)}
         activeFilter={activeFilter}
+        isPinned={!!coin.isPinned}
       />
     ));
   }, [
-    coins,
+    combinedCoins,
     dexScreenerData,
     handleCoinClick,
     isInWatchlist,
@@ -630,7 +745,9 @@ export function TokenDataTable({
   ]);
 
   if (loading && coins.length === 0) {
-    return <TableSkeleton rows={10} columns={activeFilter === "New Coins" ? 6 : 7} />;
+    return (
+      <TableSkeleton rows={10} columns={activeFilter === "New Coins" ? 6 : 7} />
+    );
   }
 
   if (coins.length === 0) {
@@ -645,8 +762,12 @@ export function TokenDataTable({
   }
 
   return (
-    <div className="w-full overflow-x-auto bg-card rounded-lg border border-border">
-      <table className={`w-full ${activeFilter === "New Coins" ? "min-w-[700px]" : "min-w-[800px]"}`}>
+    <div className="w-full overflow-x-auto bg-card border border-border">
+      <table
+        className={`w-full ${
+          activeFilter === "New Coins" ? "min-w-[700px]" : "min-w-[800px]"
+        }`}
+      >
         <thead className="bg-muted border-b border-border">
           <tr className="text-left">
             <th className="px-2 sm:px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -680,6 +801,37 @@ export function TokenDataTable({
               ))}
             </>
           )}
+          {/* Add a loading skeleton specifically for the pinned token when it's loading */}
+          {pinnedTokenLoading && (
+            <tr className="bg-primary/5 border-b border-border">
+              <td
+                colSpan={activeFilter === "New Coins" ? 6 : 7}
+                className="p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-md bg-muted animate-pulse"></div>
+                  <div className="space-y-2">
+                    <div className="h-4 w-24 bg-muted animate-pulse rounded"></div>
+                    <div className="h-3 w-32 bg-muted animate-pulse rounded"></div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          )}
+          {pinnedCoin && (
+            <tr className="bg-transparent border-b border-primary/20">
+              <td
+                colSpan={activeFilter === "New Coins" ? 6 : 7}
+                className="py-1"
+              >
+                <div className="flex items-center justify-between px-4 text-xs text-muted-foreground">
+                  <div>Featured Token</div>
+                  <div className="h-px flex-1 bg-primary/10 mx-2"></div>
+                  <div>Token List</div>
+                </div>
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
 
@@ -687,7 +839,8 @@ export function TokenDataTable({
       {showPagination && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-t border-border gap-4">
           <div className="text-sm text-muted-foreground text-center sm:text-left">
-            Page {currentPage} - Showing {coins.length} {totalCount ? `of ${totalCount}` : ''} coins
+            Page {currentPage} - Showing {coins.length}{" "}
+            {totalCount ? `of ${totalCount}` : ""} coins
           </div>
           <div className="flex items-center justify-center sm:justify-end gap-2">
             {/* Previous Page */}

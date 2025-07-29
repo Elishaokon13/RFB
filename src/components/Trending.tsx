@@ -97,7 +97,7 @@ export default function Trending() {
     return <div className="py-4 text-center">No trending coins found</div>;
 
   return (
-    <div className="w-full max-w-full overflow-x-hidden py-2 bg-muted rounded mx-auto">
+    <div className="w-full !mt-0 max-w-full overflow-x-hidden py-2 bg-muted mx-auto">
       <div
         className="marquee whitespace-nowrap flex items-center gap-2 sm:gap-4 md:gap-6 lg:gap-8 px-2 sm:px-4"
         style={{

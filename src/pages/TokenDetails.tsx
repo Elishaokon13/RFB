@@ -223,7 +223,7 @@ function TradingInterface({ token }: { token: TokenDetails | null }) {
   // Get Privy user info
   const { user, authenticated } = usePrivy();
   const userAddress = user?.wallet?.address;
-  const { theme } = useNextTheme();
+  const { theme } = useNextTheme()
 
   // Configure LI.FI Widget based on v3.24.3
   const widgetConfig: WidgetConfig = {
