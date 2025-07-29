@@ -20,8 +20,6 @@ export default function UseZoracle({
     refetch,
   } = useTokenDetails(tokenAddress);
 
-  console.log("Token Details:", token);
-
   // Group token stats for cleaner rendering
   const tokenStats = [
     {

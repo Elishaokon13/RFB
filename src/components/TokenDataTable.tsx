@@ -2,7 +2,10 @@ import { RefreshCw } from "lucide-react";
 import { cn, truncateAddress } from "@/lib/utils";
 import { formatCoinData, Coin } from "@/hooks/useTopVolume24h";
 import moment from "moment";
-import { formatVolumeCompact, formatMarketCapCompact } from "@/lib/formatNumber";
+import {
+  formatVolumeCompact,
+  formatMarketCapCompact,
+} from "@/lib/formatNumber";
 import {
   formatDexScreenerPrice,
   DexScreenerPair,
@@ -640,7 +643,7 @@ export function TokenDataTable({
       totalSupply: pinnedToken.totalSupply || "",
       totalVolume: pinnedToken.volume24h || "",
       volume24h: pinnedToken.volume24h || "",
-      createdAt: pinnedToken.createdAt || "",
+      createdAt: activeFilter === "New Coins" ? "" : pinnedToken.createdAt,
       creatorAddress: pinnedToken.creatorAddress || "",
       marketCap: pinnedToken.marketCap || "",
       marketCapDelta24h: pinnedToken.marketCapDelta24h || "",
