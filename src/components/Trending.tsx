@@ -2,9 +2,11 @@ import React from "react";
 import { useTrendingCoins } from "../hooks/useTrendingCoins";
 import { Skeleton } from "./ui/skeleton";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function Trending() {
   const { coins, loading, error } = useTrendingCoins(20);
+  const navigate = useNavigate();
   // Limit coins based on screen size to reduce width
   const displayedCoins = coins.slice(
     0,
@@ -56,6 +58,13 @@ export default function Trending() {
     if (isNaN(delta) || isNaN(cap) || cap - delta === 0) return "text-muted-foreground";
     const percentage = (delta / (cap - delta)) * 100;
     return percentage >= 0 ? "text-green-600" : "text-red-600";
+  };
+
+  // Handle token click
+  const handleTokenClick = (tokenAddress: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    navigate(`/token/${tokenAddress}`);
   };
 
   if (loading)
@@ -113,6 +122,7 @@ export default function Trending() {
           <div
             key={coin.address}
             className="flex items-center gap-2 sm:gap-3 flex-shrink-0 bg-primary/10 dark:bg-purple-900/20 px-2 sm:px-4 py-2 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/30 transition-colors cursor-pointer"
+            onClick={(e) => handleTokenClick(coin.address, e)}
           >
             {/* Image */}
             <div className="flex-shrink-0">
@@ -172,6 +182,7 @@ export default function Trending() {
           <div
             key={coin.address + "-dup"}
             className="flex items-center gap-2 sm:gap-3 flex-shrink-0 bg-primary/30 dark:bg-purple-900/20 px-2 sm:px-4 py-2 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/30 transition-colors cursor-pointer"
+            onClick={(e) => handleTokenClick(coin.address, e)}
           >
             {/* Image */}
             <div className="flex-shrink-0">

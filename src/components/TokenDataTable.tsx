@@ -391,7 +391,7 @@ const TableRow = memo(
           <td className="px-2 sm:px-4 py-3">
             <VolumeCell coin={coin} dexScreenerData={dexScreenerData} />
           </td>
-          <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
+          <td className="px-2 sm:px-4 text-black py-3 text-sm text-muted-foreground">
             {formattedCoin.formattedMarketCap}
           </td>
           <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
