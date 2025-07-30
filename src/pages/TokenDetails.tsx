@@ -51,7 +51,7 @@ function GeckoTerminalWidget({ tokenAddress }: { tokenAddress: string }) {
   const { theme } = useNextTheme();
 
   // Determine GeckoTerminal theme based on app's theme
-  const geckoTheme = theme === 'dark' ? 'dark' : 'light';
+  const geckoTheme = theme === "dark" ? "dark" : "light";
 
   useEffect(() => {
     const timer = setTimeout(() => setWidgetLoaded(true), 1000);
@@ -153,8 +153,8 @@ function TokenHeader({ token }: { token: TokenDetails | null }) {
 
 // TokenStats Component
 function TokenStats({ token }: { token: TokenDetails | null }) {
-  const priceData = useTokenPrice(token?.address || null);
-
+  // const priceData = useTokenPrice(token?.address || null);
+  const [priceData, setPriceData] = useState();
   const formatPrice = (price: number): string => {
     if (price < 0.01) {
       return `$${price.toFixed(6)}`;
@@ -165,6 +165,27 @@ function TokenStats({ token }: { token: TokenDetails | null }) {
     }
   };
 
+  useEffect(() => {
+    const fetchTokenData = async () => {
+      try {
+        const response = await fetch(
+          "https://api.geckoterminal.com/api/v2/networks/base/tokens/" +
+            token?.address
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch token data");
+        }
+        const data = await response.json();
+        setPriceData(data?.data.attributes || {});
+        // console.log("Fetched Token Data:", data);
+      } catch (error) {
+        console.error("Error fetching token data:", error);
+      }
+    };
+
+    fetchTokenData();
+  }, []);
+
   return (
     <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
       <div className="grid grid-cols-3 gap-6">
@@ -173,7 +194,6 @@ function TokenStats({ token }: { token: TokenDetails | null }) {
             Market Cap
           </p>
           <div className="flex items-center gap-1">
-            
             <span className="font-semibold text-green-500">
               ${token ? formatTokenValue(token.marketCap) : "0"}
             </span>
@@ -184,7 +204,6 @@ function TokenStats({ token }: { token: TokenDetails | null }) {
             24H Volume
           </p>
           <div className="flex items-center gap-1">
-            
             <span className="font-semibold text-gray-900 dark:text-white">
               ${token ? formatTokenValue(token.volume24h) : "0"}
             </span>
@@ -195,22 +214,21 @@ function TokenStats({ token }: { token: TokenDetails | null }) {
             Token Price
           </p>
           <div className="flex items-center gap-1">
-            
             <span className="font-semibold text-blue-500">
-              {priceData ? formatPrice(priceData.price) : "$0.00"}
+              {priceData ? formatPrice(Number(priceData?.price_usd)) : "$0.00"}
             </span>
-            {priceData && priceData.priceChange24h !== 0 && (
+            {/* {priceData && priceData?.volume_usd?.h24 !== 0 && (
               <span
                 className={`text-xs ${
-                  priceData.priceChange24h > 0
+                  Number(priceData?.volume_usd?.h24) > 0
                     ? "text-green-500"
                     : "text-red-500"
                 }`}
               >
-                {priceData.priceChange24h > 0 ? "+" : ""}
-                {priceData.priceChange24h.toFixed(2)}%
+                {Number(priceData?.volume_usd?.h24) > 0 ? "+" : ""}
+                {Number(priceData?.volume_usd?.h24).toFixed(2)}%
               </span>
-            )}
+            )} */}
           </div>
         </div>
       </div>
@@ -223,16 +241,16 @@ function TradingInterface({ token }: { token: TokenDetails | null }) {
   // Get Privy user info
   const { user, authenticated } = usePrivy();
   const userAddress = user?.wallet?.address;
-  const { theme } = useNextTheme()
+  const { theme } = useNextTheme();
 
   // Configure LI.FI Widget based on v3.24.3
   const widgetConfig: WidgetConfig = {
     integrator: "Zoracle",
     fromChain: 8453, // Base chain
-    toChain: 8453,  // Default to same chain
+    toChain: 8453, // Default to same chain
     fromToken: "0x0000000000000000000000000000000000000000", // ETH
     toToken: token?.address || "", // Current token
-    appearance: theme === 'dark' ? 'dark' : 'light',
+    appearance: theme === "dark" ? "dark" : "light",
     fee: 0.05,
     variant: "compact",
     buildUrl: false, // prevents widget links updating your URL/history
@@ -240,19 +258,18 @@ function TradingInterface({ token }: { token: TokenDetails | null }) {
     sdkConfig: {
       rpcUrls: {
         8453: [
-          `https://base-mainnet.g.alchemy.com/v2/${import.meta.env.VITE_ALCHEMY_API_KEY}`,
+          `https://base-mainnet.g.alchemy.com/v2/${
+            import.meta.env.VITE_ALCHEMY_API_KEY
+          }`,
         ],
       },
     },
   };
-  
+
   return (
     <div className="p-6">
       {authenticated ? (
-        <LiFiWidget
-          config={widgetConfig}
-          integrator="Zoracle"
-        />
+        <LiFiWidget config={widgetConfig} integrator="Zoracle" />
       ) : (
         <div className="text-center p-6 bg-muted/30 rounded-lg">
           <Wallet className="w-12 h-12 mx-auto mb-3 text-primary/50" />
@@ -465,7 +482,10 @@ function getTimeAgo(dateString: string): string {
 }
 
 export default function TokenDetails() {
-  const { address: rawAddress, "*": extraPath } = useParams<{ address: string, "*": string }>();
+  const { address: rawAddress, "*": extraPath } = useParams<{
+    address: string;
+    "*": string;
+  }>();
   const navigate = useNavigate();
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
 
@@ -473,7 +493,9 @@ export default function TokenDetails() {
   useEffect(() => {
     // If we have a path like "/token/{address}/from-token"
     if (extraPath && extraPath.includes("from-token") && rawAddress) {
-      console.log(`Token details with "from-token" path: ${rawAddress}/${extraPath}`);
+      console.log(
+        `Token details with "from-token" path: ${rawAddress}/${extraPath}`
+      );
       // The LI.FI widget will handle this internally through its UI
       // No need to redirect, the widget will show the right interface
     }
