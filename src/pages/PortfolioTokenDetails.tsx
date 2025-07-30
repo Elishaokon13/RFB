@@ -36,6 +36,7 @@ function TradingInterface({ tokenAddress }: { tokenAddress: string }) {
   const widgetConfig: WidgetConfig = {
     integrator: "Zoracle",
     fromChain: 8453,
+    fee: 0.05,
     toChain: 8453,
     fromToken: tokenAddress, // User's token (for selling) - locked
     appearance: theme === "dark" ? "light" : "dark",
