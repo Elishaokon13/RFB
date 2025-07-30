@@ -66,7 +66,14 @@ export function useTokenPrice(tokenAddress: string | null): TokenPriceData {
       }
     };
 
+    // Initial fetch
     fetchPriceData();
+
+    // Set up auto-refresh every 60 seconds to match useTokenDetails
+    const interval = setInterval(fetchPriceData, 60 * 1000);
+
+    // Cleanup interval on unmount or when tokenAddress changes
+    return () => clearInterval(interval);
   }, [tokenAddress]);
 
   return priceData;
