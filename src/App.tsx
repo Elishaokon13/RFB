@@ -21,6 +21,7 @@ import PortfolioPage from "./pages/PortfolioPage.tsx";
 import PortfolioTokenDetails from "./pages/PortfolioTokenDetails.tsx";
 import { NotificationProvider } from "./components/Header";
 import CopyTradeListener from "./components/CopyTradeListener";
+import { useGoogleAnalytics } from "./hooks/useGoogleAnalytics";
 
 const queryClient = new QueryClient();
 
